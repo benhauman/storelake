@@ -1,0 +1,28 @@
+<Project>
+  <PropertyGroup>
+    <Product>StoreLakex1</Product>
+    <Company></Company>
+    <Copyright>Copyright (c) 2021</Copyright>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <VersionMajor>66</VersionMajor>
+    <VersionMinor>77</VersionMinor>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <VersionPrefix>$(VersionMajor).$(VersionMinor)</VersionPrefix>
+    <VersionSuffix></VersionSuffix>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+    <GenerateReleaseNotes Condition="'$(GenerateReleaseNotes)' == ''">false</GenerateReleaseNotes>
+    <GenerateAssemblyBuildDateAttribute Condition="'$(GenerateAssemblyBuildDateAttribute)' == ''">true</GenerateAssemblyBuildDateAttribute>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="*.dotsettings" />
+  </ItemGroup>
+
+</Project>

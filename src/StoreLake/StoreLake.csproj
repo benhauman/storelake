@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>Dibix.TestStore</AssemblyName>
+    <RootNamespace>Dibix.TestStore</RootNamespace>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>    
+    <Authors>BenHauman</Authors>
+    <Company>BenHauman</Company>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <Import Project="$(BuildDir)\GenerateAssemblyInfo.targets" Condition="Exists('$(BuildDir)\GenerateAssemblyInfo.targets')" />
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Compression" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Design" />
+  </ItemGroup> 
+
+</Project>
