@@ -56,7 +56,17 @@ namespace Dibix.TestStore.Database
 
             System.Data.Design.TypedDataSetGenerator.Generate(schemaContent, ccu, codeNamespace, codeProvider, System.Data.Design.TypedDataSetGenerator.GenerateOption.LinqOverTypedDatasets, "zzzzzzz");
 
-            CleanUpCode_CCU(ccu);
+            Adjust_CCU(ccu);
+        }
+
+        private static CodeTypeDeclaration CreateStaticClass(string name)
+        {
+            // https://stackoverflow.com/questions/6308310/creating-extension-method-using-codedom
+            CodeTypeDeclaration type = new CodeTypeDeclaration(name);
+            type.Attributes = MemberAttributes.Public | MemberAttributes.Static;
+            type.StartDirectives.Add(new CodeRegionDirective(CodeRegionMode.Start, Environment.NewLine + "\tstatic"));
+            type.EndDirectives.Add(new CodeRegionDirective(CodeRegionMode.End, String.Empty));
+            return type;
         }
 
         class NestedTypeDeclaration
@@ -65,10 +75,60 @@ namespace Dibix.TestStore.Database
             internal CodeTypeDeclaration Member;
         }
 
-        private static void CleanUpCode_CCU(CodeCompileUnit ccu)
+        private static void Adjust_CCU(CodeCompileUnit ccu)
         {
+            CodeNamespace extensions_type_ns = null;
+            CodeTypeDeclaration extensions_type_decl = null;
+            foreach (CodeNamespace ns in ccu.Namespaces)
+            {
+                foreach (CodeTypeDeclaration type_decl in ns.Types)
+                {
+                    bool isSetClassDeclaration = type_decl.BaseTypes.Count > 0 && type_decl.BaseTypes[0].BaseType == typeof(System.Data.DataSet).FullName;
+                    if (isSetClassDeclaration)
+                    {
+                        extensions_type_ns = ns;
+                        extensions_type_decl = CreateStaticClass(type_decl.Name + "Extensions");
 
+                        // Create 'GetTable'
+                        CodeMemberMethod method_gettable = new CodeMemberMethod() { Name = "GetTable", Attributes = MemberAttributes.Private | MemberAttributes.Static };
+                        CodeTypeParameter ctp_Table = new CodeTypeParameter("TTable");
+                        ctp_Table.Constraints.Add(new CodeTypeReference(typeof(DataTable)));
+                        method_gettable.TypeParameters.Add(ctp_Table);
+                        method_gettable.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "ds"));
+                        method_gettable.Parameters.Add(new CodeParameterDeclarationExpression(typeof(string), "tableName"));
+                        method_gettable.ReturnType = new CodeTypeReference("TTable");
+                        var var_decl_table = new CodeVariableDeclarationStatement("TTable", "table");
+                        method_gettable.Statements.Add(var_decl_table);
+                        var var_ref_table = new CodeVariableReferenceExpression("table");
 
+                        CodePropertyReferenceExpression ds_Tables = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("ds"), "Tables");
+                        CodeArrayIndexerExpression indexer = new CodeArrayIndexerExpression(ds_Tables, new CodeExpression[] { new CodeVariableReferenceExpression("tableName") });
+                        CodeCastExpression cast_expr = new CodeCastExpression("TTable", indexer);
+                        var_decl_table.InitExpression = cast_expr;
+
+                        var ifTableNull = new CodeBinaryOperatorExpression(var_ref_table, CodeBinaryOperatorType.ValueEquality, new CodePrimitiveExpression(null));
+                        var throwExpr = new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(ArgumentException), new CodeSnippetExpression("\"Table [\" + tableName + \"] could not be found.\""), new CodePrimitiveExpression("tableName")));
+                        method_gettable.Statements.Add(new CodeConditionStatement(ifTableNull, throwExpr));
+
+                        //method_gettable.Statements.Add(new CodeAssignStatement(var_ref_table, cast_expr));
+
+                        method_gettable.Statements.Add(new CodeMethodReturnStatement(var_ref_table));
+                        extensions_type_decl.Members.Add(method_gettable);
+
+                        break;
+                    }
+                }
+
+                if (extensions_type_decl != null)
+                {
+                    break;
+                }
+            }
+
+            if (extensions_type_decl == null)
+            {
+                return;
+            }
 
             foreach (CodeNamespace ns in ccu.Namespaces)
             {
@@ -76,7 +136,8 @@ namespace Dibix.TestStore.Database
 
                 foreach (CodeTypeDeclaration type_decl in ns.Types)
                 {
-                    CleanUpCode_TypeDecl(ns.Name, type_decl);
+
+                    Adjust_TypeDecl(extensions_type_decl, ns.Name, type_decl);
 
 
                     foreach (CodeTypeMember member_decl in type_decl.Members)
@@ -100,13 +161,13 @@ namespace Dibix.TestStore.Database
                 }
             }
 
-
+            extensions_type_ns.Types.Add(extensions_type_decl);
 
         }
 
-        private static void CleanUpCode_TypeDecl(string namespaceName, CodeTypeDeclaration type_decl)
+        private static void Adjust_TypeDecl(CodeTypeDeclaration extension_decl, string fullNamespaceOrOwnerTypeName, CodeTypeDeclaration type_decl)
         {
-            string fullClassName = namespaceName + "." + type_decl.Name;
+            string fullClassName = fullNamespaceOrOwnerTypeName + "." + type_decl.Name;
             Console.WriteLine("class " + fullClassName);
 
             //System.Data.DataSet
@@ -114,6 +175,11 @@ namespace Dibix.TestStore.Database
             bool isTableClassDeclaration = type_decl.BaseTypes.Count > 0 && type_decl.BaseTypes[0].BaseType.Contains("System.Data.TypedTableBase");
             bool isRowClassDeclaration = type_decl.BaseTypes.Count > 0 && type_decl.BaseTypes[0].BaseType == typeof(System.Data.DataRow).FullName;
 
+            if (isSetClassDeclaration)
+            {
+                type_decl.CustomAttributes.Clear();
+                //type_decl.BaseTypes.Clear();
+            }
 
             List<CodeTypeMember> membersToRemove = new List<CodeTypeMember>();
             List<CodeTypeMember> membersToInsert = new List<CodeTypeMember>();
@@ -137,7 +203,7 @@ namespace Dibix.TestStore.Database
                     }
                     else
                     {
-                        CleanUpCode_TypeDecl(fullClassName, member_type);
+                        Adjust_TypeDecl(extension_decl, fullClassName, member_type);
                     }
                 }
                 if (member_delegate != null)
@@ -149,8 +215,14 @@ namespace Dibix.TestStore.Database
                 {
                     if (isSetClassDeclaration && member_ctor.Parameters.Count == 0)
                     {
-                        // default ctor
-                        Adjust_DataSet_Constructor(member_ctor);
+                        // default ctor => static method on 'DataSet ds'
+                        CodeTypeMember member_decl_x = Adjust_DataSet_Constructor(extension_decl.Name, member_ctor);
+                        if (member_decl_x != null)
+                        {
+                            extension_decl.Members.Add(member_decl_x);
+                            //membersToInsert.Add(member_decl_x);
+                            membersToRemove.Add(member_decl);
+                        }
                     }
                     if (!isSetClassDeclaration && IsPublic(member_ctor.Attributes))
                     {
@@ -242,6 +314,12 @@ namespace Dibix.TestStore.Database
                         membersToRemove.Add(member_method);
                     }
 
+                    if (isSetClassDeclaration && member_method.Name == "InitClass")
+                    {
+                        Adjust_DataSet_InitClass(member_method);
+                        extension_decl.Members.Add(member_method);
+                        membersToRemove.Add(member_method);
+                    }
                 }
                 else if (member_property != null)
                 {
@@ -272,10 +350,10 @@ namespace Dibix.TestStore.Database
 
                     if (isSetClassDeclaration && member_property.HasGet && !member_property.HasSet && member_property.Type.BaseType.Contains(member_property.Name) && member_property.Type.BaseType.EndsWith("DataTable"))
                     {
-                        CodeMemberMethod member_method_x = Adjust_DataSet_TableAccessor(member_property);
+                        CodeMemberMethod member_method_x = Adjust_DataSet_TableAccessor(extension_decl, member_property);
                         if (member_method_x != null)
                         {
-                            membersToInsert.Add(member_method_x);
+                            extension_decl.Members.Add(member_method_x);
                             membersToRemove.Add(member_property);
                         }
                     }
@@ -303,6 +381,10 @@ namespace Dibix.TestStore.Database
                         {
                             membersToRemove.Add(member_field);
                         }
+                        else
+                        {
+                            membersToRemove.Add(member_field);
+                        }
                     }
                 }
             }
@@ -318,28 +400,159 @@ namespace Dibix.TestStore.Database
             }
         }
 
-        private static CodeMemberMethod Adjust_DataSet_TableAccessor(CodeMemberProperty member_property)
+        private static void Adjust_DataSet_InitClass(CodeMemberMethod member_method)
+        {
+            /*
+	tablehlspdefinition = new hlspdefinitionDataTable();
+	base.Tables.Add(tablehlspdefinition);
+            
+            => 
+            base.Tables.Add(new hlspdefinitionDataTable());
+             */
+
+            member_method.Name = "InitDataSetClass";
+
+            member_method.Attributes = member_method.Attributes | MemberAttributes.Static;
+            member_method.Parameters.Add(new CodeParameterDeclarationExpression(new CodeTypeReference(typeof(DataSet)), "ds"));
+            CodeVariableReferenceExpression prm_ref_ds = new CodeVariableReferenceExpression("ds");
+
+            //CodeAssignStatement assign_ds = new CodeAssignStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "_ds"), prm_ref_ds);
+
+            List<CodeStatement> vars = new List<CodeStatement>();
+            List<CodeStatement> old_statements = new List<CodeStatement>();
+
+            Dictionary<string, CodeAssignStatement> field_assign_stmts = new Dictionary<string, CodeAssignStatement>();
+            foreach (CodeStatement stmt in member_method.Statements)
+            {
+
+
+
+                bool skip_old = false;
+                // tablehlbiattributeconfig = new hlbiattributeconfigDataTable();
+                CodeAssignStatement stmt_assign = stmt as CodeAssignStatement;
+                if (stmt_assign != null)
+                {
+                    CodeFieldReferenceExpression fieldRefExpr = stmt_assign.Left as CodeFieldReferenceExpression;
+                    CodeObjectCreateExpression createObjectExpr = stmt_assign.Right as CodeObjectCreateExpression;
+                    if (fieldRefExpr != null && createObjectExpr != null)
+                    {
+                        //CodeVariableDeclarationStatement var_decl = new CodeVariableDeclarationStatement(createObjectExpr.CreateType, fieldRefExpr.FieldName);
+                        //vars.Add(var_decl);
+                        field_assign_stmts.Add(fieldRefExpr.FieldName, stmt_assign);
+                        skip_old = true;
+                    }
+                    else
+                    {
+                        // use it?
+                        /*
+    base.DataSetName = "DemoTestData";
+	base.Prefix = "";
+	base.Namespace = "[dbo]";
+	base.EnforceConstraints = true;
+	SchemaSerializationMode = SchemaSerializationMode.IncludeSchema;                         
+                         */
+
+                        skip_old = true;
+                    }
+                }
+                else
+                {
+
+                    CodeExpressionStatement stmt_expr = stmt as CodeExpressionStatement;
+                    if (stmt_expr != null)
+                    {
+                        CodeMethodInvokeExpression invoke_expr = stmt_expr.Expression as CodeMethodInvokeExpression;
+                        if (invoke_expr != null)
+                        {
+                            var prop_Table = invoke_expr.Method.TargetObject as CodePropertyReferenceExpression;
+                            CodeFieldReferenceExpression fieldRefExpr = invoke_expr.Parameters.Count == 1 ? invoke_expr.Parameters[0] as CodeFieldReferenceExpression : null;
+                            if (fieldRefExpr != null && prop_Table != null && prop_Table.TargetObject is CodeBaseReferenceExpression && prop_Table.PropertyName == "Tables")
+                            {
+                                //skip_old = true;
+                                prop_Table.TargetObject = prm_ref_ds;
+
+                                CodeAssignStatement field_assign_stmt = field_assign_stmts[fieldRefExpr.FieldName];
+                                CodeObjectCreateExpression createObj = (CodeObjectCreateExpression)field_assign_stmt.Right;
+
+                                invoke_expr.Parameters.Clear();
+                                invoke_expr.Parameters.Add(createObj);
+                            }
+                        }
+                    }
+                    else
+                    {
+
+                    }
+
+
+                }
+
+
+                if (!skip_old)
+                {
+                    old_statements.Add(stmt);
+                }
+            }
+
+            member_method.Statements.Clear();
+            foreach (var stmt in vars)
+            {
+                member_method.Statements.Add(stmt);
+            }
+            foreach (var stmt in old_statements)
+            {
+                member_method.Statements.Add(stmt);
+            }
+        }
+
+        private static CodeMemberMethod Adjust_DataSet_TableAccessor(CodeTypeDeclaration extension_decl, CodeMemberProperty member_property)
         {
             CodeMemberMethod member_method = new CodeMemberMethod();
+            CodeTypeParameter ctp = new CodeTypeParameter("TDataSet");
+            ctp.Constraints.Add(new CodeTypeReference(typeof(DataSet)));
+            member_method.TypeParameters.Add(ctp);
+            var param_decl = new CodeParameterDeclarationExpression("this TDataSet", "ds");
+            member_method.Parameters.Add(param_decl);
+
             member_method.Name = member_property.Name;
             member_method.ReturnType = member_property.Type;
-            member_method.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+            member_method.Attributes = MemberAttributes.Public | MemberAttributes.Static;
 
-            CodePropertyReferenceExpression base_Tables = new CodePropertyReferenceExpression(new CodeBaseReferenceExpression(), "Tables");
-            CodeArrayIndexerExpression indexer = new CodeArrayIndexerExpression(base_Tables, new CodeExpression[] { new CodePrimitiveExpression(member_property.Name) });
-            CodeCastExpression cast_expr = new CodeCastExpression(member_property.Type, indexer);
-            member_method.Statements.Add(new CodeMethodReturnStatement(cast_expr));
-            //;
-            //foreach (CodeStatement stmt in member_property.GetStatements)
-            //{
-            //    member_method.Statements.Add(stmt);
-            //}
+            //CodePropertyReferenceExpression base_Tables = new CodePropertyReferenceExpression(new CodeBaseReferenceExpression(), "Tables");
+            //CodeArrayIndexerExpression indexer = new CodeArrayIndexerExpression(base_Tables, new CodeExpression[] { new CodePrimitiveExpression(member_property.Name) });
+            //CodeCastExpression cast_expr = new CodeCastExpression(member_property.Type, indexer);
+            //member_method.Statements.Add(new CodeMethodReturnStatement(cast_expr));
+
+            member_method.Statements.Add(new CodeMethodReturnStatement(
+                             new CodeMethodInvokeExpression(
+                                  new CodeMethodReferenceExpression(
+                                     new CodeTypeReferenceExpression(extension_decl.Name),
+                                     "GetTable",
+                                             new CodeTypeReference[] { member_property.Type }),
+                                              new CodeVariableReferenceExpression("ds"),
+                                                       new CodePrimitiveExpression(member_property.Name))));
 
             return member_method;
         }
 
-        private static void Adjust_DataSet_Constructor(CodeConstructor member_ctor)
+        private static CodeTypeMember Adjust_DataSet_Constructor(string typeName, CodeConstructor member_ctor)
         {
+            CodeMemberMethod member_method = new CodeMemberMethod();
+            member_method.Name = "RegisterDataSetModel";
+            member_method.Attributes = MemberAttributes.Public | MemberAttributes.Static;
+
+            CodeTypeParameter ctp = new CodeTypeParameter("TDataSet");
+            ctp.Constraints.Add(new CodeTypeReference(typeof(DataSet)));
+            member_method.TypeParameters.Add(ctp);
+
+
+
+            var param_decl = new CodeParameterDeclarationExpression("this TDataSet", "ds");
+            member_method.Parameters.Add(param_decl);
+            member_method.ReturnType = new CodeTypeReference("TDataSet");
+            //member_ctor.Parameters.Add(new CodeParameterDeclarationExpression(new CodeTypeReference(typeof(DataSet)), "ds"));
+            CodeVariableReferenceExpression prm_ref_ds = new CodeVariableReferenceExpression("ds");
+
             List<CodeStatement> membersToRemove = new List<CodeStatement>();
             foreach (CodeStatement stmt in member_ctor.Statements)
             {
@@ -350,7 +563,24 @@ namespace Dibix.TestStore.Database
                 }
                 else
                 {
-                    // InitVars >>
+                    // InitClass(); => InitClass(this)
+                    CodeMethodInvokeExpression invoke_expr = stmt_expr.Expression as CodeMethodInvokeExpression;
+                    if (invoke_expr != null)
+                    {
+                        if (invoke_expr.Method.MethodName == "InitClass")
+                        {
+                            invoke_expr.Method.MethodName = "InitDataSetClass";
+                            invoke_expr.Method.TargetObject = new CodeTypeReferenceExpression(typeName);
+                            invoke_expr.Parameters.Add(prm_ref_ds);
+                        }
+                        else
+                        {
+                            invoke_expr.Method.TargetObject = prm_ref_ds;
+                        }
+
+                        member_method.Statements.Add(stmt);
+                    }
+
                 }
             }
 
@@ -358,6 +588,9 @@ namespace Dibix.TestStore.Database
             {
                 member_ctor.Statements.Remove(memberToRemove);
             }
+
+            member_method.Statements.Add(new CodeMethodReturnStatement(prm_ref_ds));
+            return member_method;
         }
 
         private static void RemoveNoiseAttributes(CodeTypeMember member_decl)

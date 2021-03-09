@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<DataSchemaModel FileFormatVersion="1.2" SchemaVersion="2.4" DspName="Microsoft.Data.Tools.Schema.Sql.Sql120DatabaseSchemaProvider" CollationLcid="1033" CollationCaseSensitive="False" xmlns="http://schemas.microsoft.com/sqlserver/dac/Serialization/2012/02">
+	<Header>
+		<CustomData Category="AnsiNulls">
+			<Metadata Name="AnsiNulls" Value="True" />
+		</CustomData>
+		<CustomData Category="QuotedIdentifier">
+			<Metadata Name="QuotedIdentifier" Value="True" />
+		</CustomData>
+		<CustomData Category="CompatibilityMode">
+			<Metadata Name="CompatibilityMode" Value="120" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="C:\PROGRAM FILES (X86)\MICROSOFT VISUAL STUDIO\2019\ENTERPRISE\COMMON7\IDE\EXTENSIONS\MICROSOFT\SQLDB\EXTENSIONS\SQLSERVER\120\SQLSCHEMAS\MASTER.DACPAC" />
+			<Metadata Name="LogicalName" Value="master.dacpac" />
+			<Metadata Name="ExternalParts" Value="[master]" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="C:\PROGRAM FILES (X86)\MICROSOFT VISUAL STUDIO\2019\ENTERPRISE\COMMON7\IDE\EXTENSIONS\MICROSOFT\SQLDB\EXTENSIONS\SQLSERVER\120\SQLSCHEMAS\MSDB.DACPAC" />
+			<Metadata Name="LogicalName" Value="msdb.dacpac" />
+			<Metadata Name="ExternalParts" Value="[msdb]" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\BI.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="BI.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\AI.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="AI.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\BPMNMODELER.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="BPMNModeler.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\BUSINESSRULEENGINE.SERVER.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="BusinessRuleEngine.Server.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\DATAIMPORT.DATA.DACPAC" />
+			<Metadata Name="LogicalName" Value="DataImport.Data.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\DIALOGENGINE.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="DialogEngine.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\FORMMANAGEMENT.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="FormManagement.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\HELPLINEDATA.DACPAC" />
+			<Metadata Name="LogicalName" Value="HelplineData.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\INFRASTRUCTURE.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="Infrastructure.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\NEWSMANAGEMENT.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="NewsManagement.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\OBJECTMANAGEMENT.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="ObjectManagement.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\ORDERMANAGEMENT.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="OrderManagement.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\PROCESSENGINE.DATA.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="ProcessEngine.Data.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\SINGLETASK.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="SingleTask.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\SLM.DATABASE.DATA.DACPAC" />
+			<Metadata Name="LogicalName" Value="SLM.Database.Data.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\TASKPROCESS.DATA.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="TaskProcess.Data.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\TASKMANAGEMENT.SERVER.DACPAC" />
+			<Metadata Name="LogicalName" Value="TaskManagement.Server.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\USERMANAGEMENT.DATA.DACPAC" />
+			<Metadata Name="LogicalName" Value="UserManagement.Data.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\PROCESSMANAGEMENT.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="ProcessManagement.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\MASTERDATA.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="MasterData.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\SEARCH.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="Search.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\SURVEY.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="Survey.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\NOTIFICATIONHUB.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="NotificationHub.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\SERVICEMANAGEMENT.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="ServiceManagement.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="SqlSchema">
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\BIN\DEBUG\OUTPUT\DATABASE\MESSAGING.DATABASE.DACPAC" />
+			<Metadata Name="LogicalName" Value="Messaging.Database.dacpac" />
+			<Metadata Name="SuppressMissingDependenciesErrors" Value="False" />
+		</CustomData>
+		<CustomData Category="Reference" Type="Assembly">
+			<Metadata Name="LogicalName" Value="Helpline.dll" />
+			<Metadata Name="FileName" Value="D:\HELPLINE\CURRENT\SQL\HELPLINE\OBJ\DEBUG\HELPLINE.DLL" />
+			<Metadata Name="AssemblyName" Value="Helpline" />
+			<Metadata Name="PermissionSet" Value="SAFE" />
+			<Metadata Name="Owner" Value="" />
+			<Metadata Name="GenerateSqlClrDdl" Value="True" />
+			<Metadata Name="IsVisible" Value="True" />
+			<Metadata Name="IsModelAware" Value="True" />
+			<Metadata Name="SkipCreationIfEmpty" Value="True" />
+			<Metadata Name="AssemblySymbolsName" Value="D:\Helpline\Current\SQL\Helpline\obj\Debug\Helpline.pdb" />
+		</CustomData>
+		<CustomData Category="SqlCmdVariables" Type="SqlCmdVariable" />
+	</Header>
+	<Model>
+		<Element Type="SqlDatabaseOptions">
+			<Property Name="Collation" Value="SQL_Latin1_General_CP1_CI_AS" />
+			<Property Name="IsAnsiNullDefaultOn" Value="True" />
+			<Property Name="IsAnsiNullsOn" Value="True" />
+			<Property Name="IsAnsiWarningsOn" Value="True" />
+			<Property Name="IsArithAbortOn" Value="True" />
+			<Property Name="IsConcatNullYieldsNullOn" Value="True" />
+			<Property Name="IsTornPageProtectionOn" Value="False" />
+			<Property Name="IsFullTextEnabled" Value="True" />
+			<Property Name="PageVerifyMode" Value="3" />
+			<Property Name="ServiceBrokerOption" Value="1" />
+			<Property Name="IsAllowSnapshotIsolation" Value="True" />
+			<Property Name="DefaultLanguage" Value="" />
+			<Property Name="DefaultFullTextLanguage" Value="" />
+			<Relationship Name="DefaultFilegroup">
+				<Entry>
+					<References ExternalSource="BuiltIns" Name="[PRIMARY]" />
+				</Entry>
+			</Relationship>
+		</Element>
+	</Model>
+</DataSchemaModel>
