@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
-    <AssemblyName>StoreLake</AssemblyName>
-    <RootNamespace>StoreLake</RootNamespace>
+    <AssemblyName>StoreLake.Sdk</AssemblyName>
+    <RootNamespace>StoreLake.Sdk</RootNamespace>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>    
     <Authors>BenHauman</Authors>
     <Company>BenHauman</Company>
@@ -24,7 +24,7 @@
   <Import Project="$(BuildDir)\GenerateAssemblyInfo.targets" Condition="Exists('$(BuildDir)\GenerateAssemblyInfo.targets')" />
 
   <ItemGroup>
-    <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
+    <PackageReference Include="System.IO.Compression" Version="4.3.0" />
   </ItemGroup>
 
   <ItemGroup>

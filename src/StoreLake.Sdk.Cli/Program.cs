@@ -1,7 +1,6 @@
-﻿using Dibix.TestStore.Demo;
+﻿using System;
+
 using Dibix.TestStore.Database;
-using System;
-using System.Data;
 
 namespace ConsoleApp3
 {
@@ -23,8 +22,7 @@ namespace ConsoleApp3
 
         private static void Test01()
         {
-            string databaseName = "DemoTestData";
-            var ds = new DataSet(databaseName) { Namespace = "[dbo]" }; // see 'https://www.codeproject.com/articles/30490/how-to-manually-create-a-typed-datatable'
+            string databaseName = "DemoTestDataX";
 
             string inputdir = @"D:\Helpline\Current\bin\Debug\output\database";
             //string dacName = "Helpline";
@@ -32,7 +30,7 @@ namespace ConsoleApp3
 
             string dacpacFileName = dacName + ".dacpac";
             string dacpacFullFileName = System.IO.Path.Combine(inputdir, dacpacFileName);
-            SchemaImportDacPac.ImportDacPac(ds, dacpacFullFileName);
+            var ds = SchemaImportDacPac.ImportDacPac(databaseName, dacpacFullFileName);
 
             SchemaExportCode.ExportTypedDataSetCode(ds, inputdir, dacName);
         }

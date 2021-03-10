@@ -5,6 +5,12 @@ VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StoreLake", "src\StoreLake\StoreLake.csproj", "{6166ED05-9E74-4C02-A774-6F9ED72334C4}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StoreLake.Sdk.Cli", "src\StoreLake.Sdk.Cli\StoreLake.Sdk.Cli.csproj", "{67847379-973B-41FC-A13A-BF6D36612A6E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StoreLake.Test.ConsoleApp", "src\StoreLake.Test.ConsoleApp\StoreLake.Test.ConsoleApp.csproj", "{D732EA36-E681-4908-91D5-9A0ACF0A8DBC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StoreLake.Sdk", "src\StoreLake.Sdk\StoreLake.Sdk.csproj", "{7DFA98CC-96EC-4C6D-A856-2F38AB63EE90}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +21,18 @@ Global
 		{6166ED05-9E74-4C02-A774-6F9ED72334C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6166ED05-9E74-4C02-A774-6F9ED72334C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6166ED05-9E74-4C02-A774-6F9ED72334C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{67847379-973B-41FC-A13A-BF6D36612A6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67847379-973B-41FC-A13A-BF6D36612A6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67847379-973B-41FC-A13A-BF6D36612A6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67847379-973B-41FC-A13A-BF6D36612A6E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D732EA36-E681-4908-91D5-9A0ACF0A8DBC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D732EA36-E681-4908-91D5-9A0ACF0A8DBC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D732EA36-E681-4908-91D5-9A0ACF0A8DBC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D732EA36-E681-4908-91D5-9A0ACF0A8DBC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7DFA98CC-96EC-4C6D-A856-2F38AB63EE90}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7DFA98CC-96EC-4C6D-A856-2F38AB63EE90}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7DFA98CC-96EC-4C6D-A856-2F38AB63EE90}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7DFA98CC-96EC-4C6D-A856-2F38AB63EE90}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

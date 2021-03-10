@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\StoreLake\StoreLake.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="SLM.Database.Data.TestStore">
+      <HintPath>..\..\..\..\Helpline\Current\bin\Debug\output\database\SLM.Database.Data.TestStore.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

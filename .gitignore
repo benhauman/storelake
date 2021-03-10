@@ -8,3 +8,5 @@
 /.vs
 /src/StoreLake.Sdk.Cli/bin/Debug/net48
 /src/StoreLake.Sdk.Cli/obj
+/src/StoreLake.Test.ConsoleApp/bin/Debug/net48
+/src/StoreLake.Test.ConsoleApp/obj

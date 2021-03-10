@@ -1,26 +1,23 @@
-﻿using Dibix.TestStore.Demo;
-using System;
+﻿using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Globalization;
 using System.IO;
 using System.Text;
-using System.Xml;
 using System.Xml.Schema;
 
 namespace Dibix.TestStore.Database
 {
     public static class SchemaExportCode
     {
-        public static void ExportTypedDataSetCode(DataSet ds, string outputdir, string dacName)
+        public static void ExportTypedDataSetCode(RegistrationResult ctx, string outputdir, string dacName)
         {
             string schemaFileName = System.IO.Path.Combine(outputdir, dacName + ".Schema.xsd");
             string filenameNoExtension = dacName + ".TestStore";
 
-            SchemaExportCode.ExportSchemaXsd(ds, schemaFileName);
+            SchemaExportCode.ExportSchemaXsd(ctx.ds, schemaFileName);
             string schemaContent = File.ReadAllText(schemaFileName);
 
             ImportSchemasAsDataSets(schemaContent, outputdir, filenameNoExtension, dacName);
@@ -79,6 +76,7 @@ namespace Dibix.TestStore.Database
         {
             CodeNamespace extensions_type_ns = null;
             CodeTypeDeclaration extensions_type_decl = null;
+            CodeTypeDeclaration ds_type_decl = null;
             foreach (CodeNamespace ns in ccu.Namespaces)
             {
                 foreach (CodeTypeDeclaration type_decl in ns.Types)
@@ -87,6 +85,7 @@ namespace Dibix.TestStore.Database
                     if (isSetClassDeclaration)
                     {
                         extensions_type_ns = ns;
+                        ds_type_decl = type_decl;
                         extensions_type_decl = CreateStaticClass(type_decl.Name + "Extensions");
 
                         // Create 'GetTable'
@@ -160,6 +159,8 @@ namespace Dibix.TestStore.Database
                     ns.Types.Add(nested_type.Member);
                 }
             }
+
+            extensions_type_ns.Types.Remove(ds_type_decl);
 
             extensions_type_ns.Types.Add(extensions_type_decl);
 

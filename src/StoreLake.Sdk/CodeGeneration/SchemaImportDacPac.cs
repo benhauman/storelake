@@ -9,22 +9,45 @@ using System.Xml.Linq;
 
 namespace Dibix.TestStore.Database
 {
+    internal sealed class DacPacRegistration
+    {
+        internal readonly string FilePath;
+        internal DacPacRegistration(string filePath)
+        {
+            FilePath = filePath;
+        }
+        
+        internal string DacPacAssemblyAssemblyName { get; set; }
+        internal readonly IDictionary<string, DacPacRegistration> referenced_dacpacs = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
+    }
+
+
+    public sealed class RegistrationResult
+    {
+        internal RegistrationResult(DataSet ds)
+        {
+            this.ds = ds;
+        }
+        internal readonly DataSet ds;
+        internal readonly IDictionary<string, DacPacRegistration> registered_dacpacs = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
+        internal readonly IDictionary<string, DacPacRegistration> registered_tables = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
+    }
+
     public static class SchemaImportDacPac // 'Dedicated Administrator Connection (for Data Tier Application) Package'
     {
-        public static DataSet ImportDacPac(this DataSet ds, string dacpacFullFileName)
+        public static RegistrationResult ImportDacPac(string databaseName, string dacpacFullFileName)
         {
-            RegistractionContext ctx = new RegistractionContext();
-            RegisterDacpac(ctx, ds, dacpacFullFileName);
-            return ds;
+            //string databaseName = "DemoTestData";
+            DataSet ds = new DataSet() { Namespace = "[dbo]" }; // see 'https://www.codeproject.com/articles/30490/how-to-manually-create-a-typed-datatable'
+            RegistrationResult ctx = new RegistrationResult(ds);
+            RegisterDacpac(ctx, dacpacFullFileName);
+            return ctx;
         }
 
-        private sealed class RegistractionContext
-        {
-            internal readonly Dictionary<string, string> registered_dacpacs = new Dictionary<string, string>(); // <logicalname, filename>
-        }
 
-        private static void RegisterDacpac(RegistractionContext ctx, DataSet ds, string filePath)
+        private static DacPacRegistration RegisterDacpac(RegistrationResult ctx, string filePath)
         {
+            DacPacRegistration dacpac = new DacPacRegistration(filePath);
             Console.WriteLine(filePath);
             using (ZipArchive archive = ZipFile.OpenRead(filePath))
             {
@@ -38,6 +61,16 @@ namespace Dibix.TestStore.Database
                             XElement xDataSchemaModel = xdoc.Root;
 
                             XElement xHeader = xDataSchemaModel.Element(XName.Get("Header", "http://schemas.microsoft.com/sqlserver/dac/Serialization/2012/02"));
+
+                            XElement xReference_Assembly = xHeader.Elements().Single(e => e.Name.LocalName == "CustomData"
+                                && e.Attributes().Any(a => a.Name.LocalName == "Category" && a.Value == "Reference")
+                                && e.Attributes().Any(a => a.Name.LocalName == "Type" && a.Value == "Assembly")
+                                );
+                            XElement xReference_Assembly_AssemblyName = xReference_Assembly.Elements().Single(e => e.Name.LocalName == "Metadata"
+                                    && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "AssemblyName")
+                                    && e.Attributes().Any(a => a.Name.LocalName == "Value")
+                                    );
+                            dacpac.DacPacAssemblyAssemblyName = xReference_Assembly_AssemblyName.Attributes().Single(a => a.Name.LocalName == "Value").Value;
 
                             // <CustomData Category="Reference" Type="SqlSchema">
                             foreach (XElement xReferenceSchema in xHeader.Elements().Where(e => e.Name.LocalName == "CustomData"
@@ -71,15 +104,19 @@ namespace Dibix.TestStore.Database
                                     //Console.WriteLine(logicalname);
                                     string dacpacFileName = xFileName.Attributes().Single(a => a.Name.LocalName == "Value").Value;
                                     //Console.WriteLine(dacpacFileName);
-                                    if (ctx.registered_dacpacs.ContainsKey(logicalname.ToUpperInvariant()))
+                                    DacPacRegistration external_dacpac;
+                                    if (ctx.registered_dacpacs.TryGetValue(logicalname.ToUpperInvariant(), out external_dacpac))
                                     {
                                         // already registered
                                     }
                                     else
                                     {
-                                        RegisterDacpac(ctx, ds, dacpacFileName);
-                                        ctx.registered_dacpacs.Add(logicalname.ToUpperInvariant(), dacpacFileName);
+                                        external_dacpac = RegisterDacpac(ctx, dacpacFileName);
+                                        
                                     }
+
+
+                                    dacpac.referenced_dacpacs.Add(logicalname.ToUpperInvariant(), external_dacpac);
                                 }
                             }
 
@@ -87,13 +124,15 @@ namespace Dibix.TestStore.Database
                             //Console.WriteLine(xModel.Elements().Count());
 
 
-                            AddTables(ds, xModel);
-                            AddPrimaryKeys(ds, xModel);
-                            AddDefaultConstraints(ds, xModel);
+                            AddTables(ctx, dacpac, xModel);
+                            AddPrimaryKeys(ctx.ds, xModel);
+                            AddDefaultConstraints(ctx.ds, xModel);
                         }
                     }
                 }
             }
+            ctx.registered_dacpacs.Add(dacpac.DacPacAssemblyAssemblyName.ToUpperInvariant(), dacpac);
+            return dacpac;
         }
 
         private static void AddDefaultConstraints(DataSet ds, XElement xModel)
@@ -246,37 +285,6 @@ namespace Dibix.TestStore.Database
                 }
             } while (start_ix >= 0);
             return output;
-            //StringBuilder result = new StringBuilder();
-            //
-            //bool comment_started = false;
-            //char? last_ch = null;
-            //for (int ix = 0; ix < input.Length - 1; ix++) // starts at index '1' in order to have an access to the not-added previous characters.
-            //{
-            //    char next_ch = input[ix + 1];
-            //    char ch = input[ix];
-            //    if (ch == '/' && next_ch == '*')
-            //    {
-            //        comment_started = true;
-            //    }
-            //
-            //    if (comment_started)
-            //    {
-            //
-            //    }
-            //    else
-            //    {
-            //        result.Append(ch);
-            //    }
-            //
-            //    //////////////////
-            //    last_ch = ch;
-            //}
-            //if (last_ch.HasValue)
-            //{
-            //    result.Append(last_ch.Value);
-            //}
-            //
-            //return result.ToString();
         }
 
         private static void AddPrimaryKeys(DataSet ds, XElement xModel)
@@ -328,7 +336,7 @@ namespace Dibix.TestStore.Database
             }
         }
 
-        private static void AddTables(DataSet ds, XElement xModel)
+        private static void AddTables(RegistrationResult ctx, DacPacRegistration dacpac, XElement xModel)
         {
             //     <Element Type="SqlTable" Name="[dbo].[hlsysagent]" Disambiguator="8">
             foreach (var xTable in xModel.Elements().Where(e => e.Attributes().Any(t => t.Name == "Type" && t.Value == "SqlTable")))
@@ -356,7 +364,8 @@ namespace Dibix.TestStore.Database
                     CollectTableColumns(xRelationship_Columns, treg, false);
                     CollectTableColumns(xRelationship_Columns, treg, true);
 
-                    DatabaseRegistration.RegisterTable(ds, treg);
+                    ctx.registered_tables.Add(treg.TableName, dacpac);
+                    DatabaseRegistration.RegisterTable(ctx.ds, treg);
                 }
             }
         }

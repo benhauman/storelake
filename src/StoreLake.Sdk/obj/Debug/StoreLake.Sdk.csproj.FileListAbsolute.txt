@@ -1,0 +1,6 @@
+D:\GitHub\StoreLake\StoreLake.Sdk\bin\Debug\StoreLake.Sdk.dll
+D:\GitHub\StoreLake\StoreLake.Sdk\bin\Debug\StoreLake.Sdk.pdb
+D:\GitHub\StoreLake\StoreLake.Sdk\obj\Debug\StoreLake.Sdk.csprojAssemblyReference.cache
+D:\GitHub\StoreLake\StoreLake.Sdk\obj\Debug\StoreLake.Sdk.csproj.CoreCompileInputs.cache
+D:\GitHub\StoreLake\StoreLake.Sdk\obj\Debug\StoreLake.Sdk.dll
+D:\GitHub\StoreLake\StoreLake.Sdk\obj\Debug\StoreLake.Sdk.pdb
