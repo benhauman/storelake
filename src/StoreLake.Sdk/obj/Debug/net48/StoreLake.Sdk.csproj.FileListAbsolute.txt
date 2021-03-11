@@ -1,9 +1,0 @@
-D:\GitHub\StoreLake\src\StoreLake.Sdk\obj\Debug\net48\StoreLake.Sdk.GeneratedMSBuildEditorConfig.editorconfig
-D:\GitHub\StoreLake\src\StoreLake.Sdk\obj\Debug\net48\StoreLake.Sdk.AssemblyInfoInputs.cache
-D:\GitHub\StoreLake\src\StoreLake.Sdk\obj\Debug\net48\StoreLake.Sdk.AssemblyInfo.cs
-D:\GitHub\StoreLake\src\StoreLake.Sdk\obj\Debug\net48\StoreLake.Sdk.csproj.CoreCompileInputs.cache
-D:\GitHub\StoreLake\src\StoreLake.Sdk\bin\Debug\net48\StoreLake.Sdk.dll
-D:\GitHub\StoreLake\src\StoreLake.Sdk\bin\Debug\net48\StoreLake.Sdk.pdb
-D:\GitHub\StoreLake\src\StoreLake.Sdk\obj\Debug\net48\StoreLake.Sdk.csprojAssemblyReference.cache
-D:\GitHub\StoreLake\src\StoreLake.Sdk\obj\Debug\net48\StoreLake.Sdk.dll
-D:\GitHub\StoreLake\src\StoreLake.Sdk\obj\Debug\net48\StoreLake.Sdk.pdb

@@ -1,5 +1,6 @@
 ﻿using Dibix.TestStore.Database;
-using SLM.Database.Data;
+using Helpline.Data.TestStore;
+using Helpline.SLM.Database.Data.TestStore;
 using System;
 using System.Data;
 
@@ -23,7 +24,8 @@ namespace ConsoleApp4
         {
             var db = StoreLakeDatabaseServer.CreateDatabase("MyDB")
                 .Use(DatabaseGetUtcDateExtension.Register)
-                .Use(SLM.Database.Data.NewDataSetExtensions.RegisterDataSetModel)
+                .Use(HelplineDataExtensions.RegisterDataSetModel) // using 'Helpline.Data.TestStore.HelplineDataExtensions'
+                .Use(SLMDatabaseDataExtensions.RegisterDataSetModel) // using Helpline.SLM.Database.Data.TestStore.SLMDatabaseDataExtensions
                 .Use(DatabaseGetUtcDateExtension.Register)
                 .Build();
 

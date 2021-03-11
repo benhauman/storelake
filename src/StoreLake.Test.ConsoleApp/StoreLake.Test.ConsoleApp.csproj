@@ -14,6 +14,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="HelplineData.TestStore">
+      <HintPath>..\..\..\..\Helpline\Current\bin\Debug\output\database\HelplineData.TestStore.dll</HintPath>
+    </Reference>
     <Reference Include="SLM.Database.Data.TestStore">
       <HintPath>..\..\..\..\Helpline\Current\bin\Debug\output\database\SLM.Database.Data.TestStore.dll</HintPath>
     </Reference>

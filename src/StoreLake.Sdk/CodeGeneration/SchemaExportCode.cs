@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Xml.Schema;
 
@@ -12,35 +13,70 @@ namespace Dibix.TestStore.Database
 {
     public static class SchemaExportCode
     {
-        public static void ExportTypedDataSetCode(RegistrationResult ctx, string outputdir, string dacName)
+        public static void ExportTypedDataSetCode(RegistrationResult rr, string outputdir, string dacNameFilter)
         {
-            string schemaFileName = System.IO.Path.Combine(outputdir, dacName + ".Schema.xsd");
-            string filenameNoExtension = dacName + ".TestStore";
+            var level_count = rr.registered_dacpacs.Values.Max(x => x.DacPacDependencyLevel);
+            for (int level = 1; level <= level_count; level++)
+            {
+                Console.WriteLine("Level:" + level);
 
-            SchemaExportCode.ExportSchemaXsd(ctx.ds, schemaFileName);
-            string schemaContent = File.ReadAllText(schemaFileName);
+                foreach (DacPacRegistration dacpac in rr.registered_dacpacs.Values)
+                {
+                    if (dacpac.DacPacDependencyLevel == level)
+                    {
+                        Console.WriteLine(dacpac.DacPacAssemblyLogicalName);
 
-            ImportSchemasAsDataSets(schemaContent, outputdir, filenameNoExtension, dacName);
+                        string dacName = Path.GetFileNameWithoutExtension(dacpac.DacPacAssemblyLogicalName);
+
+                        if (!string.IsNullOrEmpty(dacNameFilter) && !string.Equals(dacNameFilter, dacName))
+                        {
+                            // ignore 
+                            // Console.WriteLine("skip:not in filter.");
+                        }
+                        else
+                        {
+                            string schemaFileName = System.IO.Path.Combine(outputdir, dacName + ".Schema.xsd");
+                            string filenameNoExtension = dacName + ".TestStore";
+
+                            SchemaExportCode.ExportSchemaXsd(rr.ds, schemaFileName);
+                            string schemaContent = File.ReadAllText(schemaFileName);
+
+                            ImportSchemasAsDataSets(rr, dacpac, schemaContent, outputdir, filenameNoExtension, dacName);
+                        }
+                    }
+
+                }
+            }
+
+            if (level_count < 100)
+            {
+                return;
+            }
+
         }
 
-        private static void ImportSchemasAsDataSets(string schemaContent, string outputdir, string fileName, string namespaceName)
+
+        private static void ImportSchemasAsDataSets(RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string outputdir, string fileName, string namespaceName)
         {
             Microsoft.CSharp.CSharpCodeProvider codeProvider = new Microsoft.CSharp.CSharpCodeProvider();// //CodeDomProvider.CreateProvider(language);
 
-            CodeCompileUnit codeCompileUnit = new CodeCompileUnit();
+            CodeCompileUnit ccu = new CodeCompileUnit();
 
-            GenerateDataSetClasses(codeCompileUnit, schemaContent, namespaceName, codeProvider);
+            GenerateDataSetClasses(ccu, schemaContent, namespaceName, codeProvider);
+
+
+            Adjust_CCU(rr, dacpac, ccu);
 
             using (TextWriter textWriter = new StreamWriter(Path.Combine(outputdir, fileName + ".cs"), append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
             //using (TextWriter textWriter = CreateOutputWriter(Path.Combine(outputdir, path), fileName, "cs"))
             {
-                codeProvider.GenerateCodeFromCompileUnit(codeCompileUnit, textWriter, null);
+                codeProvider.GenerateCodeFromCompileUnit(ccu, textWriter, null);
             }
 
 
             string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
             string fullFileName_err = System.IO.Path.Combine(outputdir, fileName + ".errors.txt");
-            CompileCode(codeCompileUnit, fullFileName_dll, fullFileName_err);
+            CompileCode(ccu, fullFileName_dll, fullFileName_err);
 
             Console.WriteLine(fullFileName_dll);
         }
@@ -53,7 +89,6 @@ namespace Dibix.TestStore.Database
 
             System.Data.Design.TypedDataSetGenerator.Generate(schemaContent, ccu, codeNamespace, codeProvider, System.Data.Design.TypedDataSetGenerator.GenerateOption.LinqOverTypedDatasets, "zzzzzzz");
 
-            Adjust_CCU(ccu);
         }
 
         private static CodeTypeDeclaration CreateStaticClass(string name)
@@ -72,104 +107,139 @@ namespace Dibix.TestStore.Database
             internal CodeTypeDeclaration Member;
         }
 
-        private static void Adjust_CCU(CodeCompileUnit ccu)
+        private static void Adjust_CCU(RegistrationResult rr, DacPacRegistration dacpac, CodeCompileUnit ccu)
         {
-            CodeNamespace extensions_type_ns = null;
+            if (ccu.Namespaces.Count > 1)
+            {
+                throw new NotSupportedException("Multiple namespaces");
+            }
+            string dacpacName = Path.GetFileNameWithoutExtension(dacpac.DacPacAssemblyLogicalName);
+            string dacpacSetName = dacpacName;
             CodeTypeDeclaration extensions_type_decl = null;
-            CodeTypeDeclaration ds_type_decl = null;
-            foreach (CodeNamespace ns in ccu.Namespaces)
+            CodeNamespace ns_old = ccu.Namespaces[0];
+            ccu.Namespaces.Clear();
+            CodeNamespace ns = new CodeNamespace();
+            ccu.Namespaces.Add(ns);
+            if (dacpacName.StartsWith("Helpline"))
             {
-                foreach (CodeTypeDeclaration type_decl in ns.Types)
+                dacpacName = dacpacName.Remove(0, 8);
+                if (dacpacName.StartsWith("."))
                 {
-                    bool isSetClassDeclaration = type_decl.BaseTypes.Count > 0 && type_decl.BaseTypes[0].BaseType == typeof(System.Data.DataSet).FullName;
-                    if (isSetClassDeclaration)
-                    {
-                        extensions_type_ns = ns;
-                        ds_type_decl = type_decl;
-                        extensions_type_decl = CreateStaticClass(type_decl.Name + "Extensions");
-
-                        // Create 'GetTable'
-                        CodeMemberMethod method_gettable = new CodeMemberMethod() { Name = "GetTable", Attributes = MemberAttributes.Private | MemberAttributes.Static };
-                        CodeTypeParameter ctp_Table = new CodeTypeParameter("TTable");
-                        ctp_Table.Constraints.Add(new CodeTypeReference(typeof(DataTable)));
-                        method_gettable.TypeParameters.Add(ctp_Table);
-                        method_gettable.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "ds"));
-                        method_gettable.Parameters.Add(new CodeParameterDeclarationExpression(typeof(string), "tableName"));
-                        method_gettable.ReturnType = new CodeTypeReference("TTable");
-                        var var_decl_table = new CodeVariableDeclarationStatement("TTable", "table");
-                        method_gettable.Statements.Add(var_decl_table);
-                        var var_ref_table = new CodeVariableReferenceExpression("table");
-
-                        CodePropertyReferenceExpression ds_Tables = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("ds"), "Tables");
-                        CodeArrayIndexerExpression indexer = new CodeArrayIndexerExpression(ds_Tables, new CodeExpression[] { new CodeVariableReferenceExpression("tableName") });
-                        CodeCastExpression cast_expr = new CodeCastExpression("TTable", indexer);
-                        var_decl_table.InitExpression = cast_expr;
-
-                        var ifTableNull = new CodeBinaryOperatorExpression(var_ref_table, CodeBinaryOperatorType.ValueEquality, new CodePrimitiveExpression(null));
-                        var throwExpr = new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(ArgumentException), new CodeSnippetExpression("\"Table [\" + tableName + \"] could not be found.\""), new CodePrimitiveExpression("tableName")));
-                        method_gettable.Statements.Add(new CodeConditionStatement(ifTableNull, throwExpr));
-
-                        //method_gettable.Statements.Add(new CodeAssignStatement(var_ref_table, cast_expr));
-
-                        method_gettable.Statements.Add(new CodeMethodReturnStatement(var_ref_table));
-                        extensions_type_decl.Members.Add(method_gettable);
-
-                        break;
-                    }
-                }
-
-                if (extensions_type_decl != null)
-                {
-                    break;
+                    dacpacName = dacpacName.Remove(0, 1);
                 }
             }
-
-            if (extensions_type_decl == null)
+            if (dacpacName == "")
             {
-                return;
+                ns.Name = "Helpline" + ".TestStore";
+            }
+            else
+            {
+                ns.Name = "Helpline" + "." + dacpacName + ".TestStore";
+            }
+            string setName = dacpacSetName.Replace(".", "").Replace("-", ""); // type_decl.Name;
+
+            {
+                extensions_type_decl = CreateStaticClass(setName + "Extensions");
+
+                // Create 'GetTable'
+                CodeMemberMethod method_gettable = new CodeMemberMethod() { Name = "GetTable", Attributes = MemberAttributes.Private | MemberAttributes.Static };
+                CodeTypeParameter ctp_Table = new CodeTypeParameter("TTable");
+                ctp_Table.Constraints.Add(new CodeTypeReference(typeof(DataTable)));
+                method_gettable.TypeParameters.Add(ctp_Table);
+                method_gettable.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "ds"));
+                method_gettable.Parameters.Add(new CodeParameterDeclarationExpression(typeof(string), "tableName"));
+                method_gettable.ReturnType = new CodeTypeReference("TTable");
+                var var_decl_table = new CodeVariableDeclarationStatement("TTable", "table");
+                method_gettable.Statements.Add(var_decl_table);
+                var var_ref_table = new CodeVariableReferenceExpression("table");
+
+                CodePropertyReferenceExpression ds_Tables = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("ds"), "Tables");
+                CodeArrayIndexerExpression indexer = new CodeArrayIndexerExpression(ds_Tables, new CodeExpression[] { new CodeVariableReferenceExpression("tableName") });
+                CodeCastExpression cast_expr = new CodeCastExpression("TTable", indexer);
+                var_decl_table.InitExpression = cast_expr;
+
+                var ifTableNull = new CodeBinaryOperatorExpression(var_ref_table, CodeBinaryOperatorType.ValueEquality, new CodePrimitiveExpression(null));
+                var throwExpr = new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(ArgumentException), new CodeSnippetExpression("\"Table [\" + tableName + \"] could not be found.\""), new CodePrimitiveExpression("tableName")));
+                method_gettable.Statements.Add(new CodeConditionStatement(ifTableNull, throwExpr));
+
+                //method_gettable.Statements.Add(new CodeAssignStatement(var_ref_table, cast_expr));
+
+                method_gettable.Statements.Add(new CodeMethodReturnStatement(var_ref_table));
+                extensions_type_decl.Members.Add(method_gettable);
+                ns.Types.Add(extensions_type_decl);
             }
 
-            foreach (CodeNamespace ns in ccu.Namespaces)
             {
                 List<NestedTypeDeclaration> nestedTypes = new List<NestedTypeDeclaration>();
 
-                foreach (CodeTypeDeclaration type_decl in ns.Types)
+                foreach (CodeTypeDeclaration type_decl in ns_old.Types)
                 {
+                    bool isSetClassDeclaration = type_decl.BaseTypes.Count > 0 && type_decl.BaseTypes[0].BaseType == typeof(System.Data.DataSet).FullName;
+                    bool isTableClassDeclaration = type_decl.BaseTypes.Count > 0 && type_decl.BaseTypes[0].BaseType.Contains("System.Data.TypedTableBase");
+                    bool isRowClassDeclaration = type_decl.BaseTypes.Count > 0 && type_decl.BaseTypes[0].BaseType == typeof(System.Data.DataRow).FullName;
 
-                    Adjust_TypeDecl(extensions_type_decl, ns.Name, type_decl);
-
-
-                    foreach (CodeTypeMember member_decl in type_decl.Members)
+                    //nsTypes.Add(type_decl);
+                    bool isOwnedByDacPac = false;
+                    if (isSetClassDeclaration)
                     {
-                        if (member_decl.GetType() == typeof(CodeTypeDeclaration))
+                        isOwnedByDacPac = true;
+                    }
+                    else if (isRowClassDeclaration)
+                    {
+                        // extract table name from row class name
+                        string tableName = type_decl.Name.Remove(type_decl.Name.Length - 3, 3);
+                        isOwnedByDacPac = IsTableOwnedByDacPac(rr, dacpac, tableName);
+                    }
+                    else
+                    {
+                        throw new NotImplementedException();
+                    }
+
+
+                    if (!isOwnedByDacPac)
+                    {
+                        // not part of this dacpac
+                    }
+                    else
+                    {
+                        Adjust_TypeDecl(rr, dacpac, extensions_type_decl, ns.Name, type_decl);
+                        ns.Types.Add(type_decl);
+
+                        foreach (CodeTypeMember member_decl in type_decl.Members)
                         {
-                            bool vvvv = IsPublic(member_decl.Attributes);
-                            nestedTypes.Add(new NestedTypeDeclaration() { Owner = type_decl, Member = (CodeTypeDeclaration)member_decl });
+                            if (member_decl.GetType() == typeof(CodeTypeDeclaration))
+                            {
+                                bool vvvv = IsPublic(member_decl.Attributes);
+                                nestedTypes.Add(new NestedTypeDeclaration() { Owner = type_decl, Member = (CodeTypeDeclaration)member_decl });
+                            }
                         }
                     }
                 }
 
-
                 // MoveNestedTypesToNamespace
-
-
                 foreach (NestedTypeDeclaration nested_type in nestedTypes)
                 {
                     nested_type.Owner.Members.Remove(nested_type.Member);
                     ns.Types.Add(nested_type.Member);
                 }
             }
-
-            extensions_type_ns.Types.Remove(ds_type_decl);
-
-            extensions_type_ns.Types.Add(extensions_type_decl);
-
         }
 
-        private static void Adjust_TypeDecl(CodeTypeDeclaration extension_decl, string fullNamespaceOrOwnerTypeName, CodeTypeDeclaration type_decl)
+        private static bool IsTableOwnedByDacPac(RegistrationResult rr, DacPacRegistration dacpac, string tableName)
+        {
+            if (dacpac.registered_tables.ContainsKey(tableName))
+                return true;
+            if (!rr.registered_tables.ContainsKey(tableName))
+            {
+                throw new InvalidOperationException("Table [" + tableName + "] could not be found.");
+            }
+            return false;
+        }
+
+        private static void Adjust_TypeDecl(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extension_decl, string fullNamespaceOrOwnerTypeName, CodeTypeDeclaration type_decl)
         {
             string fullClassName = fullNamespaceOrOwnerTypeName + "." + type_decl.Name;
-            Console.WriteLine("class " + fullClassName);
+            Console.WriteLine(" class " + fullClassName);
 
             //System.Data.DataSet
             bool isSetClassDeclaration = type_decl.BaseTypes.Count > 0 && type_decl.BaseTypes[0].BaseType == typeof(System.Data.DataSet).FullName;
@@ -195,7 +265,7 @@ namespace Dibix.TestStore.Database
                 CodeMemberProperty member_property = member_decl as CodeMemberProperty;
                 CodeMemberEvent member_event = member_decl as CodeMemberEvent;
                 CodeTypeDelegate member_delegate = member_decl as CodeTypeDelegate; // hlmsgwebrequestRowChangeEventHandler
-                if (member_type != null)
+                if (member_type != null && member_delegate == null)
                 {
                     //  
                     if (member_type.Name.EndsWith("RowChangeEvent"))
@@ -204,7 +274,47 @@ namespace Dibix.TestStore.Database
                     }
                     else
                     {
-                        Adjust_TypeDecl(extension_decl, fullClassName, member_type);
+                        bool isOwnedByDacPac = false;
+                        if (isSetClassDeclaration)
+                        {
+                            if (member_type.Name.EndsWith("DataTable"))
+                            {
+                                string tableName = member_type.Name.Remove(member_type.Name.Length - 9, 9); // suffix "DataTable"
+                                isOwnedByDacPac = IsTableOwnedByDacPac(rr, dacpac, tableName);
+                            }
+                            else
+                            {
+                                string tableName = member_type.Name.Remove(member_type.Name.Length - 3, 3); // suffix "Row"
+                                isOwnedByDacPac = IsTableOwnedByDacPac(rr, dacpac, tableName);
+                            }
+                        }
+                        else if (isTableClassDeclaration)
+                        {
+                            string tableName = member_type.Name.Remove(member_type.Name.Length - 9, 9); // suffix "DataTable"
+                            isOwnedByDacPac = IsTableOwnedByDacPac(rr, dacpac, tableName);
+                            throw new NotImplementedException();
+                        }
+                        else if (isRowClassDeclaration)
+                        {
+                            // extract table name from row class name
+                            string tableName = member_type.Name.Remove(member_type.Name.Length - 3, 3);
+                            isOwnedByDacPac = IsTableOwnedByDacPac(rr, dacpac, tableName);
+                        }
+                        else
+                        {
+                            throw new NotImplementedException();
+                        }
+
+                        if (!isOwnedByDacPac)
+                        {
+                            // not part of this dacpac
+                            membersToRemove.Add(member_decl);
+                        }
+                        else
+                        {
+
+                            Adjust_TypeDecl(rr, dacpac, extension_decl, fullClassName, member_type);
+                        }
                     }
                 }
                 if (member_delegate != null)
@@ -317,7 +427,7 @@ namespace Dibix.TestStore.Database
 
                     if (isSetClassDeclaration && member_method.Name == "InitClass")
                     {
-                        Adjust_DataSet_InitClass(member_method);
+                        Adjust_DataSet_InitClass(rr, dacpac, member_method);
                         extension_decl.Members.Add(member_method);
                         membersToRemove.Add(member_method);
                     }
@@ -351,11 +461,21 @@ namespace Dibix.TestStore.Database
 
                     if (isSetClassDeclaration && member_property.HasGet && !member_property.HasSet && member_property.Type.BaseType.Contains(member_property.Name) && member_property.Type.BaseType.EndsWith("DataTable"))
                     {
-                        CodeMemberMethod member_method_x = Adjust_DataSet_TableAccessor(extension_decl, member_property);
-                        if (member_method_x != null)
+                        string tableName = member_property.Name;
+                        bool isOwnedByDacPac = IsTableOwnedByDacPac(rr, dacpac, member_property.Name);
+                        if (!isOwnedByDacPac)
                         {
-                            extension_decl.Members.Add(member_method_x);
+                            // not part of this dacpac
                             membersToRemove.Add(member_property);
+                        }
+                        else
+                        {
+                            CodeMemberMethod member_method_x = Adjust_DataSet_TableAccessor(extension_decl, member_property);
+                            //if (member_method_x != null)
+                            {
+                                extension_decl.Members.Add(member_method_x);
+                                membersToRemove.Add(member_property);
+                            }
                         }
                     }
                 }
@@ -392,7 +512,14 @@ namespace Dibix.TestStore.Database
 
             foreach (var memberToRemove in membersToRemove)
             {
-                type_decl.Members.Remove(memberToRemove);
+                if (type_decl.Members.IndexOf(memberToRemove) < 0)
+                {
+                    // already removed
+                }
+                else
+                {
+                    type_decl.Members.Remove(memberToRemove);
+                }
             }
 
             foreach (var memberToInsert in membersToInsert)
@@ -401,7 +528,7 @@ namespace Dibix.TestStore.Database
             }
         }
 
-        private static void Adjust_DataSet_InitClass(CodeMemberMethod member_method)
+        private static void Adjust_DataSet_InitClass(RegistrationResult rr, DacPacRegistration dacpac, CodeMemberMethod member_method)
         {
             /*
 	tablehlspdefinition = new hlspdefinitionDataTable();
@@ -410,7 +537,6 @@ namespace Dibix.TestStore.Database
             => 
             base.Tables.Add(new hlspdefinitionDataTable());
              */
-
             member_method.Name = "InitDataSetClass";
 
             member_method.Attributes = member_method.Attributes | MemberAttributes.Static;
@@ -419,28 +545,33 @@ namespace Dibix.TestStore.Database
 
             //CodeAssignStatement assign_ds = new CodeAssignStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "_ds"), prm_ref_ds);
 
-            List<CodeStatement> vars = new List<CodeStatement>();
-            List<CodeStatement> old_statements = new List<CodeStatement>();
+            List<CodeStatement> new_statements = new List<CodeStatement>();
 
             Dictionary<string, CodeAssignStatement> field_assign_stmts = new Dictionary<string, CodeAssignStatement>();
             foreach (CodeStatement stmt in member_method.Statements)
             {
-
-
-
-                bool skip_old = false;
-                // tablehlbiattributeconfig = new hlbiattributeconfigDataTable();
                 CodeAssignStatement stmt_assign = stmt as CodeAssignStatement;
                 if (stmt_assign != null)
                 {
+                    /* SAMPLE:
+                        this.tablehlbiattributeconfig = new hlbiattributeconfigDataTable();
+                    */
+
                     CodeFieldReferenceExpression fieldRefExpr = stmt_assign.Left as CodeFieldReferenceExpression;
                     CodeObjectCreateExpression createObjectExpr = stmt_assign.Right as CodeObjectCreateExpression;
                     if (fieldRefExpr != null && createObjectExpr != null)
                     {
-                        //CodeVariableDeclarationStatement var_decl = new CodeVariableDeclarationStatement(createObjectExpr.CreateType, fieldRefExpr.FieldName);
-                        //vars.Add(var_decl);
-                        field_assign_stmts.Add(fieldRefExpr.FieldName, stmt_assign);
-                        skip_old = true;
+                        string tableName = createObjectExpr.CreateType.BaseType.Remove(createObjectExpr.CreateType.BaseType.Length - 9, 9); // suffix "DataTable"
+                        bool isOwnedByDacPac = IsTableOwnedByDacPac(rr, dacpac, tableName);
+                        if (isOwnedByDacPac)
+                        {
+                            field_assign_stmts.Add(fieldRefExpr.FieldName, stmt_assign);
+                        }
+                        else
+                        {
+                            // ignore from this 'InitDataSetClass'
+                        }
+                        ///skip_old = true;
                     }
                     else
                     {
@@ -453,7 +584,7 @@ namespace Dibix.TestStore.Database
 	SchemaSerializationMode = SchemaSerializationMode.IncludeSchema;                         
                          */
 
-                        skip_old = true;
+                        ///skip_old = true;
                     }
                 }
                 else
@@ -469,38 +600,36 @@ namespace Dibix.TestStore.Database
                             CodeFieldReferenceExpression fieldRefExpr = invoke_expr.Parameters.Count == 1 ? invoke_expr.Parameters[0] as CodeFieldReferenceExpression : null;
                             if (fieldRefExpr != null && prop_Table != null && prop_Table.TargetObject is CodeBaseReferenceExpression && prop_Table.PropertyName == "Tables")
                             {
-                                //skip_old = true;
-                                prop_Table.TargetObject = prm_ref_ds;
+                                CodeAssignStatement field_assign_stmt;
+                                if (!field_assign_stmts.TryGetValue(fieldRefExpr.FieldName, out field_assign_stmt))
+                                {
+                                    // the assignment statement was removed because the table does not belong to this dacpac
+                                    // =>  remove the table initialization as well
+                                    ///skip_old = true;
+                                }
+                                else
+                                {
+                                    prop_Table.TargetObject = prm_ref_ds;
 
-                                CodeAssignStatement field_assign_stmt = field_assign_stmts[fieldRefExpr.FieldName];
-                                CodeObjectCreateExpression createObj = (CodeObjectCreateExpression)field_assign_stmt.Right;
+                                    CodeObjectCreateExpression createObj = (CodeObjectCreateExpression)field_assign_stmt.Right;
 
-                                invoke_expr.Parameters.Clear();
-                                invoke_expr.Parameters.Add(createObj);
+                                    invoke_expr.Parameters.Clear();
+                                    invoke_expr.Parameters.Add(createObj);
+
+                                    new_statements.Add(stmt_expr);
+                                }
                             }
                         }
                     }
                     else
                     {
-
+                            // ????
                     }
-
-
-                }
-
-
-                if (!skip_old)
-                {
-                    old_statements.Add(stmt);
                 }
             }
-
+            
             member_method.Statements.Clear();
-            foreach (var stmt in vars)
-            {
-                member_method.Statements.Add(stmt);
-            }
-            foreach (var stmt in old_statements)
+            foreach (var stmt in new_statements)
             {
                 member_method.Statements.Add(stmt);
             }
@@ -548,7 +677,7 @@ namespace Dibix.TestStore.Database
 
 
 
-            var param_decl = new CodeParameterDeclarationExpression("this TDataSet", "ds");
+            var param_decl = new CodeParameterDeclarationExpression("TDataSet", "ds"); // "this TDataSet"
             member_method.Parameters.Add(param_decl);
             member_method.ReturnType = new CodeTypeReference("TDataSet");
             //member_ctor.Parameters.Add(new CodeParameterDeclarationExpression(new CodeTypeReference(typeof(DataSet)), "ds"));

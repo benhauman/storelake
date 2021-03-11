@@ -6,7 +6,7 @@
 /src/StoreLake/obj
 /src/StoreLake/.vs/StoreLake
 /.vs
-/src/StoreLake.Sdk.Cli/bin/Debug/net48
+/src/StoreLake.Sdk.Cli/bin
 /src/StoreLake.Sdk.Cli/obj
-/src/StoreLake.Test.ConsoleApp/bin/Debug/net48
+/src/StoreLake.Test.ConsoleApp/bin
 /src/StoreLake.Test.ConsoleApp/obj
