@@ -94,6 +94,7 @@ namespace Dibix.TestStore.Database
 
                 DataColumn column = table.Columns.Add(creg.ColumnName, columnType);
                 column.AllowDBNull = creg.IsNullable;
+                column.AutoIncrement = creg.IsIdentity;
 
             }
         }
@@ -186,6 +187,7 @@ namespace Dibix.TestStore.Database
                 {
                     throw new NotImplementedException("Column not found. Table [" + table.TableName + "] column [" + pkcol.ColumnName + "]");
                 }
+                column.ReadOnly = true;
                 pkColumns.Add(column);
             }
 

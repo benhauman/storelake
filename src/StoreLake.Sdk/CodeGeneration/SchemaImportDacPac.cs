@@ -577,6 +577,22 @@ namespace Dibix.TestStore.Database
                         creg.IsNullable = true;
                     }
 
+                    // <Property Name="IsIdentity" Value="True" />
+                    var xIsIdentity = xElement_Column.Elements().FirstOrDefault(e => e.Name.LocalName == "Property" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "IsIdentity"));
+                    if (xIsIdentity != null)
+                    {
+                        var xValue = xIsIdentity.Attributes().Single(a => a.Name.LocalName == "Value");
+                        creg.IsIdentity = string.Equals(xValue.Value, "True", StringComparison.OrdinalIgnoreCase);
+                        if (creg.IsIdentity)
+                        {
+                            // [hlcmhypermedialinks](id)
+                        }
+                    }
+                    else
+                    {
+                        creg.IsIdentity = false;
+                    }
+
                     if (isComputedColumn)
                     {
                         // <Element Type="SqlTable" Name="[dbo].[hlsysholidaydate]"
