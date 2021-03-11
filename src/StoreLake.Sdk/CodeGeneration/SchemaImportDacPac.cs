@@ -160,6 +160,8 @@ namespace Dibix.TestStore.Database
 
                                 AddTables(ctx, dacpac, xModel);
                                 AddPrimaryKeys(ctx.ds, xModel);
+                                AddUniqueKeys(ctx.ds, xModel);
+                                AddUniqueIndexes(ctx.ds, xModel);
                                 AddDefaultConstraints(ctx.ds, xModel);
 
                                 ctx.registered_dacpacs.Add(dacpac.UniqueKey, dacpac);
@@ -337,7 +339,131 @@ namespace Dibix.TestStore.Database
             } while (start_ix >= 0);
             return output;
         }
+        private static void AddUniqueIndexes(DataSet ds, XElement xModel)
+        {
+            foreach (var xIndex in xModel.Elements().Where(e => e.Attributes().Any(t => t.Name == "Type" && t.Value == "SqlIndex")))
+            {
+                // <Property Name="IsUnique" Value="True" />
+                var xIndex_Property_IsUnique = xIndex.Elements().SingleOrDefault(e => e.Name.LocalName == "Property" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "IsUnique"));
+                if (xIndex_Property_IsUnique != null)
+                {
+                    bool isUnique = string.Equals("True", xIndex_Property_IsUnique.Attributes().Single(a => a.Name.LocalName == "Value").Value, StringComparison.OrdinalIgnoreCase);
+                    if (isUnique)
+                    {
+                        StoreLakeTableKeyRegistration uqreg = new StoreLakeTableKeyRegistration();
 
+                        var xIndex_Name = xIndex.Attributes().Single(a => a.Name.LocalName == "Name");
+                        string[] name_tokens = xIndex_Name.Value.Replace("[", "").Replace("]", "").Split('.');
+                        uqreg.KeyName = name_tokens[name_tokens.Length - 1];
+                        uqreg.KeySchema = (name_tokens.Length == 3) ? name_tokens[0] : "dbo";
+
+                        // HasFilter => skip
+                        // <Property Name="FilterPredicate">
+                        var xIndex_Property_FilterPredicate = xIndex.Elements().SingleOrDefault(e => e.Name.LocalName == "Property" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "FilterPredicate"));
+                        if (xIndex_Property_FilterPredicate != null)
+                        {
+                            // skip for now filtered indices
+                            Console.WriteLine("SKIP:" + uqreg.KeyName);
+                        }
+                        else
+                        {
+                            var xIndexedObject = xIndex.Elements().Single(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "IndexedObject"));
+                            var xIndexedObject_Entry = xIndexedObject.Elements().Single(e => e.Name.LocalName == "Entry");
+                            var xIndexedObject_Entry_References = xIndexedObject_Entry.Elements().Single(e => e.Name.LocalName == "References");
+                            var xIndexedObject_Entry_References_Name = xIndexedObject_Entry_References.Attributes().Single(a => a.Name.LocalName == "Name");
+                            name_tokens = xIndexedObject_Entry_References_Name.Value.Split('.');
+                            uqreg.TableName = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                            uqreg.TableSchema = (name_tokens.Length == 2) ? name_tokens[0] : "dbo";
+
+                            var xColumnSpecifications = xIndex.Elements().Single(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "ColumnSpecifications"));
+                            foreach (var xColumnSpecifications_Entry in xColumnSpecifications.Elements().Where(e => e.Name.LocalName == "Entry"))
+                            {
+                                var xSqlIndexedColumnSpecification = xColumnSpecifications_Entry.Elements().Single(e => e.Name.LocalName == "Element");
+                                var xColumn = xSqlIndexedColumnSpecification.Elements().Single(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Column"));
+
+                                var xColumn_Entry = xColumn.Elements().Single(e => e.Name.LocalName == "Entry");
+                                var xColumn_Entry_References = xColumn_Entry.Elements().Single(e => e.Name.LocalName == "References");
+                                var xColumn_Entry_References_Name = xColumn_Entry_References.Attributes().Single(a => a.Name.LocalName == "Name");
+
+                                name_tokens = xColumn_Entry_References_Name.Value.Split('.');
+
+                                StoreLakeKeyColumnRegistration pkcol_reg = new StoreLakeKeyColumnRegistration()
+                                {
+                                    ColumnName = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "")
+                                };
+
+                                uqreg.Columns.Add(pkcol_reg);
+                            }
+
+                            DatabaseRegistration.RegisterUniqueKey(ds, uqreg);
+                        }
+                    }
+                }
+            }
+        }
+        private static void AddUniqueKeys(DataSet ds, XElement xModel)
+        {
+            // <Element Type="SqlUniqueConstraint" Name="[dbo].[UQ_hlsysagent_name]">
+            foreach (var xUniqueConstraint in xModel.Elements().Where(e => e.Attributes().Any(t => t.Name == "Type" && t.Value == "SqlUniqueConstraint")))
+            {
+                // <Property Name="IsUnique" Value="True" />
+                //var xUniqueConstraint_Property_IsUnique = xUniqueConstraint.Elements().SingleOrDefault(e => e.Name.LocalName == "Property" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "IsUnique"));
+                //if (xUniqueConstraint_Property_IsUnique != null)
+                {
+                    //bool isUnique = string.Equals("True", xUniqueConstraint_Property_IsUnique.Attributes().Single(a => a.Name.LocalName == "Value").Value, StringComparison.OrdinalIgnoreCase);
+                    //if (isUnique)
+                    {
+                        StoreLakeTableKeyRegistration uqreg = new StoreLakeTableKeyRegistration();
+
+                        var xUniqueConstraint_Name = xUniqueConstraint.Attributes().Single(a => a.Name.LocalName == "Name");
+                        string[] name_tokens = xUniqueConstraint_Name.Value.Replace("[", "").Replace("]", "").Split('.');
+                        uqreg.KeyName = name_tokens[name_tokens.Length - 1];
+                        uqreg.KeySchema = (name_tokens.Length == 3) ? name_tokens[0] : "dbo";
+
+                        // HasFilter => skip
+                        // <Property Name="FilterPredicate">
+                        //var xUniqueConstraint_Property_FilterPredicate = xUniqueConstraint.Elements().SingleOrDefault(e => e.Name.LocalName == "Property" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "FilterPredicate"));
+                        //if (xUniqueConstraint_Property_FilterPredicate != null)
+                        //{
+                        //    // skip for now filtered indices
+                        //    Console.WriteLine("SKIP:" + uqreg.KeyName);
+                        //}
+                        //else
+                        {
+                            var xDefiningTable = xUniqueConstraint.Elements().Single(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "DefiningTable"));
+                            var xDefiningTable_Entry = xDefiningTable.Elements().Single(e => e.Name.LocalName == "Entry");
+                            var xDefiningTable_Entry_References = xDefiningTable_Entry.Elements().Single(e => e.Name.LocalName == "References");
+                            var xDefiningTable_Entry_References_Name = xDefiningTable_Entry_References.Attributes().Single(a => a.Name.LocalName == "Name");
+                            name_tokens = xDefiningTable_Entry_References_Name.Value.Split('.');
+                            uqreg.TableName = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                            uqreg.TableSchema = (name_tokens.Length == 2) ? name_tokens[0] : "dbo";
+
+                            var xColumnSpecifications = xUniqueConstraint.Elements().Single(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "ColumnSpecifications"));
+                            foreach (var xColumnSpecifications_Entry in xColumnSpecifications.Elements().Where(e => e.Name.LocalName == "Entry"))
+                            {
+                                var xSqlIndexedColumnSpecification = xColumnSpecifications_Entry.Elements().Single(e => e.Name.LocalName == "Element");
+                                var xColumn = xSqlIndexedColumnSpecification.Elements().Single(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Column"));
+
+                                var xColumn_Entry = xColumn.Elements().Single(e => e.Name.LocalName == "Entry");
+                                var xColumn_Entry_References = xColumn_Entry.Elements().Single(e => e.Name.LocalName == "References");
+                                var xColumn_Entry_References_Name = xColumn_Entry_References.Attributes().Single(a => a.Name.LocalName == "Name");
+
+                                name_tokens = xColumn_Entry_References_Name.Value.Split('.');
+
+                                StoreLakeKeyColumnRegistration pkcol_reg = new StoreLakeKeyColumnRegistration()
+                                {
+                                    ColumnName = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "")
+                                };
+
+                                uqreg.Columns.Add(pkcol_reg);
+                            }
+
+                            DatabaseRegistration.RegisterUniqueKey(ds, uqreg);
+                        }
+                    }
+                }
+            }
+        }
         private static void AddPrimaryKeys(DataSet ds, XElement xModel)
         {
             // <Element Type="SqlPrimaryKeyConstraint" Name="[dbo].[PK_hlsysholidaydate]">

@@ -240,7 +240,7 @@ namespace Dibix.TestStore.Database
         private static void Adjust_TypeDecl(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extension_decl, string fullNamespaceOrOwnerTypeName, CodeTypeDeclaration type_decl)
         {
             string fullClassName = fullNamespaceOrOwnerTypeName + "." + type_decl.Name;
-            Console.WriteLine(" class " + fullClassName);
+            //Console.WriteLine("class " + fullClassName);
 
             //System.Data.DataSet
             bool isSetClassDeclaration = type_decl.BaseTypes.Count > 0 && type_decl.BaseTypes[0].BaseType == typeof(System.Data.DataSet).FullName;
@@ -374,12 +374,19 @@ namespace Dibix.TestStore.Database
                         membersToRemove.Add(member_ctor);
                     }
 
-                    if (isTableClassDeclaration && member_ctor.Parameters.Count > 0)
+                    if (isTableClassDeclaration)
                     {
-                        //  hlbiattributeconfigDataTable(DataTable table)
-                        if (!membersToRemove.Contains(member_ctor))
+                        if (member_ctor.Parameters.Count > 0)
                         {
-                            membersToRemove.Add(member_ctor);
+                            //  hlbiattributeconfigDataTable(DataTable table)
+                            if (!membersToRemove.Contains(member_ctor))
+                            {
+                                membersToRemove.Add(member_ctor);
+                            }
+                        }
+                        else
+                        {
+                            Adjust_Table_Constructor(member_ctor);
                         }
                     }
                 }
@@ -466,6 +473,12 @@ namespace Dibix.TestStore.Database
                             member_method.Name = "FindRowByPrimaryKey";
                             member_method.Attributes = MemberAttributes.Public | MemberAttributes.Final;
                         }
+
+                        if (member_method.Name == "InitClass")
+                        {
+                            Adjust_Table_InitClass(rr, dacpac, type_decl_table, member_method);
+                        }
+
                     }
 
                     if (isSetClassDeclaration && member_method.Name.StartsWith("ShouldSerialize") && member_method.Parameters.Count == 0 && member_method.ReturnType != null && member_method.ReturnType.BaseType == typeof(bool).FullName)
@@ -574,6 +587,25 @@ namespace Dibix.TestStore.Database
             foreach (var memberToInsert in membersToInsert)
             {
                 type_decl.Members.Add(memberToInsert);
+            }
+        }
+
+        private static void Adjust_Table_Constructor(CodeConstructor member_ctor)
+        {
+            foreach (var stmt in member_ctor.Statements)
+            {
+                CodeExpressionStatement stmt_expr = stmt as CodeExpressionStatement;
+                if (stmt_expr != null)
+                {
+                    CodeMethodInvokeExpression invoke_expr = stmt_expr.Expression as CodeMethodInvokeExpression;
+                    if (invoke_expr != null)
+                    {
+                        if (invoke_expr.Method.MethodName == "InitClass")
+                        {
+                            invoke_expr.Method.MethodName = "InitTableClass";
+                        }
+                    }
+                }
             }
         }
 
@@ -833,6 +865,82 @@ namespace Dibix.TestStore.Database
             {
                 member_method.Parameters.Add(prm);
             }
+        }
+
+        private static void Adjust_Table_InitClass(RegistrationResult rr, DacPacRegistration dacpac, DataTable table, CodeMemberMethod member_method)
+        {
+            member_method.Name = "InitTableClass";
+
+            // rename PK:
+            /*
+             base.Constraints.Add(new UniqueConstraint("Constraint1", new DataColumn[1]{columnagentid}, isPrimaryKey: true));
+             */
+            /*foreach (var stmt in member_method.Statements)
+            {
+                CodeExpressionStatement stmt_expr = stmt as CodeExpressionStatement;
+                if (stmt_expr != null)
+                {
+                    CodeMethodInvokeExpression invoke_expr = stmt_expr.Expression as CodeMethodInvokeExpression;
+                    if (invoke_expr != null && invoke_expr.Method.MethodName == "Add")
+                    {
+                        var prop_Constraints = invoke_expr.Method.TargetObject as CodePropertyReferenceExpression;
+
+                        if (prop_Constraints != null && prop_Constraints.PropertyName == "Constraints" && (prop_Constraints.TargetObject is CodeBaseReferenceExpression || prop_Constraints.TargetObject is CodeThisReferenceExpression))
+                        {
+                            CodeObjectCreateExpression createExpr = (CodeObjectCreateExpression)invoke_expr.Parameters[0];
+                            CodePrimitiveExpression ctor_prm_name_expr = (CodePrimitiveExpression)createExpr.Parameters[0];
+                            string constraintName = (string)ctor_prm_name_expr.Value;
+                            CodePrimitiveExpression ctor_prm_ispk_expr = (CodePrimitiveExpression)createExpr.Parameters[2];
+                            if ((bool)ctor_prm_ispk_expr.Value)
+                            {
+                                //table.Constraints
+                                //table.PrimaryKey
+                            }
+                        }
+                    }
+                }
+            }*/
+
+            /* [UQ_hlsysadhocprocessinstance_caseref]
+             * if (table.Constraints.Count > 1) // PrimaryKey+
+            {
+                foreach (Constraint constraint in table.Constraints)
+                {
+                    UniqueConstraint uq = constraint as UniqueConstraint;
+                    if (uq != null && !uq.IsPrimaryKey)
+                    {
+                        CodePropertyReferenceExpression prop_Constraints = new CodePropertyReferenceExpression()
+                        {
+                            PropertyName = "Constraints",
+                            TargetObject = new CodeBaseReferenceExpression(),
+                        };
+
+                        List<CodeExpression> col_refs = new List<CodeExpression>();
+                        for (int ixCol = 0; ixCol < uq.Columns.Length; ixCol++)
+                        {
+                            DataColumn col = uq.Columns[ixCol];
+                            string column_name = "column" + col.ColumnName;
+                            col_refs.Add(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), column_name));
+                        }
+
+                        CodeArrayCreateExpression prm_columns = new CodeArrayCreateExpression(typeof(DataColumn), col_refs.ToArray());
+
+                        CodeObjectCreateExpression createExpr = new CodeObjectCreateExpression(typeof(UniqueConstraint),
+                            new CodePrimitiveExpression(uq.ConstraintName)
+                            , prm_columns
+                            , new CodePrimitiveExpression(false));
+
+
+                        CodeMethodInvokeExpression invoke_expr = new CodeMethodInvokeExpression();
+                        invoke_expr.Method = new CodeMethodReferenceExpression() { MethodName = "Add", TargetObject = prop_Constraints };
+                        invoke_expr.Parameters.Add(createExpr);
+
+                        CodeExpressionStatement stmt_expr = new CodeExpressionStatement(invoke_expr);
+                        member_method.Statements.Add(stmt_expr);
+                    }
+                }
+
+            }*/
         }
 
         private static void Adjust_DataSet_InitClass(RegistrationResult rr, DacPacRegistration dacpac, CodeMemberMethod member_method)

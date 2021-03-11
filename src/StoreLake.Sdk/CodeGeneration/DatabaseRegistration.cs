@@ -189,7 +189,26 @@ namespace Dibix.TestStore.Database
                 pkColumns.Add(column);
             }
 
-            table.PrimaryKey = pkColumns.ToArray();
+            table.Constraints.Add(new UniqueConstraint(primaryKey.KeyName, pkColumns.ToArray(), true));
+            //table.PrimaryKey = pkColumns.ToArray();
+        }
+
+        internal static void RegisterUniqueKey(DataSet ds, StoreLakeTableKeyRegistration uqKey)
+        {
+            var table = ds.Tables[uqKey.TableName, uqKey.TableSchema];
+
+            List<DataColumn> pkColumns = new List<DataColumn>();
+            foreach (StoreLakeKeyColumnRegistration pkcol in uqKey.Columns)
+            {
+                var column = table.Columns[pkcol.ColumnName];
+                if (column == null)
+                {
+                    throw new NotImplementedException("Column not found. Table [" + table.TableName + "] column [" + pkcol.ColumnName + "]");
+                }
+                pkColumns.Add(column);
+            }
+
+            table.Constraints.Add(new UniqueConstraint(uqKey.KeyName, pkColumns.ToArray(), false));
         }
     }
 }

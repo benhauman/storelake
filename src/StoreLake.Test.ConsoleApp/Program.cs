@@ -40,7 +40,8 @@ namespace ConsoleApp4
             // NULL defaults?
             // DEFAULT values?
             // UNIQUE Key?
-            var agent2 = db.hlsysagent().AddRowWithValues(712,  "InternetAgent", null, null, 1); //e.active = 1; see 'DF_hlsysagent_active'
+            // AutoIncrement?
+            var agent2 = db.hlsysagent().AddRowWithValues(712,  "InternetAgent2", null, null, 1); //e.active = 1; see 'DF_hlsysagent_active'
 
             Console.WriteLine("db.hlsysagent.Count:" + db.hlsysagent().Count);
         }
