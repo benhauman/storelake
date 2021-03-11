@@ -30,16 +30,17 @@ namespace ConsoleApp4
                 .Build();
 
             Console.WriteLine("timenow:" + db.GetUtcDate());
-            
+
             var hlsysagent = db.hlsysagent();
-            var agent1 = db.hlsysagent().AddRowWithValues(712, "InternetAgent", null, null, 1); //  see 'DF_hlsysagent_active'
+            var agent1 = db.hlsysagent().AddRowWithValues(agentid: 712, name: "InternetAgent", fullname: null, description: null, active: 1); //  see 'DF_hlsysagent_active'
 
             agent1.agentid = 710;
             agent1.description = agent1.name + ":" + agent1.agentid;
 
             // NULL defaults?
             // DEFAULT values?
-            var agent2 = db.hlsysagent().AddRowWithValues(712, "InternetAgent", null, null, 1); //e.active = 1; see 'DF_hlsysagent_active'
+            // UNIQUE Key?
+            var agent2 = db.hlsysagent().AddRowWithValues(712,  "InternetAgent", null, null, 1); //e.active = 1; see 'DF_hlsysagent_active'
 
             Console.WriteLine("db.hlsysagent.Count:" + db.hlsysagent().Count);
         }

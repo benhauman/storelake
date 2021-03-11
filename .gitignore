@@ -10,3 +10,5 @@
 /src/StoreLake.Sdk.Cli/obj
 /src/StoreLake.Test.ConsoleApp/bin
 /src/StoreLake.Test.ConsoleApp/obj
+/src/StoreLake.Sdk/bin/Debug
+/src/StoreLake.Sdk/obj

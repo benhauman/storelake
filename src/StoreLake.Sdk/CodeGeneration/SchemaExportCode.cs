@@ -4,6 +4,7 @@ using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -252,6 +253,31 @@ namespace Dibix.TestStore.Database
                 //type_decl.BaseTypes.Clear();
             }
 
+            DataTable type_decl_table;
+            if (isTableClassDeclaration)
+            {
+                string type_decl_tableName = type_decl.Name.Remove(type_decl.Name.Length - 9, 9); // suffix "DataTable"
+                type_decl_table = rr.ds.Tables[type_decl_tableName];
+                if (type_decl_table == null)
+                {
+                    throw new InvalidOperationException("Table [" + type_decl_tableName + "] could not be found.");
+                }
+            }
+            else if (isRowClassDeclaration)
+            {
+                // extract table name from row class name
+                string type_decl_tableName = type_decl.Name.Remove(type_decl.Name.Length - 3, 3); // suffix "Row"
+                type_decl_table = rr.ds.Tables[type_decl_tableName];
+                if (type_decl_table == null)
+                {
+                    throw new InvalidOperationException("Table [" + type_decl_tableName + "] could not be found.");
+                }
+            }
+            else
+            {
+                type_decl_table = null;
+            }
+
             List<CodeTypeMember> membersToRemove = new List<CodeTypeMember>();
             List<CodeTypeMember> membersToInsert = new List<CodeTypeMember>();
             foreach (CodeTypeMember member_decl in type_decl.Members)
@@ -396,27 +422,50 @@ namespace Dibix.TestStore.Database
                         membersToRemove.Add(member_method);
                     }
 
-                    if (isRowClassDeclaration && member_method.Name.StartsWith("Is") && member_method.Name.EndsWith("Null") && member_method.ReturnType != null && member_method.ReturnType.BaseType == typeof(System.Boolean).FullName)
+                    if (isRowClassDeclaration)
                     {
-                        // return IsNull(xxx_table.yyy_Column);
-                        membersToRemove.Add(member_method);
+                        if (member_method.Name.StartsWith("Is") && member_method.Name.EndsWith("Null") && member_method.ReturnType != null && member_method.ReturnType.BaseType == typeof(System.Boolean).FullName)
+                        {
+                            // return IsNull(xxx_table.yyy_Column);
+                            membersToRemove.Add(member_method);
+                        }
+                        else if (member_method.Name.StartsWith("Set") && member_method.Name.EndsWith("Null") && member_method.ReturnType != null && member_method.ReturnType.BaseType == typeof(void).FullName)
+                        {
+                            // base[xxx_table.yyy_Column] = Convert.DBNull;
+                            membersToRemove.Add(member_method);
+                        }
                     }
-                    else if (isRowClassDeclaration && member_method.Name.StartsWith("Set") && member_method.Name.EndsWith("Null") && member_method.ReturnType != null && member_method.ReturnType.BaseType == typeof(void).FullName)
+                    if (isTableClassDeclaration)
                     {
-                        // base[xxx_table.yyy_Column] = Convert.DBNull;
-                        membersToRemove.Add(member_method);
-                    }
+                        if (member_method.Name == "CreateInstance")
+                        {
+                            // protected override DataTable CreateInstance() : called by 'DataTable.Clone'
+                            membersToRemove.Add(member_method);
+                        }
+                        if (member_method.Name.StartsWith("New") && member_method.Name.EndsWith("Row") && member_method.ReturnType.BaseType != typeof(void).FullName && IsPrivate(member_method.Attributes) && member_method.Parameters.Count == 0)
+                        {
+                            // public void AddhlbiattributeconfigRow(hlbiattributeconfigRow row)
+                            membersToRemove.Add(member_method);
+                        }
 
-                    if (isTableClassDeclaration && member_method.Name.StartsWith("Add") && member_method.Name.EndsWith("Row") && member_method.ReturnType != null && member_method.ReturnType.BaseType == typeof(void).FullName)
-                    {
-                        // public void AddhlbiattributeconfigRow(hlbiattributeconfigRow row)
-                        membersToRemove.Add(member_method);
-                    }
-                    if (isTableClassDeclaration && member_method.Name.StartsWith("Add") && member_method.Name.EndsWith("Row") && member_method.ReturnType != null && member_method.ReturnType.BaseType != typeof(void).FullName)
-                    {
-                        // public hlcmdatamodelassociationsearchRow AddhlcmdatamodelassociationsearchRow(int associationid, int searchid)
-                        member_method.Name = "AddRowWithValues";
-                        member_method.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+                        if (member_method.Name.StartsWith("Add") && member_method.Name.EndsWith("Row") && member_method.ReturnType != null && member_method.ReturnType.BaseType == typeof(void).FullName)
+                        {
+                            // public void AddhlbiattributeconfigRow(hlbiattributeconfigRow row)
+                            membersToRemove.Add(member_method);
+                        }
+
+                        if (member_method.Name.StartsWith("Add") && member_method.Name.EndsWith("Row") && member_method.ReturnType != null && member_method.ReturnType.BaseType != typeof(void).FullName)
+                        {
+                            // public hlcmdatamodelassociationsearchRow AddhlcmdatamodelassociationsearchRow(int associationid, int searchid)
+                            Adjust_Table_AddRowWithValues(rr, dacpac, type_decl_table, member_method);
+                        }
+
+                        if (member_method.Name.StartsWith("FindBy") && member_method.ReturnType.BaseType.EndsWith("Row"))
+                        {
+                            // private hlcmdatamodelassociationsearchRow FindByassociationid(int associationid) => FindRowByPrimaryKey
+                            member_method.Name = "FindRowByPrimaryKey";
+                            member_method.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+                        }
                     }
 
                     if (isSetClassDeclaration && member_method.Name.StartsWith("ShouldSerialize") && member_method.Parameters.Count == 0 && member_method.ReturnType != null && member_method.ReturnType.BaseType == typeof(bool).FullName)
@@ -528,6 +577,264 @@ namespace Dibix.TestStore.Database
             }
         }
 
+        private static void Adjust_Table_AddRowWithValues(RegistrationResult rr, DacPacRegistration dacpac, DataTable table, CodeMemberMethod member_method)
+        {
+            member_method.Name = "AddRowWithValues";
+            member_method.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+            // put the columns with defaults at the end
+            // 1. columns_pk (ASC)
+            // 2. columns_required (ASC)
+            // 3. columns_nullable no defaults (ASC)
+            // 4. columns_nullable no defaults (ASC)
+            // no value
+            // with default value
+            List<CodeParameterDeclarationExpression> parameters_nval = new List<CodeParameterDeclarationExpression>();
+            List<CodeParameterDeclarationExpression> parameters_dval = new List<CodeParameterDeclarationExpression>();
+            foreach (CodeParameterDeclarationExpression prm_decl in member_method.Parameters)
+            {
+                string column_name = prm_decl.Name;
+                DataColumn column = table.Columns[column_name];
+                if (column == null)
+                {
+                    if (column_name == "_namespace")
+                    {
+                        column_name = "namespace"; // see [hlsysnamespace].
+                    }
+                    else if (column_name == "_operator")
+                    {
+                        column_name = "operator"; // see [hlbpmruleconditionclause].
+                    }
+                    else if (column_name == "_readonly")
+                    {
+                        column_name = "readonly"; // see [hlbpmtaskmngmtattr].
+                    }
+                    column = table.Columns[column_name];
+                    if (column == null)
+                    {
+                        throw new InvalidOperationException("Column [" + table.TableName + "] '" + prm_decl.Name + "' could not be found.");
+                    }
+                }
+
+                if (column.AllowDBNull)
+                {
+                    if (column.DataType.IsValueType)
+                    {
+                        if (column.DataType == typeof(int) && prm_decl.Type.BaseType == typeof(int).FullName)
+                        {
+                            // [hlhistorychange](datalistitemid)
+                            prm_decl.Type = new CodeTypeReference("int?");
+                        }
+                        else if (column.DataType == typeof(long) && prm_decl.Type.BaseType == typeof(long).FullName)
+                        {
+                            prm_decl.Type = new CodeTypeReference("long?");
+                        }
+                        else if (column.DataType == typeof(short) && prm_decl.Type.BaseType == typeof(short).FullName)
+                        {
+                            prm_decl.Type = new CodeTypeReference("short?");
+                        }
+                        else if (column.DataType == typeof(byte) && prm_decl.Type.BaseType == typeof(byte).FullName)
+                        {
+                            prm_decl.Type = new CodeTypeReference("byte?");
+                        }
+                        else if (column.DataType == typeof(bool) && prm_decl.Type.BaseType == typeof(bool).FullName)
+                        {
+                            prm_decl.Type = new CodeTypeReference("bool?");
+                        }
+                        else if (column.DataType == typeof(DateTime) && prm_decl.Type.BaseType == typeof(DateTime).FullName)
+                        {
+                            prm_decl.Type = new CodeTypeReference("System.DateTime?");
+                        }
+                        else if (column.DataType == typeof(decimal) && prm_decl.Type.BaseType == typeof(decimal).FullName)
+                        {
+                            prm_decl.Type = new CodeTypeReference("decimal?");
+                        }
+                        else if (column.DataType == typeof(Single) && prm_decl.Type.BaseType == typeof(Single).FullName)
+                        {
+                            // [hlsysbaselineattr] 'numbermin
+                            prm_decl.Type = new CodeTypeReference("System.Single?");
+                        }
+                        else if (column.DataType == typeof(Guid) && prm_decl.Type.BaseType == typeof(Guid).FullName)
+                        {
+                            prm_decl.Type = new CodeTypeReference("System.Guid?");
+                        }
+                        else if (
+                           (column.DataType == typeof(int) && prm_decl.Type.BaseType == typeof(int?).FullName)
+                        || (column.DataType == typeof(string) && prm_decl.Type.BaseType == typeof(string).FullName)
+                                )
+                        {
+                            // ok
+                        }
+                        else
+                        {
+                            throw new NotImplementedException("Parameter type for nullable column  [" + table.TableName + "] '" + column.ColumnName + "' (" + column.DataType.Name + ")=[" + prm_decl.Type.BaseType + "]");
+                        }
+                    }
+                }
+
+
+                bool defaultParameterValue_HasValue = false;
+                object defaultParameterValue = null; // null means dont specified anything for this parameter (DBNull.Value)
+                if (column.DefaultValue != null)
+                {
+                    defaultParameterValue_HasValue = true;
+                    if (column.DefaultValue == DBNull.Value)
+                    {
+                        if (!column.AllowDBNull)
+                        {
+                            defaultParameterValue_HasValue = false;
+                        }
+                        else
+                        {
+                            defaultParameterValue = null;
+                        }
+                    }
+                    else if (column.DefaultValue is bool)
+                    {
+                        defaultParameterValue = (bool)column.DefaultValue;
+                    }
+                    else if (column.DefaultValue is int)
+                    {
+                        defaultParameterValue = (int)column.DefaultValue;
+                    }
+                    else if (column.DefaultValue is short)
+                    {
+                        defaultParameterValue = (short)column.DefaultValue;
+                    }
+                    else if (column.DefaultValue is byte)
+                    {
+                        defaultParameterValue = (byte)column.DefaultValue;
+                    }
+                    else if (column.DefaultValue is decimal)
+                    {
+                        defaultParameterValue = (decimal)column.DefaultValue;
+                    }
+                    else if (column.DefaultValue is DateTime)
+                    {
+                        //var dt = (DateTime)column.DefaultValue;
+                        //var kind = new CodeFieldReferenceExpression(new CodeTypeReferenceExpression(dt.Kind.GetType()), Enum.GetName(dt.Kind.GetType(), dt.Kind));
+                        //defaultParameterValue = new CodeObjectCreateExpression(typeof(System.DateTime), new CodePrimitiveExpression(dt.Ticks), kind);
+                        defaultParameterValue = (DateTime)column.DefaultValue;
+                    }
+                    else if (column.DefaultValue is string)
+                    {
+                        defaultParameterValue = (string)column.DefaultValue;
+                    }
+                    else
+                    {
+                        throw new NotImplementedException("Column [" + table.TableName + "] '" + prm_decl.Name + " (" + column.DefaultValue.GetType().Name + ")=[" + column.DefaultValue + "]");
+                    }
+                }
+                else
+                {
+                    //table.Constraints
+                }
+
+                if (defaultParameterValue_HasValue && defaultParameterValue == null && column.AllowDBNull)
+                {
+                    if (column.DataType == typeof(int) && prm_decl.Type.BaseType == typeof(int).FullName)
+                    {
+                        // [hlhistorychange](datalistitemid)
+                    }
+                }
+
+                if (defaultParameterValue_HasValue)
+                {
+                    bool hasDefaultValue = false;
+                    //CodeExpression expr = defaultParameterValue as CodeExpression;
+                    //if (expr != null)
+                    //{
+                    //    // DateTime   
+                    //}
+                    //else
+                    //{
+                    //if (defaultParameterValue == null)
+                    //{
+                    //    expr = new CodePrimitiveExpression(null);
+                    //}
+                    //else
+                    //{
+                    //expr = new CodePrimitiveExpression(defaultParameterValue);
+
+                    string codeText = null;
+                    if (defaultParameterValue == null)
+                    {
+                        codeText = "null";
+                    }
+                    else if (defaultParameterValue is string)
+                    {
+                        codeText = "\"" + defaultParameterValue + "\"";
+                    }
+                    else if (defaultParameterValue is bool)
+                    {
+                        codeText = ((bool)defaultParameterValue) ? "true" : "false";
+                    }
+                    else if (defaultParameterValue is int)
+                    {
+                        codeText = ((int)defaultParameterValue).ToString(CultureInfo.InvariantCulture);
+                    }
+                    else if (defaultParameterValue is short)
+                    {
+                        codeText = ((short)defaultParameterValue).ToString(CultureInfo.InvariantCulture);
+                    }
+                    else if (defaultParameterValue is long)
+                    {
+                        codeText = ((long)defaultParameterValue).ToString(CultureInfo.InvariantCulture);
+                    }
+                    else if (defaultParameterValue is byte)
+                    {
+                        codeText = ((byte)defaultParameterValue).ToString(CultureInfo.InvariantCulture);
+                    }
+                    else if (defaultParameterValue is decimal)
+                    {
+                        codeText = ((decimal)defaultParameterValue).ToString(CultureInfo.InvariantCulture);
+                    }
+                    else if (defaultParameterValue is DateTime)
+                    {
+                        var dt = (DateTime)column.DefaultValue;
+                        var kind = Enum.GetName(dt.Kind.GetType(), dt.Kind);
+                        //codeText = string.Format(CultureInfo.InvariantCulture, "new System.DateTime({0}, System.DateTimeKind.{1})", dt.Ticks, dt.Kind);
+                    }
+                    else
+                    {
+                        throw new NotImplementedException("Column [" + table.TableName + "] '" + prm_decl.Name + " (" + column.DefaultValue.GetType().Name + ")=[" + column.DefaultValue + "]");
+                    }
+
+                    if (!string.IsNullOrEmpty(codeText))
+                    {
+                        prm_decl.Name = prm_decl.Name + " = " + codeText;
+                        hasDefaultValue = true;
+                    }
+
+                    // do not use 'DefaultParameterValueAttribute' but 'overloaded method' see https://stackoverflow.com/questions/8215541/default-value-for-nullable-value-in-c-sharp-2-0
+                    //prm_decl.CustomAttributes.Add(new CodeAttributeDeclaration(new CodeTypeReference(typeof(System.Runtime.InteropServices.DefaultParameterValueAttribute)), new CodeAttributeArgument(expr)));
+
+                    if (hasDefaultValue)
+                    {
+                        parameters_dval.Add(prm_decl);
+                    }
+                    else
+                    {
+                        parameters_nval.Add(prm_decl);
+                    }
+                }
+                else
+                {
+                    parameters_nval.Add(prm_decl);
+                }
+
+            }
+
+            member_method.Parameters.Clear();
+            foreach (var prm in parameters_nval)
+            {
+                member_method.Parameters.Add(prm);
+            }
+            foreach (var prm in parameters_dval)
+            {
+                member_method.Parameters.Add(prm);
+            }
+        }
+
         private static void Adjust_DataSet_InitClass(RegistrationResult rr, DacPacRegistration dacpac, CodeMemberMethod member_method)
         {
             /*
@@ -623,11 +930,11 @@ namespace Dibix.TestStore.Database
                     }
                     else
                     {
-                            // ????
+                        // ????
                     }
                 }
             }
-            
+
             member_method.Statements.Clear();
             foreach (var stmt in new_statements)
             {
@@ -777,6 +1084,11 @@ namespace Dibix.TestStore.Database
             }
         }
 
+        private static bool IsPrivate(MemberAttributes attributes)
+        {
+            return ((attributes & MemberAttributes.Private) == MemberAttributes.Private);
+        }
+
         private static bool IsPublic(MemberAttributes attributes)
         {
             return ((attributes & MemberAttributes.Public) == MemberAttributes.Public);
@@ -864,7 +1176,7 @@ namespace Dibix.TestStore.Database
                 Console.WriteLine(outputErrorsFullFileName);
 
                 var err = compres.Errors[0];
-                throw new InvalidOperationException("Compile failed:" + err.ErrorText + " Line:" + err.Line + ", Column:" + err.Column);
+                throw new InvalidOperationException("Compile failed: (" + err.Line + "," + err.Column + "): error " + err.ErrorNumber + " : " + err.ErrorText);
             }
         }
 

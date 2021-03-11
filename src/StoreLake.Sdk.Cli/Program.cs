@@ -32,7 +32,7 @@ namespace ConsoleApp3
 
             string filter = null;
             //filter = "HelplineData";
-            filter = "SLM.Database.Data";
+            //filter = "SLM.Database.Data";
             SchemaExportCode.ExportTypedDataSetCode(ds, inputdir, filter);// "HelplineData");
         }
     }

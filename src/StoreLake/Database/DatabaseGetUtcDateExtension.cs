@@ -60,12 +60,6 @@ namespace Dibix.TestStore.Database
                 EndInit();
             }
 
-            protected override DataTable CreateInstance()
-            {
-                return new TimeNowDataTable();
-            }
-
-
             protected override Type GetRowType()
             {
                 return typeof(TimeNowRow); // called by NewRowArray (NewRecordFromArray=>NewRerordBase=>GrowRecordCapacity)
