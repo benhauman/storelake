@@ -1,7 +1,7 @@
 ﻿using System.Data.Common;
 
 
-namespace Dibix.TestStore
+namespace StoreLake.TestStore
 {
     internal static class StoreLakeDbExtensions
     {

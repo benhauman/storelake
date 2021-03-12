@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Dibix.TestStore.Database
+namespace StoreLake.Sdk.Database
 {
     internal sealed class StoreLakeTableRegistration
     {

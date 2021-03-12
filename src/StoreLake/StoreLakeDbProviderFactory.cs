@@ -5,10 +5,26 @@ using System.Text;
 using System.Threading.Tasks;
 
 
-namespace Dibix.TestStore
+namespace StoreLake.TestStore
 {
     public sealed class StoreLakeDbProviderFactory : DbProviderFactory  // used+linked in Server.YouNeedTest / SLM.Administration
     {
+        public static StoreLakeDbProviderFactory CreateInstance(Action<StoreLakeDbProviderFactory> setup)
+        {
+            StoreLakeDbProviderFactory dbClient = new StoreLakeDbProviderFactory();
+            setup(dbClient);
+            return dbClient;
+        }
+
+        public StoreLakeDbProviderFactory()
+        {
+            //CreateConnection_Override = (dbClient) => new StoreLakeDbConnection(dbClient)
+            //{
+
+
+            //};
+        }
+
         public Func<StoreLakeDbProviderFactory, StoreLakeDbConnection> CreateConnection_Override;
         public override DbConnection CreateConnection()
         {

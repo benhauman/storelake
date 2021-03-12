@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Dibix.TestStore.Database
+namespace StoreLake.Sdk.Database
 {
     internal sealed class StoreLakeDefaultContraintRegistration
     {

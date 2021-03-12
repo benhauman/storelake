@@ -1,8 +1,13 @@
-﻿using Dibix.TestStore.Database;
+﻿using Dibix.TestStore;
+using Dibix.TestStore.Database;
 using Helpline.Data.TestStore;
 using Helpline.SLM.Database.Data.TestStore;
+using StoreLake.TestStore;
 using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
+using System.Linq;
 
 namespace ConsoleApp4
 {
@@ -42,9 +47,68 @@ namespace ConsoleApp4
             // UNIQUE Key?
             // AutoIncrement?
             // ReadOnlyPK
-            var agent2 = db.hlsysagent().AddRowWithValues(712,  "InternetAgent2", null, null, 1); //e.active = 1; see 'DF_hlsysagent_active'
+            var agent2 = db.hlsysagent().AddRowWithValues(712, "InternetAgent2", null, null, 1); //e.active = 1; see 'DF_hlsysagent_active'
 
             Console.WriteLine("db.hlsysagent.Count:" + db.hlsysagent().Count);
+
+            StoreLakeDbServer dbServer = new StoreLakeDbServer(db);
+            StoreLakeDbProviderFactory dbClient = StoreLakeDbProviderFactory.CreateInstance(x =>
+            {
+                x.CreateConnection_Override = dbServer.CreateConnection;
+            });
+
+            IDatabaseAccessorFactory databaseAccessorFactory = new IDatabaseAccessorFactory(dbClient, "blah");
+            var name = TestDML.GetAgentNameById(databaseAccessorFactory, 712).Single();
+            Console.WriteLine(name);
+        }
+
+        public class IDatabaseAccessorFactory
+        {
+            private readonly DbProviderFactory dbClient;
+            private readonly string connectionString;
+            public IDatabaseAccessorFactory(DbProviderFactory dbClient, string connectionString)
+            {
+                this.dbClient = dbClient;
+                this.connectionString = connectionString;
+            }
+            public DbConnection CreateConnection()
+            {
+                DbConnection connection = dbClient.CreateConnection();
+                connection.ConnectionString = connectionString;
+                return connection;
+            }
+        }
+
+        public static class TestDML
+        {
+            public static IEnumerable<string> GetAgentNameById(IDatabaseAccessorFactory databaseAccessorFactory, int id)
+            {
+                using (DbConnection connection = databaseAccessorFactory.CreateConnection())
+                {
+                    using (var cmd = connection.CreateCommand())
+                    {
+                        cmd.CommandText = "SELECT name FROM hlsysagent WHERE agentid=@id";
+
+                        var prm_id = cmd.CreateParameter();
+                        prm_id.ParameterName = "id";
+                        prm_id.DbType = DbType.Int32;
+                        prm_id.Value = id;
+                        cmd.Parameters.Add(prm_id);
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            List<string> result = new List<string>();
+                            while (reader.Read())
+                            {
+                                result.Add(reader.GetString(0));
+                            }
+
+                            return result;
+                        }
+                    }
+                }
+
+            }
         }
     }
 }

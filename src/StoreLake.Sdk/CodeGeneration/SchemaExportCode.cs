@@ -10,7 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Xml.Schema;
 
-namespace Dibix.TestStore.Database
+namespace StoreLake.Sdk.Database
 {
     public static class SchemaExportCode
     {

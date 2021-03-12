@@ -3,7 +3,7 @@ using System.Data.Common;
 using System.Diagnostics;
 
 
-namespace Dibix.TestStore
+namespace StoreLake.TestStore
 {
     [DebuggerDisplay("{ParameterName}:{DbType}")]
     internal sealed class StoreLakeDbParameter : DbParameter

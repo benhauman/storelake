@@ -1,8 +1,8 @@
 ﻿using System;
 
-using Dibix.TestStore.Database;
+using StoreLake.Sdk.Database;
 
-namespace ConsoleApp3
+namespace StoreLake.Sdk.Cli
 {
     class Program
     {

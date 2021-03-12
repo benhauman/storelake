@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 
-namespace Dibix.TestStore.Database
+namespace StoreLake.Sdk.Database
 {
     internal static class DatabaseRegistration
     {

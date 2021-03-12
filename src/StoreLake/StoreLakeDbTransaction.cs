@@ -2,7 +2,7 @@
 using System.Data.Common;
 
 
-namespace Dibix.TestStore
+namespace StoreLake.TestStore
 {
     internal class StoreLakeDbTransaction : DbTransaction
     {

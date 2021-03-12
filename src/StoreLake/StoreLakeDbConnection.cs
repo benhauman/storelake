@@ -2,13 +2,15 @@
 using System.Data.Common;
 
 
-namespace Dibix.TestStore
+namespace StoreLake.TestStore
 {
     public sealed class StoreLakeDbConnection : DbConnection
     {
         public StoreLakeDbConnection(StoreLakeDbProviderFactory dbClient)
         {
             this.dbClient = dbClient;
+            //this.CreateCommand_Override = connection => new StoreLakeDbCommand(connection);
+
         }
         public StoreLakeDbProviderFactory dbClient;
         protected override DbProviderFactory DbProviderFactory
