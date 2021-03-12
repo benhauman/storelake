@@ -31,27 +31,49 @@ namespace ConsoleApp4
             };
         }
 
+        internal StoreLakeDbServer RegisterHandlerReadWithCommandText(System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
+        {
+            CommandExecutionHandler handler = new CommandExecutionHandler(null, handlerExpr);
+            handlers.Add(handler);
+            return this;
+        }
+
+        internal StoreLakeDbServer RegisterHandlerReadForCommandText(Type commandTextOwner, System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
+        {
+            CommandExecutionHandler handler = new CommandExecutionHandler(commandTextOwner, handlerExpr);
+            handlers.Add(handler);
+            return this;
+        }
 
         private readonly List<CommandExecutionHandler> handlers = new List<CommandExecutionHandler>();
 
         private DbDataReader ExecuteDbDataReader(CommandBehavior cb, DbCommand cmdx)
         {
-            handlers.Clear();
-            {
-                CommandExecutionHandler handler = new CommandExecutionHandler((d, c) => DemoHandler1.GetAgentNameById(d, c));
-                handlers.Add(handler);
-            }
-
+            Func<DataSet, DbCommand, DbDataReader> handlerMethod = null;
             foreach (var handler in handlers)
             {
-                Func<DataSet, DbCommand, DbDataReader> handlerMethod = StoreLakeDao.TryRead(handler, cmdx);
-                if (handlerMethod != null)
+                Func<DataSet, DbCommand, DbDataReader> x_handlerMethod = StoreLakeDao.TryRead(handler, cmdx);
+                if (x_handlerMethod != null)
                 {
-                    DbDataReader res = handlerMethod(_db, cmdx);
-                    return res;
+                    if (handlerMethod != null)
+                    {
+                        // another handler for the same command text or the command text comparer is not unique enough 
+                        throw new InvalidOperationException("Multiple handlers found for Command (" + cmdx.Parameters.Count + "):" + cmdx.CommandText);
+                    }
+                    handlerMethod = x_handlerMethod;
+                    
+                }
+                else
+                {
+                    // this handler does not handles this command text
                 }
             }
 
+            if (handlerMethod != null)
+            {
+                DbDataReader res = handlerMethod(_db, cmdx);
+                return res;
+            }
             throw new NotImplementedException("SQL (" + cmdx.Parameters.Count + "):" + cmdx.CommandText);
         }
     }

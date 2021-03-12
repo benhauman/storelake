@@ -175,11 +175,12 @@ namespace ConsoleApp4
 
     internal sealed class CommandExecutionHandler
     {
+        internal readonly Type CommandTextOwner;
         internal readonly Type HandlerMethodOwner;
         internal readonly string HandlerMethodName;
         internal readonly System.Linq.Expressions.MethodCallExpression MethodCallExpr;
         internal readonly bool HandlerIsStatic;
-        public CommandExecutionHandler(System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
+        public CommandExecutionHandler(Type commandTextOwner, System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
         {
             System.Linq.Expressions.MethodCallExpression methodCallExpr = (System.Linq.Expressions.MethodCallExpression)handlerExpr.Body;
             string handlerMethodName = methodCallExpr.Method.Name;
@@ -188,11 +189,12 @@ namespace ConsoleApp4
             HandlerMethodName = handlerMethodName;
             MethodCallExpr = (System.Linq.Expressions.MethodCallExpression)handlerExpr.Body;
             HandlerIsStatic = methodCallExpr.Method.IsStatic;
+            CommandTextOwner = commandTextOwner ?? HandlerMethodOwner;
         }
 
         internal IComparable CommandText()
         {
-            IComparable handlerCommandText = StoreLakeDao.GetCommandTextImpl(this.HandlerMethodOwner, this.HandlerMethodName); // or Invoker
+            IComparable handlerCommandText = StoreLakeDao.GetCommandTextImpl(this.CommandTextOwner, this.HandlerMethodName); // or Invoker
             return handlerCommandText;
         }
 

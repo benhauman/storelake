@@ -52,6 +52,9 @@ namespace ConsoleApp4
             Console.WriteLine("db.hlsysagent.Count:" + db.hlsysagent().Count);
 
             StoreLakeDbServer dbServer = new StoreLakeDbServer(db);
+            dbServer.RegisterHandlerReadWithCommandText((d, c) => DemoHandler1.GetAgentNameById(d, c)); // any / text-static
+            dbServer.RegisterHandlerReadForCommandText(typeof(TestDML), (d, c) => DemoHandler1.GetAgentInfoById(d, c)); // static-text / static
+
             StoreLakeDbProviderFactory dbClient = StoreLakeDbProviderFactory.CreateInstance(x =>
             {
                 x.CreateConnection_Override = dbServer.CreateConnection;
@@ -60,6 +63,8 @@ namespace ConsoleApp4
             IDatabaseAccessorFactory databaseAccessorFactory = new IDatabaseAccessorFactory(dbClient, "blah");
             var name = TestDML.GetAgentNameById(databaseAccessorFactory, 712).Single();
             Console.WriteLine(name);
+            var fname = TestDML.GetAgentInfoById(databaseAccessorFactory, 712).Single();
+            Console.WriteLine(fname);
         }
 
         public class IDatabaseAccessorFactory
@@ -81,13 +86,14 @@ namespace ConsoleApp4
 
         public static class TestDML
         {
+            private const string GetAgentNameByIdCommandText = "SELECT name FROM hlsysagent WHERE agentid=@id";
             public static IEnumerable<string> GetAgentNameById(IDatabaseAccessorFactory databaseAccessorFactory, int id)
             {
                 using (DbConnection connection = databaseAccessorFactory.CreateConnection())
                 {
                     using (var cmd = connection.CreateCommand())
                     {
-                        cmd.CommandText = "SELECT name FROM hlsysagent WHERE agentid=@id";
+                        cmd.CommandText = GetAgentNameByIdCommandText;
 
                         var prm_id = cmd.CreateParameter();
                         prm_id.ParameterName = "id";
@@ -101,6 +107,37 @@ namespace ConsoleApp4
                             while (reader.Read())
                             {
                                 result.Add(reader.GetString(0));
+                            }
+
+                            return result;
+                        }
+                    }
+                }
+
+            }
+
+            private const string GetAgentInfoByIdCommandText = "SELECT name, fullname, description, active FROM hlsysagent WHERE agentid=@id";
+            public static IEnumerable<string> GetAgentInfoById(IDatabaseAccessorFactory databaseAccessorFactory, int id)
+            {
+                using (DbConnection connection = databaseAccessorFactory.CreateConnection())
+                {
+                    using (var cmd = connection.CreateCommand())
+                    {
+                        cmd.CommandText = GetAgentInfoByIdCommandText;
+
+                        var prm_id = cmd.CreateParameter();
+                        prm_id.ParameterName = "id";
+                        prm_id.DbType = DbType.Int32;
+                        prm_id.Value = id;
+                        cmd.Parameters.Add(prm_id);
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            List<string> result = new List<string>();
+                            while (reader.Read())
+                            {
+                                result.Add(reader.GetString(0));
+                                reader.GetInt16(3);
                             }
 
                             return result;
