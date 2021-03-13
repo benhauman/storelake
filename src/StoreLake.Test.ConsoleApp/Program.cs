@@ -48,6 +48,7 @@ namespace ConsoleApp4
             // AutoIncrement?
             // ReadOnlyPK
             var agent2 = db.hlsysagent().AddRowWithValues(712, "InternetAgent2", null, null, 1); //e.active = 1; see 'DF_hlsysagent_active'
+            //db.hlsysaccount().Last ;
 
             Console.WriteLine("db.hlsysagent.Count:" + db.hlsysagent().Count);
 

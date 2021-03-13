@@ -254,6 +254,7 @@ namespace StoreLake.Sdk.Database
             }
 
             DataTable type_decl_table;
+            string type_decl_rowName = null;
             if (isTableClassDeclaration)
             {
                 string type_decl_tableName = type_decl.Name.Remove(type_decl.Name.Length - 9, 9); // suffix "DataTable"
@@ -272,6 +273,8 @@ namespace StoreLake.Sdk.Database
                 {
                     throw new InvalidOperationException("Table [" + type_decl_tableName + "] could not be found.");
                 }
+
+                type_decl_rowName = type_decl.Name.Remove(type_decl.Name.Length - 3, 3); // suffix "Row"
             }
             else
             {
@@ -540,6 +543,11 @@ namespace StoreLake.Sdk.Database
                             }
                         }
                     }
+
+                    if (isRowClassDeclaration && IsPublic(member_property.Attributes))
+                    {
+                        Adjust_Row_Column_Accessor(type_decl_table, member_property);
+                    }
                 }
                 else if (member_event != null)
                 {
@@ -607,6 +615,136 @@ namespace StoreLake.Sdk.Database
                     }
                 }
             }
+        }
+
+        private static void Adjust_Row_Column_Accessor(DataTable table, CodeMemberProperty member_property)
+        {
+            string column_name = member_property.Name;
+            DataColumn column = table.Columns[column_name];
+            if (column == null)
+            {
+                if (column_name == "_namespace")
+                {
+                    column_name = "namespace"; // see [hlsysnamespace].
+                }
+                else if (column_name == "_operator")
+                {
+                    column_name = "operator"; // see [hlbpmruleconditionclause].
+                }
+                else if (column_name == "_readonly")
+                {
+                    column_name = "readonly"; // see [hlbpmtaskmngmtattr].
+                }
+                column = table.Columns[column_name];
+                if (column == null)
+                {
+                    throw new InvalidOperationException("Column [" + table.TableName + "] '" + member_property.Name + "' could not be found.");
+                }
+            }
+
+            if (column.AllowDBNull)
+            {
+                if (column.DataType.IsValueType || column.DataType == typeof(string))
+                {
+                    IDictionary<string, string> notnull_nullable_map = new Dictionary<string, string>() {
+                        { typeof(int).FullName, "int?" },
+                        { typeof(short).FullName, "short?" },
+                        { typeof(bool).FullName, "bool?" },
+                        { typeof(DateTime).FullName, "System.DateTime?" },
+                        { typeof(Decimal).FullName, "decimal?" },
+                        { typeof(Guid).FullName, "System.Guid?" },
+                        { typeof(long).FullName, "long?" },
+                        { typeof(float).FullName, "float?" }, // Single
+                        { typeof(byte).FullName, "byte?" },
+                        { typeof(string).FullName, "string" },
+                    };
+                    string nullableTypeName;
+                    if (notnull_nullable_map.TryGetValue(column.DataType.FullName, out nullableTypeName))
+                    {
+                        Adjust_Row_Column_Accessor_Nullable_Get(table.TableName, nullableTypeName, member_property);
+                    }
+                    //if (column.DataType == typeof(int) && member_property.Type.BaseType == typeof(int).FullName)
+                    //{
+                    //    Adjust_Row_Column_Accessor_Nullable_Get(table.TableName, "int?", member_property);
+                    //}
+                    //else if (column.DataType == typeof(long) && member_property.Type.BaseType == typeof(long).FullName)
+                    //{
+                    //    member_property.Type = new CodeTypeReference("long?");
+                    //}
+                    //else if (column.DataType == typeof(short) && member_property.Type.BaseType == typeof(short).FullName)
+                    //{
+                    //    Adjust_Row_Column_Accessor_Nullable_Get(table.TableName, "short?", member_property);
+                    //}
+                    //else if (column.DataType == typeof(byte) && member_property.Type.BaseType == typeof(byte).FullName)
+                    //{
+                    //    member_property.Type = new CodeTypeReference("byte?");
+                    //}
+                    //else if (column.DataType == typeof(bool) && member_property.Type.BaseType == typeof(bool).FullName)
+                    //{
+                    //    Adjust_Row_Column_Accessor_Nullable_Get(table.TableName, "bool?", member_property);
+                    //}
+                    //else if (column.DataType == typeof(DateTime) && member_property.Type.BaseType == typeof(DateTime).FullName)
+                    //{
+                    //    member_property.Type = new CodeTypeReference("System.DateTime?");
+                    //}
+                    //else if (column.DataType == typeof(decimal) && member_property.Type.BaseType == typeof(decimal).FullName)
+                    //{
+                    //    member_property.Type = new CodeTypeReference("decimal?");
+                    //}
+                    //else if (column.DataType == typeof(Single) && member_property.Type.BaseType == typeof(Single).FullName)
+                    //{
+                    //    // [hlsysbaselineattr] 'numbermin
+                    //    member_property.Type = new CodeTypeReference("System.Single?");
+                    //}
+                    //else if (column.DataType == typeof(Guid) && member_property.Type.BaseType == typeof(Guid).FullName)
+                    //{
+                    //    member_property.Type = new CodeTypeReference("System.Guid?");
+                    //}
+                    //else if (
+                    //   (column.DataType == typeof(int) && member_property.Type.BaseType == typeof(int?).FullName)
+                    //|| (column.DataType == typeof(string) && member_property.Type.BaseType == typeof(string).FullName)
+                    //        )
+                    //{
+                    //    // ok
+                    //}
+                    else
+                    {
+                        throw new NotImplementedException("Row property type for nullable column  [" + table.TableName + "] '" + column.ColumnName + "' (" + column.DataType.Name + ")=[" + member_property.Type.BaseType + "]");
+                    }
+
+                    //throw new NotImplementedException("Row property type for nullable column  [" + table.TableName + "] '" + column.ColumnName + "' (" + column.DataType.Name + ")=[" + member_property.Type.BaseType + "]");
+                } // IsValueType
+            }// AllowDBNull
+        }
+
+        private static void Adjust_Row_Column_Accessor_Nullable_Get(string tableName, string newPropType, CodeMemberProperty member_property)
+        {
+            var old_prop_type = member_property.Type.BaseType;
+            member_property.Type = new CodeTypeReference(newPropType != "string" ? newPropType : typeof(string).FullName);
+
+            CodeFieldReferenceExpression field_table_ref = new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "table" + tableName);
+            CodePropertyReferenceExpression table_col_ref = new CodePropertyReferenceExpression(field_table_ref, member_property.Name + "Column");
+
+            CodeIndexerExpression indexer = new CodeIndexerExpression(new CodeBaseReferenceExpression(), table_col_ref);
+
+            CodeVariableDeclarationStatement var_value_decl = new CodeVariableDeclarationStatement(typeof(object), "raw_value", indexer);
+            CodeVariableReferenceExpression var_value_ref = new CodeVariableReferenceExpression(var_value_decl.Name);
+            var conditionExpr =
+                new CodeBinaryOperatorExpression(var_value_ref,
+                    CodeBinaryOperatorType.ValueEquality,
+                    new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(DBNull)), "Value"));
+
+            ///var conditionExpr2 = new CodeBinaryOperatorExpression(var_value_ref,
+            ///        CodeBinaryOperatorType.ValueEquality,
+            ///        new CodePrimitiveExpression("null));
+            ///
+
+            CodeConditionStatement ifNull = new CodeConditionStatement(conditionExpr, new CodeMethodReturnStatement(new CodePrimitiveExpression(null)));
+            member_property.GetStatements.Clear();
+
+            member_property.GetStatements.Add(var_value_decl);
+            member_property.GetStatements.Add(ifNull);
+            member_property.GetStatements.Add(new CodeMethodReturnStatement(new CodeCastExpression(old_prop_type, var_value_ref)));
         }
 
         private static void Adjust_Table_AddRowWithValues(RegistrationResult rr, DacPacRegistration dacpac, DataTable table, CodeMemberMethod member_method)

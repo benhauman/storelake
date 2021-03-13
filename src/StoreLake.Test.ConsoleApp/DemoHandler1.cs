@@ -66,7 +66,7 @@ namespace ConsoleApp4
             {
                 DataRow row = tb_table.NewRow();
                 row[column_name] = ag.name;
-                row[column_fullname] = null;// ag.IsNull ag.fullname;
+                row[column_fullname] = ag.fullname;
                 row[column_description] = null;// ag.description;
                 row[column_active] = ag.active;
                 return row;
