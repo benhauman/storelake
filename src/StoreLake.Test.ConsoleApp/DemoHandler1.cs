@@ -22,7 +22,7 @@ namespace ConsoleApp4
 
             ;
 
-        internal static DbDataReader GetAgentNameById(DataSet db, DbCommand cmd)
+        public static DbDataReader GetAgentNameById(DataSet db, DbCommand cmd)
         {
             int id = (int)cmd.Parameters["id"].Value;
             //throw new NotImplementedException("cnt:" + db.hlsysagent().Count);
@@ -46,7 +46,7 @@ namespace ConsoleApp4
             return new DataTableReader(tb_table);
         }
 
-        internal static DbDataReader GetAgentInfoById(DataSet db, DbCommand cmd)
+        public static DbDataReader GetAgentInfoById(DataSet db, DbCommand cmd)
         {
             int id = (int)cmd.Parameters["id"].Value;
             //throw new NotImplementedException("cnt:" + db.hlsysagent().Count);
@@ -77,6 +77,32 @@ namespace ConsoleApp4
                 tb_table.Rows.Add(row);
             }
             return new DataTableReader(tb_table);
+        }
+
+
+
+        public static string GetAgentsDescriptionById(DataSet db, int id)
+        {
+            //int id = (int)cmd.Parameters["id"].Value;
+            //throw new NotImplementedException("cnt:" + db.hlsysagent().Count);
+
+            IEnumerable<string> output_rows = db.hlsysagent().Where(ag => ag.agentid == id).Select(ag =>
+            {
+                return ag.description;
+            }).ToArray();
+
+            return output_rows.Single();
+        }
+
+        public static IEnumerable<string> GetAllAgentNames(DataSet db)
+        {
+
+            IEnumerable<string> output_rows = db.hlsysagent().Select(ag =>
+            {
+                return ag.name;
+            });
+
+            return output_rows;
         }
     }
 }
