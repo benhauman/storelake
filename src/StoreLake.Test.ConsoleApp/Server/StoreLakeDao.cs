@@ -210,19 +210,40 @@ namespace StoreLake.Test.ConsoleApp.Server
         {
             get
             {
-                var prms = _mi.GetParameters();
-                StringBuilder debug_params = new StringBuilder();
-                for (int ix = 1; ix < prms.Length; ix++)
-                {
-                    ParameterInfo method_prm = prms[ix];
+                return BuildMethodDeclarationAsText(_mi);
+            }
+        }
 
-                    string debug_method_prm; debug_method_prm = _builtinTypeAlias.TryGetValue(method_prm.ParameterType.FullName, out debug_method_prm) ? debug_method_prm : method_prm.ParameterType.FullName;
+        internal static string BuildMethodDeclarationAsText(MethodInfo mi)
+        {
+            var prms = mi.GetParameters();
+            StringBuilder debug_params = new StringBuilder();
+            for (int ix = 0; ix < prms.Length; ix++)
+            {
+                ParameterInfo method_prm = prms[ix];
+                if (ix == 0)
+                {
+                    string debug_method_prm;
+                    if (method_prm.ParameterType == typeof(DataSet))
+                    {
+                        debug_method_prm = "DataSet";
+                    }
+                    else
+                    {
+                        debug_method_prm = TypeNameAsText(method_prm.ParameterType);
+                    }
+
+                    debug_params.Append("" + debug_method_prm + " " + method_prm.Name);
+                }
+                else
+                {
+                    string debug_method_prm; debug_method_prm = TypeNameAsText(method_prm.ParameterType);
                     debug_params.Append(", " + debug_method_prm + " " + method_prm.Name);
                 }
-
-                string debug_ret; debug_ret = _builtinTypeAlias.TryGetValue(_mi.ReturnType.FullName, out debug_ret) ? debug_ret : _mi.ReturnType.FullName;
-                return "public " + debug_ret + " " + _mi.Name + "(DataSet db" + debug_params.ToString() + ") of '" + _instanceType.Name + "'";
             }
+
+            string debug_ret; debug_ret = TypeNameAsText(mi.ReturnType);
+            return "public " + debug_ret + " " + mi.Name + "(" + debug_params.ToString() + ") of '" + mi.DeclaringType.Name + "'";
         }
 
         internal override IComparable RetrieveCommandText()
@@ -237,6 +258,81 @@ namespace StoreLake.Test.ConsoleApp.Server
         internal override Func<DataSet, DbCommand, DbDataReader> CompiledMReadethod()
         {
             return HandleRead;
+        }
+
+
+        internal static string BuildMismatchMethodExpectionText(System.Reflection.MethodInfo a_method, System.Reflection.MethodInfo h_method, string reason)
+        {
+            StringBuilder text = new StringBuilder();
+            text.AppendLine("Handle method does not match accessor's method signature.");
+            text.AppendLine("Reason:" + reason);
+            text.AppendLine("Access:" + BuildMethodDeclarationAsText(a_method));
+            text.AppendLine("Handle:" + BuildMethodDeclarationAsText(h_method));
+            return text.ToString();
+
+        }
+
+        internal void ValidateReadMethod(System.Reflection.MethodInfo a_method)
+        {
+            var h_method = _mi;
+
+            var h_prms = h_method.GetParameters();
+            if (h_prms.Length == 0)
+            {
+                throw new InvalidOperationException(BuildMismatchMethodExpectionText(a_method, h_method, "Handle method does not have parameters."));
+            }
+
+            if (h_method.ReturnType == typeof(DbDataReader)) // raw Handler?
+            {
+                if (h_prms.Length == 2
+                    && h_prms[0].ParameterType == typeof(DataSet)
+                    && h_prms[1].ParameterType == typeof(DbCommand)
+                    )
+                {
+                    // raw handler 
+                    return;
+                }
+                else
+                {
+                    throw new InvalidOperationException(BuildMismatchMethodExpectionText(a_method, h_method, "Handle method does not expected raw parameters (DataSet, DbCommand)."));
+                }
+            }
+
+            else
+            {
+
+                if (a_method.ReturnType != h_method.ReturnType)
+                {
+                    throw new InvalidOperationException(BuildMismatchMethodExpectionText(a_method, h_method, "Wrong return type."));
+                }
+
+
+                var a_prms = a_method.GetParameters();
+                if (a_prms.Length != h_prms.Length)
+                {
+                    throw new InvalidOperationException(BuildMismatchMethodExpectionText(a_method, h_method, "Parameters cound mismatched."));
+                }
+
+                for (int ix = 0; ix < h_prms.Length; ix++)
+                {
+                    ParameterInfo h_prm = h_prms[ix];
+                    ParameterInfo a_prm = a_prms[ix];
+                    if (ix == 0)
+                    {
+                        if (h_prm.ParameterType != typeof(DataSet))
+                        {
+                            throw new InvalidOperationException(BuildMismatchMethodExpectionText(a_method, h_method, "First parameter has a wrong type."));
+                        }
+                    }
+                    else
+                    {
+                        if (h_prm.ParameterType != a_prm.ParameterType)
+                        {
+                            throw new InvalidOperationException(BuildMismatchMethodExpectionText(a_method, h_method, "Wrong handle parameter '" + h_prm.ParameterType + "' type at position:" + (ix + 1) + "/" + h_prms.Length));
+                        }
+                    }
+                }
+            }
         }
 
         private DbDataReader HandleRead(DataSet db, DbCommand cmd)
@@ -280,7 +376,7 @@ namespace StoreLake.Test.ConsoleApp.Server
                     object prm_value = GetTypedCommandParameter(cmd, method_prm);
                     invoke_parameters.Add(prm_value);
 
-                    string debug_method_prm; debug_method_prm = _builtinTypeAlias.TryGetValue(method_prm.ParameterType.FullName, out debug_method_prm) ? debug_method_prm : method_prm.ParameterType.FullName;
+                    string debug_method_prm; debug_method_prm = TypeNameAsText(method_prm.ParameterType);
                     debug_params.Append(", " + debug_method_prm + " " + method_prm.Name);
                 }
 
@@ -293,13 +389,32 @@ namespace StoreLake.Test.ConsoleApp.Server
                 else
                 {
 
-                    string debug_ret; debug_ret = _builtinTypeAlias.TryGetValue(_mi.ReturnType.FullName, out debug_ret) ? debug_ret : _mi.ReturnType.FullName;
+                    string debug_ret; debug_ret = TypeNameAsText(_mi.ReturnType);
                     throw new NotImplementedException("public " + debug_ret + " " + _mi.Name + "(DataSet db" + debug_params.ToString() + ") of '" + _instanceType.Name + "'");
                 }
             }
 
 
 
+        }
+
+        private static string TypeNameAsText(Type t)
+        {
+            string text;
+            if (_builtinTypeAlias.TryGetValue(t.FullName, out text))
+            {
+                return text;
+            }
+
+            if (t.IsGenericType)
+            {
+                if (typeof(System.Collections.IEnumerable).IsAssignableFrom(t))
+                {
+                    var typeT = t.GetGenericArguments()[0];
+                    return "IEnumerable<" + TypeNameAsText(typeT) + ">";
+                }
+            }
+            return t.FullName;
         }
 
         private static DbDataReader CreateDbDataReaderFromSingleSetReturnValues(Type returnType, object returnValues)
@@ -314,11 +429,11 @@ namespace StoreLake.Test.ConsoleApp.Server
             }
             else
             {
-                if (returnValues.GetType().IsArray)
-                {
-                    throw new NotImplementedException("array");
-                }
-                if (typeof(System.Collections.IEnumerable).IsAssignableFrom(returnValues.GetType()) && returnType.IsGenericType)
+                //if (returnValues.GetType().IsArray)
+                //{
+                //    throw new NotImplementedException("array");
+                //}
+                if (typeof(System.Collections.IEnumerable).IsAssignableFrom(returnType) && returnType.IsGenericType)
                 {
                     var elementType = returnType.GetGenericArguments()[0];
                     if (elementType == typeof(string))
@@ -328,7 +443,7 @@ namespace StoreLake.Test.ConsoleApp.Server
                         tb_table.Columns.Add(column_value);
                         System.Collections.IEnumerable ie = (System.Collections.IEnumerable)returnValues;
                         var etor = ie.GetEnumerator();
-                        while(etor.MoveNext())
+                        while (etor.MoveNext())
                         {
                             string value = (string)etor.Current;
 
@@ -338,8 +453,76 @@ namespace StoreLake.Test.ConsoleApp.Server
                         }
                         return new DataTableReader(tb_table);
                     }
+                    // complex type : multiple rows
+                    {
+                        List<KeyValuePair<MemberInfo, DataColumn>> property_column_map = new List<KeyValuePair<MemberInfo, DataColumn>>();
+                        var tb_table = new DataTable();
+                        foreach (var pi in elementType.GetFields()) // public fields
+                        {
+                            var column_p = new DataColumn(pi.Name, pi.FieldType);
+                            tb_table.Columns.Add(column_p);
+                            property_column_map.Add(new KeyValuePair<MemberInfo, DataColumn>(pi, column_p));
+                        }
+                        foreach (var pi in elementType.GetProperties())
+                        {
+                            var column_p = new DataColumn(pi.Name, pi.PropertyType);
+                            tb_table.Columns.Add(column_p);
+                            property_column_map.Add(new KeyValuePair<MemberInfo, DataColumn>(pi, column_p));
+                        }
 
-                    throw new NotImplementedException("enumerable");
+                        if (property_column_map.Count == 0)
+                        {
+                            throw new InvalidOperationException("no members");
+                        }
+
+                        System.Collections.IEnumerable ie = (System.Collections.IEnumerable)returnValues;
+                        var etor = ie.GetEnumerator();
+                        while (etor.MoveNext())
+                        {
+                            object item = etor.Current;
+
+                            DataRow row = tb_table.NewRow();
+                            foreach (var mi_col in property_column_map)
+                            {
+                                var col = mi_col.Value;
+                                object col_value;
+                                var pi = mi_col.Key as PropertyInfo;
+                                if (pi != null)
+                                {
+                                    col_value = pi.GetValue(item);
+                                    if (col_value.GetType() != pi.PropertyType)
+                                    {
+                                        throw new InvalidOperationException(pi.Name);
+                                    }
+                                    if (col_value.GetType() != col.DataType)
+                                    {
+                                        throw new InvalidOperationException(pi.Name);
+                                    }
+
+                                    row[mi_col.Value] = col_value;
+                                }
+                                else
+                                {
+                                    var fi = ((FieldInfo)mi_col.Key);
+                                    col_value = fi.GetValue(item);
+                                    if (col_value.GetType() != fi.FieldType)
+                                    {
+                                        throw new InvalidOperationException(fi.Name);
+                                    }
+                                    if (col_value.GetType() != col.DataType)
+                                    {
+                                        throw new InvalidOperationException(fi.Name);
+                                    }
+
+
+                                    row[mi_col.Value] = col_value;
+                                }
+
+                            }
+                            tb_table.Rows.Add(row);
+                        }
+                        return new DataTableReader(tb_table);
+                    }
                 }
                 throw new NotImplementedException(returnValues.GetType().Name);
             }
@@ -353,7 +536,7 @@ namespace StoreLake.Test.ConsoleApp.Server
                 return cmd.GetCommandParameterInt32NotNull(method_prm.Name);
             }
 
-            string debug_method_prm; debug_method_prm = _builtinTypeAlias.TryGetValue(method_prm.ParameterType.FullName, out debug_method_prm) ? debug_method_prm : method_prm.ParameterType.FullName;
+            string debug_method_prm; debug_method_prm = TypeNameAsText(method_prm.ParameterType);
             throw new NotImplementedException("Command parameter for { " + debug_method_prm + " " + method_prm.Name + " }");
         }
 

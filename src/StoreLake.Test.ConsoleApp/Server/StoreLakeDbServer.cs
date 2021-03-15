@@ -83,10 +83,17 @@ namespace StoreLake.Test.ConsoleApp.Server
             var mis = handlerType.GetMethods();
             foreach(var mi in mis)
             {
-                TypedMethodHandler handler = TryUseHandlerMethod(accessorType, handlerType, mi);
-                if (handler != null)
+                if (mi.DeclaringType != handlerType)
                 {
-                    this.handlers.Add(handler);
+                    // skip 'Equals', 'ToString', 'GetHashCode'
+                }
+                else
+                {
+                    TypedMethodHandler handler = TryUseHandlerMethod(accessorType, handlerType, mi);
+                    if (handler != null)
+                    {
+                        this.handlers.Add(handler);
+                    }
                 }
             }
             return this;
@@ -94,12 +101,17 @@ namespace StoreLake.Test.ConsoleApp.Server
 
         private static TypedMethodHandler TryUseHandlerMethod(Type accessorType, Type methodOwner, System.Reflection.MethodInfo mi)
         {
+            System.Reflection.MethodInfo accessor_method = accessorType.GetMethod(mi.Name);
+            if (accessor_method == null)
+            {
+                //return null; // this Handle Method does not handle accessor's method;
+                throw new InvalidOperationException("Access method '" + mi.Name + "' on type '" + accessorType.Name + "' could not be found.");
+            }
+
             var prms = mi.GetParameters();
             if (prms.Length == 0)
                 return null;
             var prm0 = prms[0];
-            if (prm0.ParameterType != typeof(DataSet))
-                return null;
             IComparable handlerCommandText = StoreLakeDao.TryGetCommandText(methodOwner, mi.Name);
             if (handlerCommandText == null)
             {
@@ -107,12 +119,22 @@ namespace StoreLake.Test.ConsoleApp.Server
                 handlerCommandText = StoreLakeDao.TryGetCommandText(accessorType, mi.Name);
                 if (handlerCommandText == null)
                 {
-                    return null;
+                    //System.Reflection.MethodInfo accessor_method_x = accessorType.GetMethod(mi.Name);
+                    if (accessor_method == null)
+                    {
+                        return null;
+                    }
+
+                    throw new InvalidOperationException(TypedMethodHandler.BuildMismatchMethodExpectionText(mi, accessor_method, "CommandText field '" + mi.Name + "CommandText' could not be found."));
                 }
             }
+            //if (prm0.ParameterType != typeof(DataSet))
+            //    return null;
+
+
 
             var handler = new TypedMethodHandler(methodOwner, mi, handlerCommandText);
-
+            handler.ValidateReadMethod(accessor_method);
             return handler;
         }
     }

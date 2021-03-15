@@ -9,6 +9,7 @@ namespace ConsoleApp4
 {
     internal class DemoHandler1
     {
+
         private static readonly IComparable GetAgentNameByIdCommandText = new DynamicSqlTextCompare()
 .OnFalse(cmd =>
 {
@@ -67,7 +68,7 @@ namespace ConsoleApp4
                 DataRow row = tb_table.NewRow();
                 row[column_name] = ag.name;
                 row[column_fullname] = ag.fullname;
-                row[column_description] = null;// ag.description;
+                row[column_description] = ag.description;
                 row[column_active] = ag.active;
                 return row;
             }).ToArray();
@@ -102,6 +103,19 @@ namespace ConsoleApp4
                 return ag.name;
             });
 
+            return output_rows;
+        }
+
+        public static IEnumerable<AgentInfo> GetAllAgentInfos(DataSet db)
+        {
+            IEnumerable<AgentInfo> output_rows = db.hlsysagent().Select(ag =>
+            {
+                AgentInfo row = new AgentInfo();
+                row.Id = ag.agentid;
+                row.Name = ag.name;
+                row.IsActive = ag.active != 0;
+                return row;
+            }).ToArray();
             return output_rows;
         }
     }
