@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 
-namespace Dibix.TestStore.Database
+namespace StoreLake.TestStore.Database
 {
     public sealed class StoreLakeDatabaseBuilder<TDataSet>
         where TDataSet : DataSet, new()

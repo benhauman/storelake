@@ -436,7 +436,7 @@ namespace StoreLake.Test.ConsoleApp.Server
                 if (typeof(System.Collections.IEnumerable).IsAssignableFrom(returnType) && returnType.IsGenericType)
                 {
                     var elementType = returnType.GetGenericArguments()[0];
-                    if (elementType == typeof(string))
+                    if (elementType.IsPrimitive || elementType == typeof(string))
                     {
                         var tb_table = new DataTable();
                         var column_value = new DataColumn("value", elementType);
@@ -445,10 +445,18 @@ namespace StoreLake.Test.ConsoleApp.Server
                         var etor = ie.GetEnumerator();
                         while (etor.MoveNext())
                         {
-                            string value = (string)etor.Current;
+                            object col_value = etor.Current;
+                            if (col_value.GetType() != elementType)
+                            {
+                                throw new InvalidOperationException(elementType.Name);
+                            }
+                            if (col_value.GetType() != column_value.DataType)
+                            {
+                                throw new InvalidOperationException(elementType.Name);
+                            }
 
                             DataRow row = tb_table.NewRow();
-                            row[column_value] = (string)value;
+                            row[column_value] = col_value;
                             tb_table.Rows.Add(row);
                         }
                         return new DataTableReader(tb_table);

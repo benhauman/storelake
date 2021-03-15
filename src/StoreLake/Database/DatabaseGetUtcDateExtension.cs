@@ -2,7 +2,7 @@
 using System.Data;
 using System.Linq;
 
-namespace Dibix.TestStore.Database
+namespace StoreLake.TestStore.Database
 {
     public static class DatabaseGetUtcDateExtension
     {

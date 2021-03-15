@@ -14,6 +14,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="Dapper.StrongName">
+      <HintPath>..\ThirdParty\Dapper.StrongName.1.50.5\lib\net451\Dapper.StrongName.dll</HintPath>
+    </Reference>
+    <Reference Include="Dibix">
+      <HintPath>..\ThirdParty\Dibix.1.0.0\lib\net452\Dibix.dll</HintPath>
+    </Reference>
+    <Reference Include="Dibix.Dapper">
+      <HintPath>..\ThirdParty\Dibix.Dapper.1.0.0\lib\net452\Dibix.Dapper.dll</HintPath>
+    </Reference>
     <Reference Include="HelplineData.TestStore">
       <HintPath>..\..\..\..\Helpline\Current\bin\Debug\output\database\HelplineData.TestStore.dll</HintPath>
     </Reference>

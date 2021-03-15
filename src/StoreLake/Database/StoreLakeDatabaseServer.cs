@@ -1,6 +1,6 @@
 ﻿using System.Data;
 
-namespace Dibix.TestStore.Database
+namespace StoreLake.TestStore.Database
 {
     public static class StoreLakeDatabaseServer
     {

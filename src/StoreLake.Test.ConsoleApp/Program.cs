@@ -1,9 +1,8 @@
-﻿using Dibix.TestStore;
-using Dibix.TestStore.Database;
-using Helpline.Data.TestStore;
+﻿using Helpline.Data.TestStore;
 using Helpline.SLM.Database.Data.TestStore;
 using StoreLake.Test.ConsoleApp.Server;
 using StoreLake.TestStore;
+using StoreLake.TestStore.Database;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -63,7 +62,15 @@ namespace ConsoleApp4
                 x.CreateConnection_Override = dbServer.CreateConnection;
             });
 
-            IDatabaseAccessorFactory databaseAccessorFactory = new IDatabaseAccessorFactory(dbClient, "blah");
+            xDatabaseAccessorFactory databaseAccessorFactory = new xDatabaseAccessorFactory(dbClient, "blah");
+
+            var test7 = TestDML.GetAllAgentIdentities(databaseAccessorFactory);
+            foreach (var row in test7)
+                Console.WriteLine(row);
+
+            var test6 = TestDML.GetAllAgentIds(databaseAccessorFactory);
+            foreach (var row in test6)
+                Console.WriteLine(row);
 
             var test5 = TestDML.GetAllAgentInfos(databaseAccessorFactory);
             foreach (var row in test5)
@@ -81,15 +88,21 @@ namespace ConsoleApp4
                 Console.WriteLine(row);
         }
     }
-    public class IDatabaseAccessorFactory
+    public class xDatabaseAccessorFactory : Dibix.IDatabaseAccessorFactory
     {
         private readonly DbProviderFactory dbClient;
         private readonly string connectionString;
-        public IDatabaseAccessorFactory(DbProviderFactory dbClient, string connectionString)
+        public xDatabaseAccessorFactory(DbProviderFactory dbClient, string connectionString)
         {
             this.dbClient = dbClient;
             this.connectionString = connectionString;
         }
+
+        public Dibix.IDatabaseAccessor Create()
+        {
+            return new Dibix.Dapper.DapperDatabaseAccessor(CreateConnection());
+        }
+
         public DbConnection CreateConnection()
         {
             DbConnection connection = dbClient.CreateConnection();
@@ -107,7 +120,7 @@ namespace ConsoleApp4
     public static class TestDML
     {
         private const string GetAgentNameByIdCommandText = "SELECT name FROM hlsysagent WHERE agentid=@id";
-        public static IEnumerable<string> GetAgentNameById(IDatabaseAccessorFactory databaseAccessorFactory, int id)
+        public static IEnumerable<string> GetAgentNameById(xDatabaseAccessorFactory databaseAccessorFactory, int id)
         {
             using (DbConnection connection = databaseAccessorFactory.CreateConnection())
             {
@@ -137,7 +150,7 @@ namespace ConsoleApp4
         }
 
         private const string GetAgentInfoByIdCommandText = "SELECT name, fullname, description, active FROM hlsysagent WHERE agentid=@id";
-        public static IEnumerable<string> GetAgentInfoById(IDatabaseAccessorFactory databaseAccessorFactory, int id)
+        public static IEnumerable<string> GetAgentInfoById(xDatabaseAccessorFactory databaseAccessorFactory, int id)
         {
             using (DbConnection connection = databaseAccessorFactory.CreateConnection())
             {
@@ -167,7 +180,7 @@ namespace ConsoleApp4
 
         }
         private const string GetAgentDescriptionByIdCommandText = "SELECT description FROM hlsysagent WHERE agentid=@id";
-        public static IEnumerable<string> GetAgentDescriptionById(IDatabaseAccessorFactory databaseAccessorFactory, int id)
+        public static IEnumerable<string> GetAgentDescriptionById(xDatabaseAccessorFactory databaseAccessorFactory, int id)
         {
             using (DbConnection connection = databaseAccessorFactory.CreateConnection())
             {
@@ -198,7 +211,7 @@ namespace ConsoleApp4
         }
 
         private const string GetAgentsDescriptionByIdCommandText = "SELECT description FROM dbo.hlsysagent WHERE agentid=@id";
-        public static string GetAgentsDescriptionById(IDatabaseAccessorFactory databaseAccessorFactory, int id)
+        public static string GetAgentsDescriptionById(xDatabaseAccessorFactory databaseAccessorFactory, int id)
         {
             using (DbConnection connection = databaseAccessorFactory.CreateConnection())
             {
@@ -228,7 +241,7 @@ namespace ConsoleApp4
         }
 
         private const string GetAllAgentNamesCommandText = "SELECT name FROM dbo.hlsysagent";
-        public static IEnumerable<string> GetAllAgentNames(IDatabaseAccessorFactory databaseAccessorFactory)
+        public static IEnumerable<string> GetAllAgentNames(xDatabaseAccessorFactory databaseAccessorFactory)
         {
             using (DbConnection connection = databaseAccessorFactory.CreateConnection())
             {
@@ -253,7 +266,7 @@ namespace ConsoleApp4
 
         private const string GetAllAgentInfosCommandText = "SELECT id = agentid, name, isactive = CAST(ISNULL(active,0) AS BIT) FROM dbo.hlsysagent";
 
-        public static IEnumerable<AgentInfo> GetAllAgentInfos(IDatabaseAccessorFactory databaseAccessorFactory)
+        public static IEnumerable<AgentInfo> GetAllAgentInfos(xDatabaseAccessorFactory databaseAccessorFactory)
         {
             using (DbConnection connection = databaseAccessorFactory.CreateConnection())
             {
@@ -283,6 +296,43 @@ namespace ConsoleApp4
                 }
             }
 
+        }
+
+        private const string GetAllAgentIdsCommandText = "SELECT id FROM dbo.hlsysagent";
+
+        public static IEnumerable<int> GetAllAgentIds(xDatabaseAccessorFactory databaseAccessorFactory)
+        {
+            using (DbConnection connection = databaseAccessorFactory.CreateConnection())
+            {
+                using (var cmd = connection.CreateCommand())
+                {
+                    cmd.CommandText = GetAllAgentIdsCommandText;
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        List<int> result = new List<int>();
+                        while (reader.Read())
+                        {
+                            result.Add(reader.GetInt32(0));
+                        }
+
+                        return result;
+                    }
+                }
+            }
+        }
+
+        private const string GetAllAgentIdentitiesCommandText = "SELECT id FROM dbo.hlsysagent";
+
+        public static IEnumerable<int> GetAllAgentIdentities(Dibix.IDatabaseAccessorFactory databaseAccessorFactory)
+        {
+            using (Dibix.IDatabaseAccessor accessor = databaseAccessorFactory.Create())
+            {
+                Dibix.IParametersVisitor @params = accessor.Parameters().SetFromTemplate(new
+                {
+                }).Build();
+                return accessor.QueryMany<int>(GetAllAgentIdentitiesCommandText, System.Data.CommandType.Text, @params).ToArray();
+            }
         }
     }
 

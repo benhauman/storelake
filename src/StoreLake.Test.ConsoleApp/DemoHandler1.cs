@@ -118,5 +118,13 @@ namespace ConsoleApp4
             }).ToArray();
             return output_rows;
         }
+
+        public static IEnumerable<int> GetAllAgentIds(DataSet db)
+        {
+            return db.hlsysagent().Select(ag =>
+            {
+                return ag.agentid;
+            });
+        }
     }
 }
