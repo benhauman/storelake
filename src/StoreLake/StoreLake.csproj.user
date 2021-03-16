@@ -2,13 +2,13 @@
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup />
   <ItemGroup>
-    <Compile Update="StoreLakeDbCommand.cs">
+    <Compile Update="Common\StoreLakeDbCommand.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Update="StoreLakeDbConnection.cs">
+    <Compile Update="Common\StoreLakeDbConnection.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Update="StoreLakeDbDataAdapter.cs">
+    <Compile Update="Common\StoreLakeDbDataAdapter.cs">
       <SubType>Component</SubType>
     </Compile>
   </ItemGroup>

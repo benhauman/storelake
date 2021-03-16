@@ -5,14 +5,24 @@ using System.Data;
 using System.Data.Common;
 using System.Linq.Expressions;
 
-namespace StoreLake.Test.ConsoleApp.Server
+namespace StoreLake.TestStore.Server
 {
-    internal class StoreLakeDbServer
+    public static class StoreLakeDbProviderFactoryExtensions
     {
-        private readonly DataSet _db;
+        public static DbProviderFactory CreateDbProviderFactoryInstance(this StoreLakeDbServer server)
+        {
+            return StoreLakeDbProviderFactory.CreateInstance(x =>
+            {
+                x.CreateConnection_Override = server.CreateConnection;
+            });
+        }
+    }
+    public sealed class StoreLakeDbServer
+    {
+        private readonly Dictionary<string, DataSet> _dbs = new Dictionary<string, DataSet>();
         public StoreLakeDbServer(DataSet db)
         {
-            this._db = db;
+            this._dbs.Add(db.DataSetName.ToUpperInvariant(), db);
         }
 
         internal StoreLakeDbConnection CreateConnection(StoreLakeDbProviderFactory dbClient)
@@ -47,18 +57,24 @@ namespace StoreLake.Test.ConsoleApp.Server
 
         private readonly List<CommandExecutionHandler> handlers = new List<CommandExecutionHandler>();
 
-        private DbDataReader ExecuteDbDataReader(CommandBehavior cb, DbCommand cmdx)
+        private DbDataReader ExecuteDbDataReader(CommandBehavior cb, DbCommand cmd)
         {
+            string databaseName = cmd.Connection.Database;
+            if (!_dbs.TryGetValue(databaseName.ToUpperInvariant(), out DataSet db))
+            //if (!string.Equals(_db.DataSetName, databaseName, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Unknown datatabase [" + databaseName + "]");
+            }
             Func<DataSet, DbCommand, DbDataReader> handlerMethod = null;
             foreach (var handler in handlers)
             {
-                Func<DataSet, DbCommand, DbDataReader> x_handlerMethod = StoreLakeDao.TryRead(handler, cmdx);
+                Func<DataSet, DbCommand, DbDataReader> x_handlerMethod = StoreLakeDao.TryRead(handler, cmd);
                 if (x_handlerMethod != null)
                 {
                     if (handlerMethod != null)
                     {
                         // another handler for the same command text or the command text comparer is not unique enough 
-                        throw new InvalidOperationException("Multiple handlers found for Command (" + cmdx.Parameters.Count + "):" + cmdx.CommandText);
+                        throw new InvalidOperationException("Multiple handlers found for Command (" + cmd.Parameters.Count + "):" + cmd.CommandText);
                     }
 
                     handlerMethod = x_handlerMethod;
@@ -71,17 +87,17 @@ namespace StoreLake.Test.ConsoleApp.Server
 
             if (handlerMethod != null)
             {
-                DbDataReader res = handlerMethod(_db, cmdx);
+                DbDataReader res = handlerMethod(db, cmd);
                 return res;
             }
-            throw new NotImplementedException("SQL (" + cmdx.Parameters.Count + "):" + cmdx.CommandText);
+            throw new NotImplementedException("SQL (" + cmd.Parameters.Count + "):" + cmd.CommandText);
         }
 
 
-        internal StoreLakeDbServer RegTypedHandler(Type accessorType, Type handlerType)
+        public StoreLakeDbServer RegisterTypedHandler(Type accessorType, Type handlerType)
         {
             var mis = handlerType.GetMethods();
-            foreach(var mi in mis)
+            foreach (var mi in mis)
             {
                 if (mi.DeclaringType != handlerType)
                 {

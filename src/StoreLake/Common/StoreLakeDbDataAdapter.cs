@@ -4,7 +4,7 @@ using System.Data.Common;
 
 namespace StoreLake.TestStore
 {
-    public sealed class StoreLakeDbDataAdapter : DbDataAdapter
+    internal sealed class StoreLakeDbDataAdapter : DbDataAdapter
     {
         public StoreLakeDbDataAdapter()
         {

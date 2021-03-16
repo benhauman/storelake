@@ -4,7 +4,7 @@ using System.Data.Common;
 
 namespace StoreLake.TestStore
 {
-    internal class StoreLakeDbTransaction : DbTransaction
+    internal sealed class StoreLakeDbTransaction : DbTransaction
     {
 
         public override void Commit()

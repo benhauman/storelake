@@ -1,4 +1,5 @@
-﻿using System;
+﻿using StoreLake.TestStore.Server;
+using System;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
@@ -7,16 +8,17 @@ using System.Threading.Tasks;
 
 namespace StoreLake.TestStore
 {
-    public sealed class StoreLakeDbProviderFactory : DbProviderFactory  // used+linked in Server.YouNeedTest / SLM.Administration
+
+    internal sealed class StoreLakeDbProviderFactory : DbProviderFactory  // used+linked in Server.YouNeedTest / SLM.Administration
     {
-        public static StoreLakeDbProviderFactory CreateInstance(Action<StoreLakeDbProviderFactory> setup)
+        internal static StoreLakeDbProviderFactory CreateInstance(Action<StoreLakeDbProviderFactory> setup)
         {
             StoreLakeDbProviderFactory dbClient = new StoreLakeDbProviderFactory();
             setup(dbClient);
             return dbClient;
         }
 
-        public StoreLakeDbProviderFactory()
+        internal StoreLakeDbProviderFactory()
         {
             //CreateConnection_Override = (dbClient) => new StoreLakeDbConnection(dbClient)
             //{
@@ -25,7 +27,7 @@ namespace StoreLake.TestStore
             //};
         }
 
-        public Func<StoreLakeDbProviderFactory, StoreLakeDbConnection> CreateConnection_Override;
+        internal Func<StoreLakeDbProviderFactory, StoreLakeDbConnection> CreateConnection_Override;
         public override DbConnection CreateConnection()
         {
             if (CreateConnection_Override == null)
@@ -39,7 +41,7 @@ namespace StoreLake.TestStore
 
         //public List<DeCommand> Commands = new List<DeCommand>();
 
-        public Func<StoreLakeDbCommand> CreateCommand_Override { get; set; }
+        internal Func<StoreLakeDbCommand> CreateCommand_Override { get; set; }
         public override DbCommand CreateCommand()
         {
             if (CreateCommand_Override != null)
@@ -50,7 +52,7 @@ namespace StoreLake.TestStore
             //return command;
         }
 
-        public Func<StoreLakeDbDataAdapter> CreateDataAdapter_Override { get; set; }
+        internal Func<StoreLakeDbDataAdapter> CreateDataAdapter_Override { get; set; }
         public override DbDataAdapter CreateDataAdapter()
         {
             if (CreateDataAdapter_Override != null)

@@ -29,6 +29,10 @@
 
   <ItemGroup>
     <Reference Include="System.Design" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Client\" />
   </ItemGroup> 
 
 </Project>

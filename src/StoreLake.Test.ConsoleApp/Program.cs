@@ -1,6 +1,6 @@
-﻿using Helpline.Data.TestStore;
-using Helpline.SLM.Database.Data.TestStore;
-using StoreLake.Test.ConsoleApp.Server;
+﻿using Helpline.Data.TestStore; // generated assembly
+using Helpline.SLM.Database.Data.TestStore; // generated assembly
+using StoreLake.TestStore.Server;
 using StoreLake.TestStore;
 using StoreLake.TestStore.Database;
 using System;
@@ -55,14 +55,12 @@ namespace ConsoleApp4
             StoreLakeDbServer dbServer = new StoreLakeDbServer(db);
             //dbServer.RegisterHandlerReadWithCommandText((d, c) => DemoHandler1.GetAgentNameById(d, c)); // any / text-static
             //dbServer.RegisterHandlerReadForCommandText(typeof(TestDML), (d, c) => DemoHandler1.GetAgentInfoById(d, c)); // static-text / static
-            dbServer.RegTypedHandler(typeof(TestDML), typeof(DemoHandler1)); // dml.methods(+text) => handler(+text)
+            dbServer.RegisterTypedHandler(typeof(TestDML), typeof(DemoHandler1)); // dml.methods(+text) => handler(+text)
+            //System.Data.SqlClient.SqlClientFactory
 
-            StoreLakeDbProviderFactory dbClient = StoreLakeDbProviderFactory.CreateInstance(x =>
-            {
-                x.CreateConnection_Override = dbServer.CreateConnection;
-            });
+            DbProviderFactory dbClient = dbServer.CreateDbProviderFactoryInstance();
 
-            xDatabaseAccessorFactory databaseAccessorFactory = new xDatabaseAccessorFactory(dbClient, "blah");
+            xDatabaseAccessorFactory databaseAccessorFactory = new xDatabaseAccessorFactory(dbClient, "Initial Catalog=MyDB");
 
             var test7 = TestDML.GetAllAgentIdentities(databaseAccessorFactory);
             foreach (var row in test7)

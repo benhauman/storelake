@@ -4,7 +4,7 @@ using System.Data.Common;
 
 namespace StoreLake.TestStore
 {
-    public sealed class StoreLakeDbCommand : DbCommand
+    internal sealed class StoreLakeDbCommand : DbCommand
     {
         public StoreLakeDbConnection DbConnectionProperty;
 

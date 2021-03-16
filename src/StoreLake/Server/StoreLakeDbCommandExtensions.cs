@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace StoreLake.Test.ConsoleApp.Server
+namespace StoreLake.TestStore.Server
 {
     internal static class DbCommandExtensions
     {

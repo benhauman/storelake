@@ -4,7 +4,7 @@ using System.Data.Common;
 
 namespace StoreLake.TestStore
 {
-    public sealed class StoreLakeDbConnection : DbConnection
+    internal sealed class StoreLakeDbConnection : DbConnection
     {
         public StoreLakeDbConnection(StoreLakeDbProviderFactory dbClient)
         {
@@ -20,16 +20,17 @@ namespace StoreLake.TestStore
                 return this.dbClient;
             }
         }
-        public string ConnectionStringProperty;
+        private StoreLakeConnectionString _connectionString = new StoreLakeConnectionString(null);
+
         public override string ConnectionString
         {
             get
             {
-                return ConnectionStringProperty;
+                return _connectionString.UsersConnectionString(true);
             }
             set
             {
-                ConnectionStringProperty = value;
+                _connectionString = _connectionString.SetUsersConnectionString(value);
             }
         }
 
@@ -68,7 +69,7 @@ namespace StoreLake.TestStore
 
         public override string Database
         {
-            get { throw new NotImplementedException(); }
+            get { return _connectionString.InitialCatalog; }
         }
         public Action Open_Override { get; set; }// = () => { };
         public bool opened;

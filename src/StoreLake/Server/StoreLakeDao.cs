@@ -7,7 +7,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
-namespace StoreLake.Test.ConsoleApp.Server
+namespace StoreLake.TestStore.Server
 {
     internal static class StoreLakeDao
     {

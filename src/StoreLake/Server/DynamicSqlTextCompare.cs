@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Data.Common;
 
-namespace ConsoleApp4
+namespace StoreLake.TestStore.Server
 {
-    internal sealed class DynamicSqlTextCompare : IComparable
+    public sealed class DynamicSqlTextCompare : IComparable
     {
         private readonly List<Func<DbCommand, bool>> impl = new List<Func<DbCommand, bool>>();
         private Action<DbCommand> OnFalseHandler = (cmd) => { }; // nothing
