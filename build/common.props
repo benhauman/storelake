@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <PackageVersion>1.0.2</PackageVersion>
+  </PropertyGroup>
+
+  <!--<PropertyGroup>
     <VersionMajor>66</VersionMajor>
     <VersionMinor>77</VersionMinor>
   </PropertyGroup>
@@ -13,7 +17,7 @@
   <PropertyGroup>
     <VersionPrefix>$(VersionMajor).$(VersionMinor)</VersionPrefix>
     <VersionSuffix></VersionSuffix>
-  </PropertyGroup>
+  </PropertyGroup>-->
 
   <PropertyGroup>
     <SignAssembly>true</SignAssembly>

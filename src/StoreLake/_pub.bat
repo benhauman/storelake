@@ -12,6 +12,7 @@ IF NOT %ERRORLEVEL%==0 (call :REGERROR "copy failed.")
 xcopy .\bin\Debug\net48\*.* ..\..\..\..\Helpline\Current\packages\Dibix.TestStore.1.0.0\lib\net48\ /Y /f /k /r /v
 IF NOT %ERRORLEVEL%==0 (call :REGERROR "copy failed.")
 
+rem dotnet nuget push --source "StoreLake" --api-key az "D:\GitHub\StoreLake\src\StoreLake\bin\Debug\StoreLake.1.0.0.nupkg"
 
 
 

@@ -9,9 +9,9 @@
     <Company>BenHauman</Company>
   </PropertyGroup>
 
-  <PropertyGroup>
+  <!--<PropertyGroup>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-  </PropertyGroup>
+  </PropertyGroup>-->
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

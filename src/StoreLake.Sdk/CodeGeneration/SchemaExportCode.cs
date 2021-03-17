@@ -1,12 +1,15 @@
 ﻿using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml.Schema;
 
@@ -62,7 +65,7 @@ namespace StoreLake.Sdk.Database
             Microsoft.CSharp.CSharpCodeProvider codeProvider = new Microsoft.CSharp.CSharpCodeProvider();// //CodeDomProvider.CreateProvider(language);
 
             CodeCompileUnit ccu = new CodeCompileUnit();
-
+            AddAssemblyAttributes(ccu);
             GenerateDataSetClasses(ccu, schemaContent, namespaceName, codeProvider);
 
 
@@ -77,7 +80,7 @@ namespace StoreLake.Sdk.Database
 
             string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
             string fullFileName_err = System.IO.Path.Combine(outputdir, fileName + ".errors.txt");
-            CompileCode(ccu, fullFileName_dll, fullFileName_err);
+            CompileCode(ccu, outputdir, fileName, fullFileName_dll, fullFileName_err);
 
             Console.WriteLine(fullFileName_dll);
         }
@@ -1386,15 +1389,105 @@ namespace StoreLake.Sdk.Database
             return text.ToString();
         }
 
-        private static void CompileCode(CodeCompileUnit codeCompileUnit, string outputAssemblyFullFileName, string outputErrorsFullFileName)
+        private static string GetSnkPath(string snkPath)
         {
-            CompilerParameters comparam = new CompilerParameters(new string[] { });
+            System.Reflection.Assembly asm = System.Reflection.Assembly.GetExecutingAssembly();
+            //string[] names = asm.GetManifestResourceNames();
+            string resourceName = "StoreLake.Sdk.CodeGeneration.GeneratedModel.snk";
+            //System.Reflection.ManifestResourceInfo rrr = asm.GetManifestResourceInfo(resourceName);
+            Stream streamSnk = asm.GetManifestResourceStream(resourceName);//"model.snk");
 
+            if (streamSnk == null)
+            {
+                throw new InvalidOperationException("No SNK resource.");
+            }
+
+            using (FileStream outputFileStream = new FileStream(snkPath, FileMode.CreateNew))
+            {
+                streamSnk.CopyTo(outputFileStream);
+            }
+
+            return snkPath;
+        }
+
+
+        internal  static void AddAssemblyAttributes(CodeCompileUnit ccu)
+        {
+            CodeAttributeDeclaration attributeAssemblyVersion = new CodeAttributeDeclaration(typeof(AssemblyVersionAttribute).FullName);
+            attributeAssemblyVersion.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("1.0.0.0")));
+            ccu.AssemblyCustomAttributes.Add(attributeAssemblyVersion);
+
+            CodeAttributeDeclaration attributeAssemblyFileVersion = new CodeAttributeDeclaration(typeof(AssemblyFileVersionAttribute).FullName);
+            attributeAssemblyFileVersion.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("1.0.0.0")));
+            ccu.AssemblyCustomAttributes.Add(attributeAssemblyFileVersion);
+
+            CodeAttributeDeclaration attributeAssemblyTitle = new CodeAttributeDeclaration(typeof(AssemblyTitleAttribute).FullName);
+            attributeAssemblyTitle.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("generated")));
+            ccu.AssemblyCustomAttributes.Add(attributeAssemblyTitle);
+
+            CodeAttributeDeclaration attributeAssemblyDescription = new CodeAttributeDeclaration(typeof(AssemblyDescriptionAttribute).FullName);
+            attributeAssemblyDescription.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("generated")));
+            ccu.AssemblyCustomAttributes.Add(attributeAssemblyDescription);
+
+            //CodeAttributeDeclaration attributeAssemblyGuid = new CodeAttributeDeclaration(typeof(System.Runtime.InteropServices.GuidAttribute).FullName);
+            //attributeAssemblyGuid.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression(ModelAssemblyGuid.ToString())));
+            //ccu.AssemblyCustomAttributes.Add(attributeAssemblyGuid);
+
+            CodeAttributeDeclaration attributeComVisible = new CodeAttributeDeclaration(typeof(ComVisibleAttribute).FullName);
+            attributeComVisible.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression(false)));
+            ccu.AssemblyCustomAttributes.Add(attributeComVisible);
+
+            CodeAttributeDeclaration attributeAssemblyProduct = new CodeAttributeDeclaration(typeof(AssemblyProductAttribute).FullName);
+            attributeAssemblyProduct.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("Model")));
+            ccu.AssemblyCustomAttributes.Add(attributeAssemblyProduct);
+
+            CodeAttributeDeclaration attributeAssemblyCompany = new CodeAttributeDeclaration(typeof(AssemblyCompanyAttribute).FullName);
+            attributeAssemblyCompany.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("By StoreLake")));
+            ccu.AssemblyCustomAttributes.Add(attributeAssemblyCompany);
+
+            CodeAttributeDeclaration attributeAssemblyCopyright = new CodeAttributeDeclaration(typeof(AssemblyCopyrightAttribute).FullName);
+            attributeAssemblyCopyright.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("Copyright © 20'21")));
+            ccu.AssemblyCustomAttributes.Add(attributeAssemblyCopyright);
+
+            CodeAttributeDeclaration attributeAssemblyTrademark = new CodeAttributeDeclaration(typeof(AssemblyTrademarkAttribute).FullName);
+            attributeAssemblyTrademark.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("")));
+            ccu.AssemblyCustomAttributes.Add(attributeAssemblyTrademark);
+
+            CodeAttributeDeclaration attributeAssemblyConfiguration = new CodeAttributeDeclaration(typeof(AssemblyConfigurationAttribute).FullName);
+            attributeAssemblyConfiguration.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("")));
+            ccu.AssemblyCustomAttributes.Add(attributeAssemblyConfiguration);
+
+            CodeAttributeDeclaration attributeAssemblyCulture = new CodeAttributeDeclaration(typeof(AssemblyCultureAttribute).FullName);
+            attributeAssemblyCulture.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("")));
+            ccu.AssemblyCustomAttributes.Add(attributeAssemblyCulture);
+
+        }
+
+
+        private static void CompileCode(CodeCompileUnit codeCompileUnit, string outputFolder, string fileName, string outputAssemblyFullFileName, string outputErrorsFullFileName)
+        {
+            DirectoryInfo tempDirInfo = new DirectoryInfo(Path.Combine(outputFolder, "TempFiles", DateTime.UtcNow.Ticks + "_" + fileName));
+            if (tempDirInfo.Exists)
+            {
+                tempDirInfo.Delete(true);
+            }
+            tempDirInfo.Create();
+
+            string snkPath = GetSnkPath(Path.Combine(tempDirInfo.FullName, "GeneratedModel.snk"));
+
+            StringBuilder compilerOpt = new StringBuilder();
+            //compilerOpt.AppendFormat("/lib:\"{0}\" ", "binDirectoryFullName");
+            compilerOpt.AppendFormat("/keyfile:\"{0}\" ", snkPath);
+            CompilerParameters comparam = new CompilerParameters(new string[] { });
+            comparam.CompilerOptions = compilerOpt.ToString(); // "/optimize";
+            comparam.WarningLevel = 4; // max
             comparam.GenerateInMemory = false;
             //Indicates whether the output is an executable.  
             comparam.GenerateExecutable = false;
             comparam.IncludeDebugInformation = true;
             comparam.TempFiles.KeepFiles = true;
+            comparam.TempFiles = new TempFileCollection(tempDirInfo.FullName, true);
+            //  compilerOptions.ReferencedAssemblies.Add(new FileInfo(typeof(System.ComponentModel.DescriptionAttribute).Assembly.Location).Name); // system.dll
             //provide the name of the class which contains the Main Entry //point method  
             //comparam.MainClass = "mynamespace.CMyclass";
             //provide the path where the generated assembly would be placed  

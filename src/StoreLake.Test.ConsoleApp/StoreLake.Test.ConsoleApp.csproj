@@ -24,11 +24,23 @@
       <HintPath>..\ThirdParty\Dibix.Dapper.1.0.0\lib\net452\Dibix.Dapper.dll</HintPath>
     </Reference>
     <Reference Include="HelplineData.TestStore">
-      <HintPath>..\..\..\..\Helpline\Current\bin\Debug\output\database\HelplineData.TestStore.dll</HintPath>
+      <HintPath>DemoStores\HelplineData.TestStore.dll</HintPath>
+      <Private>false</Private>
     </Reference>
     <Reference Include="SLM.Database.Data.TestStore">
-      <HintPath>..\..\..\..\Helpline\Current\bin\Debug\output\database\SLM.Database.Data.TestStore.dll</HintPath>
+      <HintPath>DemoStores\SLM.Database.Data.TestStore.dll</HintPath>
+      <Private>false</Private>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="DemoStores\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="App.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
