@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace StoreLake.Sdk.Database
+namespace StoreLake.Sdk.CodeGeneration
 {
     internal sealed class StoreLakeTableKeyRegistration
     {

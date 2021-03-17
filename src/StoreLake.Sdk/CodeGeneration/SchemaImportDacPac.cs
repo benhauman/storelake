@@ -8,7 +8,7 @@ using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
 
-namespace StoreLake.Sdk.Database
+namespace StoreLake.Sdk.CodeGeneration
 {
     [DebuggerDisplay("{DacPacAssemblyAssemblyName} : {DacPacAssemblyLogicalName}")]
     internal sealed class DacPacRegistration
@@ -20,12 +20,15 @@ namespace StoreLake.Sdk.Database
         }
 
         internal string DacPacAssemblyAssemblyName { get; set; }
+        internal string DacPacAssemblyFileName { get; set; }
         internal string DacPacAssemblyLogicalName { get; set; }
         public string UniqueKey { get; internal set; }
         public int DacPacDependencyLevel { get; internal set; }
+        public string DacPacTestStoreAssemblyFileName { get; internal set; }
 
         internal readonly IDictionary<string, DacPacRegistration> referenced_dacpacs = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
         internal readonly IDictionary<string, bool> registered_tables = new SortedDictionary<string, bool>(); // < ;
+        internal readonly IDictionary<string, string> referenced_assemblies = new SortedDictionary<string, string>(); // assemblyname/assemblylocation;
     }
 
 
@@ -43,17 +46,17 @@ namespace StoreLake.Sdk.Database
 
     public static class SchemaImportDacPac // 'Dedicated Administrator Connection (for Data Tier Application) Package'
     {
-        public static RegistrationResult ImportDacPac(string databaseName, string dacpacFullFileName)
+        public static RegistrationResult ImportDacPac(string databaseName, string inputdir, string dacpacFullFileName)
         {
             //string databaseName = "DemoTestData";
             DataSet ds = new DataSet() { Namespace = "[dbo]" }; // see 'https://www.codeproject.com/articles/30490/how-to-manually-create-a-typed-datatable'
             RegistrationResult ctx = new RegistrationResult(ds);
-            RegisterDacpac(" ", ctx, dacpacFullFileName);
+            RegisterDacpac(" ", ctx, inputdir, dacpacFullFileName);
             return ctx;
         }
 
 
-        private static DacPacRegistration RegisterDacpac(string outputprefix, RegistrationResult ctx, string filePath)
+        private static DacPacRegistration RegisterDacpac(string outputprefix, RegistrationResult ctx, string inputdir, string filePath)
         {
             DacPacRegistration dacpac;
             if (ctx.procesed_files.TryGetValue(filePath.ToUpperInvariant(), out dacpac))
@@ -80,12 +83,27 @@ namespace StoreLake.Sdk.Database
                                 && e.Attributes().Any(a => a.Name.LocalName == "Category" && a.Value == "Reference")
                                 && e.Attributes().Any(a => a.Name.LocalName == "Type" && a.Value == "Assembly")
                                 );
+                            XElement xReference_Assembly_FileName = xReference_Assembly.Elements().Single(e => e.Name.LocalName == "Metadata"
+                                    && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "FileName")
+                                    && e.Attributes().Any(a => a.Name.LocalName == "Value")
+                                    );
+
                             XElement xReference_Assembly_AssemblyName = xReference_Assembly.Elements().Single(e => e.Name.LocalName == "Metadata"
                                     && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "AssemblyName")
                                     && e.Attributes().Any(a => a.Name.LocalName == "Value")
                                     );
                             dacpac.DacPacAssemblyAssemblyName = xReference_Assembly_AssemblyName.Attributes().Single(a => a.Name.LocalName == "Value").Value;
                             dacpac.UniqueKey = dacpac.DacPacAssemblyAssemblyName.ToUpperInvariant();
+                            dacpac.DacPacAssemblyFileName = xReference_Assembly_FileName.Attributes().Single(a => a.Name.LocalName == "Value").Value.Replace(@"\\", @"\");
+
+
+                            string dacpacDllFileName = Path.GetFileName(dacpac.DacPacAssemblyFileName);
+                            string dacpacDllFullFileName = Path.Combine(inputdir, dacpacDllFileName);
+                            Console.WriteLine("Load '" + dacpacDllFullFileName + "'...");
+                            if (!File.Exists(dacpacDllFullFileName))
+                            {
+                                throw new NotSupportedException("File could not be found:" + dacpacDllFullFileName);
+                            }
 
                             XElement xReference_Assembly_LogicalName = xReference_Assembly.Elements().Single(e => e.Name.LocalName == "Metadata"
                                    && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "LogicalName")
@@ -133,7 +151,7 @@ namespace StoreLake.Sdk.Database
                                     }
                                     else
                                     {
-                                        external_dacpac = RegisterDacpac(outputprefix + "   ", ctx, dacpacFileName);
+                                        external_dacpac = RegisterDacpac(outputprefix + "   ", ctx, inputdir, dacpacFileName);
 
                                     }
 

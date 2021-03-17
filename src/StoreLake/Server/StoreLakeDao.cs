@@ -559,7 +559,7 @@ namespace StoreLake.TestStore.Server
             { typeof(long).FullName, "long" },
             { typeof(short).FullName, "short" },
             { typeof(string).FullName, "string" },
-    };
+        };
     }
     [DebuggerDisplay("{CommandTextOwner.Name}.{_handlerMethodName}")]
     internal sealed class CommandExecutionHandlerImpl : CommandExecutionHandler

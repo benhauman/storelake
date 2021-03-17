@@ -13,12 +13,13 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml.Schema;
 
-namespace StoreLake.Sdk.Database
+namespace StoreLake.Sdk.CodeGeneration
 {
     public static class SchemaExportCode
     {
-        public static void ExportTypedDataSetCode(RegistrationResult rr, string outputdir, string dacNameFilter)
+        public static void ExportTypedDataSetCode(RegistrationResult rr, string inputdir, string outputdir, string dacNameFilter)
         {
+            AssemblyResolver assemblyResolver = new AssemblyResolver();
             var level_count = rr.registered_dacpacs.Values.Max(x => x.DacPacDependencyLevel);
             for (int level = 1; level <= level_count; level++)
             {
@@ -45,7 +46,7 @@ namespace StoreLake.Sdk.Database
                             SchemaExportCode.ExportSchemaXsd(rr.ds, schemaFileName);
                             string schemaContent = File.ReadAllText(schemaFileName);
 
-                            ImportSchemasAsDataSets(rr, dacpac, schemaContent, outputdir, filenameNoExtension, dacName);
+                            ImportSchemasAsDataSets(assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName);
                         }
                     }
 
@@ -60,16 +61,19 @@ namespace StoreLake.Sdk.Database
         }
 
 
-        private static void ImportSchemasAsDataSets(RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string outputdir, string fileName, string namespaceName)
+        private static void ImportSchemasAsDataSets(AssemblyResolver  assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName)
         {
             Microsoft.CSharp.CSharpCodeProvider codeProvider = new Microsoft.CSharp.CSharpCodeProvider();// //CodeDomProvider.CreateProvider(language);
 
             CodeCompileUnit ccu = new CodeCompileUnit();
+            CompilerParameters comparam = new CompilerParameters(new string[] { });
             AddAssemblyAttributes(ccu);
             GenerateDataSetClasses(ccu, schemaContent, namespaceName, codeProvider);
 
 
             Adjust_CCU(rr, dacpac, ccu);
+
+            StoreAccessorCodeGenerator.GeneratorAccessors(assemblyResolver, dacpac, comparam, ccu, inputdir);
 
             using (TextWriter textWriter = new StreamWriter(Path.Combine(outputdir, fileName + ".cs"), append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
             //using (TextWriter textWriter = CreateOutputWriter(Path.Combine(outputdir, path), fileName, "cs"))
@@ -80,8 +84,10 @@ namespace StoreLake.Sdk.Database
 
             string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
             string fullFileName_err = System.IO.Path.Combine(outputdir, fileName + ".errors.txt");
-            CompileCode(ccu, outputdir, fileName, fullFileName_dll, fullFileName_err);
+            CompileCode(comparam, ccu, outputdir, fileName, fullFileName_dll, fullFileName_err);
 
+            assemblyResolver.ResolveAssembyByLocation(fullFileName_dll);
+            dacpac.DacPacTestStoreAssemblyFileName = fullFileName_dll;
             Console.WriteLine(fullFileName_dll);
         }
 
@@ -619,7 +625,30 @@ namespace StoreLake.Sdk.Database
                 }
             }
         }
-
+        internal static IDictionary<string, string> _builtinTypeAlias = new SortedDictionary<string, string>() {
+            { typeof(bool).FullName, "bool" },
+            { typeof(byte).FullName, "byte" },
+            { typeof(char).FullName, "char" },
+            { typeof(Decimal).FullName, "decimal" },
+            { typeof(double).FullName, "double" },
+            { typeof(float).FullName, "float" }, // Single
+            { typeof(int).FullName, "int" },
+            { typeof(long).FullName, "long" },
+            { typeof(short).FullName, "short" },
+            { typeof(string).FullName, "string" },
+        };
+        private static readonly IDictionary<string, string> notnull_nullable_map = new Dictionary<string, string>() {
+                        { typeof(int).FullName, "int?" },
+                        { typeof(short).FullName, "short?" },
+                        { typeof(bool).FullName, "bool?" },
+                        { typeof(DateTime).FullName, "System.DateTime?" },
+                        { typeof(Decimal).FullName, "decimal?" },
+                        { typeof(Guid).FullName, "System.Guid?" },
+                        { typeof(long).FullName, "long?" },
+                        { typeof(float).FullName, "float?" }, // Single
+                        { typeof(byte).FullName, "byte?" },
+                        { typeof(string).FullName, "string" },
+                    };
         private static void Adjust_Row_Column_Accessor(DataTable table, CodeMemberProperty member_property)
         {
             string column_name = member_property.Name;
@@ -649,67 +678,12 @@ namespace StoreLake.Sdk.Database
             {
                 if (column.DataType.IsValueType || column.DataType == typeof(string))
                 {
-                    IDictionary<string, string> notnull_nullable_map = new Dictionary<string, string>() {
-                        { typeof(int).FullName, "int?" },
-                        { typeof(short).FullName, "short?" },
-                        { typeof(bool).FullName, "bool?" },
-                        { typeof(DateTime).FullName, "System.DateTime?" },
-                        { typeof(Decimal).FullName, "decimal?" },
-                        { typeof(Guid).FullName, "System.Guid?" },
-                        { typeof(long).FullName, "long?" },
-                        { typeof(float).FullName, "float?" }, // Single
-                        { typeof(byte).FullName, "byte?" },
-                        { typeof(string).FullName, "string" },
-                    };
+
                     string nullableTypeName;
                     if (notnull_nullable_map.TryGetValue(column.DataType.FullName, out nullableTypeName))
                     {
                         Adjust_Row_Column_Accessor_Nullable_Get(table.TableName, nullableTypeName, member_property);
                     }
-                    //if (column.DataType == typeof(int) && member_property.Type.BaseType == typeof(int).FullName)
-                    //{
-                    //    Adjust_Row_Column_Accessor_Nullable_Get(table.TableName, "int?", member_property);
-                    //}
-                    //else if (column.DataType == typeof(long) && member_property.Type.BaseType == typeof(long).FullName)
-                    //{
-                    //    member_property.Type = new CodeTypeReference("long?");
-                    //}
-                    //else if (column.DataType == typeof(short) && member_property.Type.BaseType == typeof(short).FullName)
-                    //{
-                    //    Adjust_Row_Column_Accessor_Nullable_Get(table.TableName, "short?", member_property);
-                    //}
-                    //else if (column.DataType == typeof(byte) && member_property.Type.BaseType == typeof(byte).FullName)
-                    //{
-                    //    member_property.Type = new CodeTypeReference("byte?");
-                    //}
-                    //else if (column.DataType == typeof(bool) && member_property.Type.BaseType == typeof(bool).FullName)
-                    //{
-                    //    Adjust_Row_Column_Accessor_Nullable_Get(table.TableName, "bool?", member_property);
-                    //}
-                    //else if (column.DataType == typeof(DateTime) && member_property.Type.BaseType == typeof(DateTime).FullName)
-                    //{
-                    //    member_property.Type = new CodeTypeReference("System.DateTime?");
-                    //}
-                    //else if (column.DataType == typeof(decimal) && member_property.Type.BaseType == typeof(decimal).FullName)
-                    //{
-                    //    member_property.Type = new CodeTypeReference("decimal?");
-                    //}
-                    //else if (column.DataType == typeof(Single) && member_property.Type.BaseType == typeof(Single).FullName)
-                    //{
-                    //    // [hlsysbaselineattr] 'numbermin
-                    //    member_property.Type = new CodeTypeReference("System.Single?");
-                    //}
-                    //else if (column.DataType == typeof(Guid) && member_property.Type.BaseType == typeof(Guid).FullName)
-                    //{
-                    //    member_property.Type = new CodeTypeReference("System.Guid?");
-                    //}
-                    //else if (
-                    //   (column.DataType == typeof(int) && member_property.Type.BaseType == typeof(int?).FullName)
-                    //|| (column.DataType == typeof(string) && member_property.Type.BaseType == typeof(string).FullName)
-                    //        )
-                    //{
-                    //    // ok
-                    //}
                     else
                     {
                         throw new NotImplementedException("Row property type for nullable column  [" + table.TableName + "] '" + column.ColumnName + "' (" + column.DataType.Name + ")=[" + member_property.Type.BaseType + "]");
@@ -1464,7 +1438,7 @@ namespace StoreLake.Sdk.Database
         }
 
 
-        private static void CompileCode(CodeCompileUnit codeCompileUnit, string outputFolder, string fileName, string outputAssemblyFullFileName, string outputErrorsFullFileName)
+        private static void CompileCode(CompilerParameters comparam, CodeCompileUnit codeCompileUnit, string outputFolder, string fileName, string outputAssemblyFullFileName, string outputErrorsFullFileName)
         {
             DirectoryInfo tempDirInfo = new DirectoryInfo(Path.Combine(outputFolder, "TempFiles", DateTime.UtcNow.Ticks + "_" + fileName));
             if (tempDirInfo.Exists)
@@ -1478,7 +1452,7 @@ namespace StoreLake.Sdk.Database
             StringBuilder compilerOpt = new StringBuilder();
             //compilerOpt.AppendFormat("/lib:\"{0}\" ", "binDirectoryFullName");
             compilerOpt.AppendFormat("/keyfile:\"{0}\" ", snkPath);
-            CompilerParameters comparam = new CompilerParameters(new string[] { });
+            //CompilerParameters comparam = new CompilerParameters(new string[] { });
             comparam.CompilerOptions = compilerOpt.ToString(); // "/optimize";
             comparam.WarningLevel = 4; // max
             comparam.GenerateInMemory = false;

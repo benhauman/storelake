@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 
-namespace StoreLake.Sdk.Database
+namespace StoreLake.Sdk.CodeGeneration
 {
     internal static class DatabaseRegistration
     {
