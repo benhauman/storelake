@@ -37,7 +37,8 @@ namespace StoreLake.TestStore.Server
         {
             return new StoreLakeDbCommand(connection)
             {
-                ExecuteDbDataReader_Override = (cmd, cb) => ExecuteDbDataReader(cb, cmd)
+                ExecuteDbDataReader_Override = (cmd, cb) => HandleExecuteDbDataReader(cb, cmd),
+                ExecuteNonQuery_Override = (cmd) => HandleExecuteNonQuery(cmd)
             };
         }
 
@@ -57,7 +58,45 @@ namespace StoreLake.TestStore.Server
 
         private readonly List<CommandExecutionHandler> handlers = new List<CommandExecutionHandler>();
 
-        private DbDataReader ExecuteDbDataReader(CommandBehavior cb, DbCommand cmd)
+
+
+        private int HandleExecuteNonQuery(DbCommand cmd)
+        {
+            string databaseName = cmd.Connection.Database;
+            if (!_dbs.TryGetValue(databaseName.ToUpperInvariant(), out DataSet db))
+            //if (!string.Equals(_db.DataSetName, databaseName, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Unknown datatabase [" + databaseName + "]");
+            }
+            Func<DataSet, DbCommand, int> handlerMethod = null;
+            foreach (var handler in handlers)
+            {
+                Func<DataSet, DbCommand, int> x_handlerMethod = StoreLakeDao.TryWrite(handler, cmd);
+                if (x_handlerMethod != null)
+                {
+                    if (handlerMethod != null)
+                    {
+                        // another handler for the same command text or the command text comparer is not unique enough 
+                        throw new InvalidOperationException("Multiple handlers found for Command (" + cmd.Parameters.Count + "):" + cmd.CommandText);
+                    }
+
+                    handlerMethod = x_handlerMethod;
+                }
+                else
+                {
+                    // this handler does not handles this command text
+                }
+            }
+
+            if (handlerMethod != null)
+            {
+                int res = handlerMethod(db, cmd);
+                return res;
+            }
+            throw new NotImplementedException("SQL (" + cmd.Parameters.Count + "):" + cmd.CommandText);
+        }
+
+        private DbDataReader HandleExecuteDbDataReader(CommandBehavior cb, DbCommand cmd)
         {
             string databaseName = cmd.Connection.Database;
             if (!_dbs.TryGetValue(databaseName.ToUpperInvariant(), out DataSet db))
@@ -100,10 +139,15 @@ namespace StoreLake.TestStore.Server
 
         public StoreLakeDbServer RegisterCommandHandlerMethods(Type accessorType, Type handlerType)
         {
-            var mis = handlerType.GetMethods();
+            var mis = handlerType.GetMethods(
+                //System.Reflection.BindingFlags.Public 
+                //        | System.Reflection.BindingFlags.Instance
+                //        | System.Reflection.BindingFlags.Static
+                //        | System.Reflection.BindingFlags.FlattenHierarchy
+                        );
             foreach (var mi in mis)
             {
-                if (mi.DeclaringType != handlerType)
+                if (mi.DeclaringType == typeof(object))
                 {
                     // skip 'Equals', 'ToString', 'GetHashCode'
                 }

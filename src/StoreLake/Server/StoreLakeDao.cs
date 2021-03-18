@@ -34,10 +34,6 @@ namespace StoreLake.TestStore.Server
         }
         private static SortedDictionary<string, HandlerExecDesc> s_map_CommandText_Exec_Method = new SortedDictionary<string, HandlerExecDesc>();
 
-        internal static bool TryRead(object methodName, Type tAccessor, DataSet db, DbCommand cmdx, out DbDataReader res, Func<DataSet, DbCommand, DbDataReader> p)
-        {
-            throw new NotImplementedException();
-        }
 
         internal static Func<DataSet, DbCommand, DbDataReader> TryRead(CommandExecutionHandler handlerRegistry, DbCommand cmd)
         {
@@ -62,7 +58,7 @@ namespace StoreLake.TestStore.Server
 
                 if (isOk)
                 {
-                    Func<DataSet, DbCommand, DbDataReader> handlerMethod = handlerRegistry.CompiledMReadethod();
+                    Func<DataSet, DbCommand, DbDataReader> handlerMethod = handlerRegistry.CompiledReadMethod();
                     handler = new HandlerReadDesc(handlerRegistry.RetrieveHandlerMethodName(), handlerMethod);
                     s_map_CommandText_Read_Method.Add(cmd.CommandText, handler);
                 }
@@ -86,7 +82,55 @@ namespace StoreLake.TestStore.Server
             return null;
         }
 
-        internal static bool TryWrite(Type tAccessor, DataSet db, DbCommand cmd, out int rslt, System.Linq.Expressions.Expression<Func<DataSet, DbCommand, int>> handlerExpr)
+
+        internal static Func<DataSet, DbCommand, int> TryWrite(CommandExecutionHandler handlerRegistry, DbCommand cmd)
+        {
+            HandlerExecDesc handler;
+            if (!s_map_CommandText_Exec_Method.TryGetValue(cmd.CommandText, out handler))
+            {
+                // not yet cached
+                IComparable handlerCommandText = handlerRegistry.RetrieveCommandText();// GetCommandTextImpl(tAccessor, handlerMethodName);
+
+                string handlerCommandTextX = handlerCommandText as string;
+
+                bool isOk;
+                if (handlerCommandTextX == null)
+                {
+                    isOk = handlerCommandText.CompareTo(cmd) == 0;
+                }
+                else
+                {
+                    isOk = string.Equals(cmd.CommandText, handlerCommandTextX);
+                }
+
+
+                if (isOk)
+                {
+                    Func<DataSet, DbCommand, int> handlerMethod = handlerRegistry.CompiledExecMethod();
+                    handler = new HandlerExecDesc(handlerRegistry.RetrieveHandlerMethodName(), handlerMethod);
+                    s_map_CommandText_Exec_Method.Add(cmd.CommandText, handler);
+                }
+                else
+                {
+                    handler = null;
+                }
+            }
+            else
+            {
+                // registered
+            }
+
+            if (handler != null && handler.MethodName == handlerRegistry.RetrieveHandlerMethodName())
+            {
+
+                return handler.HandlerMethod;
+            }
+
+
+            return null;
+        }
+
+        internal static bool TryWriteX(Type tAccessor, DataSet db, DbCommand cmd, out int rslt, System.Linq.Expressions.Expression<Func<DataSet, DbCommand, int>> handlerExpr)
         {
             System.Linq.Expressions.MethodCallExpression methodCallExpr = (System.Linq.Expressions.MethodCallExpression)handlerExpr.Body;
             string handlerMethodName = methodCallExpr.Method.Name;
@@ -190,7 +234,8 @@ namespace StoreLake.TestStore.Server
     {
         internal abstract string RetrieveHandlerMethodName();
         internal abstract IComparable RetrieveCommandText();
-        internal abstract Func<DataSet, DbCommand, DbDataReader> CompiledMReadethod();
+        internal abstract Func<DataSet, DbCommand, DbDataReader> CompiledReadMethod();
+        internal abstract Func<DataSet, DbCommand, int> CompiledExecMethod();
     }
 
     [DebuggerDisplay("{DebuggerText}")]
@@ -199,13 +244,19 @@ namespace StoreLake.TestStore.Server
         private readonly Type _instanceType;
         private readonly MethodInfo _mi;
         private readonly IComparable _commandText;
-        Func<DataSet, DbCommand, DbDataReader> _compiledMethod;
+        Func<DataSet, DbCommand, DbDataReader> _compiledMethod_Read;
+        Func<DataSet, DbCommand, int> _compiledMethod_Exec;
         public TypedMethodHandler(Type instanceType, MethodInfo mi, IComparable commandText)
         {
             _instanceType = instanceType;
             _mi = mi;
             _commandText = commandText;
         }
+
+        public TypedMethodHandler()
+        {
+        }
+
         internal string DebuggerText
         {
             get
@@ -255,11 +306,15 @@ namespace StoreLake.TestStore.Server
             return _mi.Name;
         }
 
-        internal override Func<DataSet, DbCommand, DbDataReader> CompiledMReadethod()
+        internal override Func<DataSet, DbCommand, DbDataReader> CompiledReadMethod()
         {
             return HandleRead;
         }
 
+        internal override Func<DataSet, DbCommand, int> CompiledExecMethod()
+        {
+            return HandleExec;
+        }
 
         internal static string BuildMismatchMethodExpectionText(System.Reflection.MethodInfo a_method, System.Reflection.MethodInfo h_method, string reason)
         {
@@ -335,6 +390,68 @@ namespace StoreLake.TestStore.Server
             }
         }
 
+        private int HandleExec(DataSet db, DbCommand cmd)
+        {
+            var prms = _mi.GetParameters();
+
+            List<object> parameter_values = new List<object>();
+            parameter_values.Add(db);
+            if (prms.Length == 2 && prms[1].ParameterType == typeof(DbCommand))
+            {
+                parameter_values.Add(cmd);
+
+                if (_compiledMethod_Exec == null)
+                {
+                    _compiledMethod_Exec = CommandExecutionHandlerImpl.CompileKnownMethodSignatureExec(_mi.IsStatic, _mi, _instanceType);
+                }
+
+                if (_mi.IsStatic)
+                {
+
+
+                    return _compiledMethod_Exec(db, cmd);
+                }
+                else
+                {
+                    throw new NotImplementedException("public DbDataReader " + _mi.Name + "(DataSet db, DbCommand cmd) of '" + _instanceType.Name + "'");
+
+                }
+            }
+            else
+            {
+                List<object> invoke_parameters = new List<object>();
+                invoke_parameters.Add(db);
+
+                StringBuilder debug_params = new StringBuilder();
+                for (int ix = 1; ix < prms.Length; ix++)
+                {
+                    ParameterInfo method_prm = prms[ix];
+                    var cmd_prm = cmd.Parameters[method_prm.Name];
+
+                    object prm_value = GetTypedCommandParameter(cmd, method_prm);
+                    invoke_parameters.Add(prm_value);
+
+                    string debug_method_prm; debug_method_prm = TypeNameAsText(method_prm.ParameterType);
+                    debug_params.Append(", " + debug_method_prm + " " + method_prm.Name);
+                }
+
+                if (_mi.IsStatic)
+                {
+                    object returnValues = _mi.Invoke(null, invoke_parameters.ToArray());
+                    return returnValues == null ? 0 : (int)returnValues;
+                }
+                else
+                {
+                    object handlerInstance = Activator.CreateInstance(this._instanceType);
+                    object returnValues = _mi.Invoke(handlerInstance, invoke_parameters.ToArray());
+
+                    return returnValues == null ? 0 : (int)returnValues;
+                    //string debug_ret; debug_ret = TypeNameAsText(_mi.ReturnType);
+                    //throw new NotImplementedException("public " + debug_ret + " " + _mi.Name + "(DataSet db" + debug_params.ToString() + ") of '" + _instanceType.Name + "'");
+                }
+            }
+        }
+
         private DbDataReader HandleRead(DataSet db, DbCommand cmd)
         {
             var prms = _mi.GetParameters();
@@ -345,16 +462,16 @@ namespace StoreLake.TestStore.Server
             {
                 parameter_values.Add(cmd);
 
-                if (_compiledMethod == null)
+                if (_compiledMethod_Read == null)
                 {
-                    _compiledMethod = CommandExecutionHandlerImpl.CompileKnownMethodSignature(_mi.IsStatic, _mi, _instanceType);
+                    _compiledMethod_Read = CommandExecutionHandlerImpl.CompileKnownMethodSignatureRead(_mi.IsStatic, _mi, _instanceType);
                 }
 
                 if (_mi.IsStatic)
                 {
 
 
-                    return _compiledMethod(db, cmd);
+                    return _compiledMethod_Read(db, cmd);
                 }
                 else
                 {
@@ -537,7 +654,7 @@ namespace StoreLake.TestStore.Server
                     }
                 }
 
-                if (returnValues.GetType().IsPrimitive 
+                if (returnValues.GetType().IsPrimitive
                     || returnValues.GetType() == typeof(string)
                     || returnValues.GetType() == typeof(Guid)
                     || returnValues.GetType() == typeof(DateTime)
@@ -568,6 +685,7 @@ namespace StoreLake.TestStore.Server
             string debug_method_prm; debug_method_prm = TypeNameAsText(method_prm.ParameterType);
             throw new NotImplementedException("Command parameter for { " + debug_method_prm + " " + method_prm.Name + " }");
         }
+
 
         private static IDictionary<string, string> _builtinTypeAlias = new SortedDictionary<string, string>() {
             { typeof(bool).FullName, "bool" },
@@ -602,18 +720,22 @@ namespace StoreLake.TestStore.Server
             CommandTextOwner = commandTextOwner ?? HandlerMethodOwner;
         }
 
+        private CommandExecutionHandlerImpl()
+        {
+        }
+
         internal override IComparable RetrieveCommandText()
         {
             IComparable handlerCommandText = StoreLakeDao.GetCommandTextImpl(this.CommandTextOwner, this._handlerMethodName); // or Invoker
             return handlerCommandText;
         }
 
-        internal override Func<DataSet, DbCommand, DbDataReader> CompiledMReadethod()
+        internal override Func<DataSet, DbCommand, DbDataReader> CompiledReadMethod()
         {
-            return CompileKnownMethodSignature(HandlerIsStatic, MethodCallExpr.Method, HandlerMethodOwner);
+            return CompileKnownMethodSignatureRead(HandlerIsStatic, MethodCallExpr.Method, HandlerMethodOwner);
         }
 
-        internal static Func<DataSet, DbCommand, DbDataReader> CompileKnownMethodSignature(bool HandlerIsStatic, MethodInfo mi, Type methodOwner)
+        internal static Func<DataSet, DbCommand, DbDataReader> CompileKnownMethodSignatureRead(bool HandlerIsStatic, MethodInfo mi, Type methodOwner)
         {
             // !!!! **** lubo: get rid of the cmd argument inside of the 'methodCallExpr' - just dont use if for compilation***!!!
             var parameter_db = Expression.Parameter(typeof(DataSet), "db");
@@ -633,9 +755,34 @@ namespace StoreLake.TestStore.Server
             return handlerMethod;
         }
 
+        internal static Func<DataSet, DbCommand, int> CompileKnownMethodSignatureExec(bool HandlerIsStatic, MethodInfo mi, Type methodOwner)
+        {
+            // !!!! **** lubo: get rid of the cmd argument inside of the 'methodCallExpr' - just dont use if for compilation***!!!
+            var parameter_db = Expression.Parameter(typeof(DataSet), "db");
+            var parameter_cmd = Expression.Parameter(typeof(DbCommand), "cmd");
+            MethodCallExpression call;
+            if (HandlerIsStatic)
+            {
+                call = Expression.Call(mi, parameter_db, parameter_cmd);// methodCallExpr.Arguments
+            }
+            else
+            {
+                Expression instance = Expression.New(methodOwner);
+                call = Expression.Call(instance, mi, parameter_db, parameter_cmd);// methodCallExpr.Arguments
+            }
+            Expression<Func<DataSet, DbCommand, int>> lambda = Expression.Lambda<Func<DataSet, DbCommand, int>>(call, parameter_db, parameter_cmd); // visitor.ExtractedParameters
+            Func<DataSet, DbCommand, int> handlerMethod = lambda.Compile();
+            return handlerMethod;
+        }
+
         internal override string RetrieveHandlerMethodName()
         {
             return this._handlerMethodName;
+        }
+
+        internal override Func<DataSet, DbCommand, int> CompiledExecMethod()
+        {
+            throw new NotImplementedException();
         }
     }
 }

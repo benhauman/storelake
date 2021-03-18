@@ -62,5 +62,10 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
 */
             return false;
         }
+
+        public override void AdministrationRefreshRelationModels(DataSet db)
+        {
+            // do nothing
+        }
     }
 }

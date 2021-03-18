@@ -66,6 +66,8 @@ namespace ConsoleApp4
 
             xDatabaseAccessorFactory databaseAccessorFactory = new xDatabaseAccessorFactory(dbClient, "Initial Catalog=MyDB");
 
+            Helpline.Data.HelplineData.AdministrationRefreshRelationModels(databaseAccessorFactory);
+
             var test8 = Helpline.Data.HelplineData.CanExecute(databaseAccessorFactory, 710, 123);
             Console.WriteLine("test8: " + test8);
 
