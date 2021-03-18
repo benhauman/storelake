@@ -77,7 +77,7 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 if (type.IsDefined(databaseAccessorAttributeType))
                 {
-                    GeneratorAccessorInterface(ccu, type);
+                    GenerateCommandHandlerFacade(ccu, type);
                 }
             }
 
@@ -108,11 +108,11 @@ namespace StoreLake.Sdk.CodeGeneration
 
         }
 
-        private static void GeneratorAccessorInterface(CodeCompileUnit ccu, Type databaseAccessorType)
+        private static void GenerateCommandHandlerFacade(CodeCompileUnit ccu, Type databaseAccessorType)
         {
             Console.WriteLine("" + databaseAccessorType.FullName);
             CodeNamespace ns = EnsureNamespace(ccu, databaseAccessorType);
-            CodeTypeDeclaration typedecl = BuildAccessorType(databaseAccessorType);
+            CodeTypeDeclaration typedecl = BuildCommandHandlerFacadeType(databaseAccessorType);
             ns.Types.Add(typedecl);
         }
 
@@ -138,10 +138,13 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static CodeTypeDeclaration BuildAccessorType(Type databaseAccessorType)
+        private static CodeTypeDeclaration BuildCommandHandlerFacadeType(Type databaseAccessorType)
         {
-            string typeName = "I" + databaseAccessorType.Name;
+            string typeName = databaseAccessorType.Name + "CommandHandlerFacade";
             CodeTypeDeclaration typedecl = new CodeTypeDeclaration() { Name = typeName, IsClass = true, Attributes = MemberAttributes.Public };
+
+            //typedecl.Comments.Add(new CodeCommentStatement("Generated (at:" + DateTime.UtcNow + ")", true));
+            typedecl.CustomAttributes.Add(new CodeAttributeDeclaration(new CodeTypeReference(typeof(System.ComponentModel.DescriptionAttribute)), new CodeAttributeArgument(new CodePrimitiveExpression("Generated (at:" + DateTime.UtcNow + ")"))));
 
             foreach (MethodInfo accessMethod in databaseAccessorType.GetMethods(BindingFlags.Public | BindingFlags.Static))
             {

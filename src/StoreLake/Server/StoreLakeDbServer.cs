@@ -93,8 +93,12 @@ namespace StoreLake.TestStore.Server
             throw new NotImplementedException("SQL (" + cmd.Parameters.Count + "):" + cmd.CommandText);
         }
 
+        public StoreLakeDbServer RegisterCommandHandlerFacade<THandler>(Type accessorType) where THandler : class, new()
+        {
+            return RegisterCommandHandlerMethods(accessorType, typeof(THandler));
+        }
 
-        public StoreLakeDbServer RegisterTypedHandler(Type accessorType, Type handlerType)
+        public StoreLakeDbServer RegisterCommandHandlerMethods(Type accessorType, Type handlerType)
         {
             var mis = handlerType.GetMethods();
             foreach (var mi in mis)

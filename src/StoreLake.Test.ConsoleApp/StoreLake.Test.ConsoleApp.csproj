@@ -23,6 +23,10 @@
     <Reference Include="Dibix.Dapper">
       <HintPath>..\ThirdParty\Dibix.Dapper.1.0.0\lib\net452\Dibix.Dapper.dll</HintPath>
     </Reference>
+    <Reference Include="HelplineData">
+      <HintPath>DemoStores\HelplineData.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="HelplineData.TestStore">
       <HintPath>DemoStores\HelplineData.TestStore.dll</HintPath>
       <Private>false</Private>

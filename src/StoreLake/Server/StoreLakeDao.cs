@@ -388,9 +388,13 @@ namespace StoreLake.TestStore.Server
                 }
                 else
                 {
+                    object handlerInstance = Activator.CreateInstance(this._instanceType);
+                    object returnValues = _mi.Invoke(handlerInstance, invoke_parameters.ToArray());
 
-                    string debug_ret; debug_ret = TypeNameAsText(_mi.ReturnType);
-                    throw new NotImplementedException("public " + debug_ret + " " + _mi.Name + "(DataSet db" + debug_params.ToString() + ") of '" + _instanceType.Name + "'");
+                    DbDataReader result = CreateDbDataReaderFromSingleSetReturnValues(_mi.ReturnType, returnValues); // single/multiple result set(from dibix); enumerable or not; complex or not(names for columns?(from SQL/accessor)) 
+                    return result;
+                    //string debug_ret; debug_ret = TypeNameAsText(_mi.ReturnType);
+                    //throw new NotImplementedException("public " + debug_ret + " " + _mi.Name + "(DataSet db" + debug_params.ToString() + ") of '" + _instanceType.Name + "'");
                 }
             }
 
@@ -531,6 +535,23 @@ namespace StoreLake.TestStore.Server
                         }
                         return new DataTableReader(tb_table);
                     }
+                }
+
+                if (returnValues.GetType().IsPrimitive 
+                    || returnValues.GetType() == typeof(string)
+                    || returnValues.GetType() == typeof(Guid)
+                    || returnValues.GetType() == typeof(DateTime)
+                    )
+                {
+                    Type elementType = returnValues.GetType();
+                    var tb_table = new DataTable();
+                    var column_value = new DataColumn("value", elementType);
+                    tb_table.Columns.Add(column_value);
+
+                    DataRow row = tb_table.NewRow();
+                    row[column_value] = returnValues;
+                    tb_table.Rows.Add(row);
+                    return new DataTableReader(tb_table);
                 }
                 throw new NotImplementedException(returnValues.GetType().Name);
             }

@@ -50,17 +50,24 @@ namespace ConsoleApp4
             var agent2 = db.hlsysagent().AddRowWithValues(712, "InternetAgent2", null, null, 1); //e.active = 1; see 'DF_hlsysagent_active'
             //db.hlsysaccount().Last ;
 
+            db.hlsysagenttogroup().AddRowWithValues(710, 700);
+            db.hlsysglobalacl().AddRowWithValues(123, 700, 0x0010);
+
             Console.WriteLine("db.hlsysagent.Count:" + db.hlsysagent().Count);
 
             StoreLakeDbServer dbServer = new StoreLakeDbServer(db);
             //dbServer.RegisterHandlerReadWithCommandText((d, c) => DemoHandler1.GetAgentNameById(d, c)); // any / text-static
             //dbServer.RegisterHandlerReadForCommandText(typeof(TestDML), (d, c) => DemoHandler1.GetAgentInfoById(d, c)); // static-text / static
-            dbServer.RegisterTypedHandler(typeof(TestDML), typeof(DemoHandler1)); // dml.methods(+text) => handler(+text)
+            dbServer.RegisterCommandHandlerFacade<DemoHandler2>(typeof(Helpline.Data.HelplineData));
+            dbServer.RegisterCommandHandlerMethods(typeof(TestDML), typeof(DemoHandler1)); // dml.methods(+text) => handler(+text)
             //System.Data.SqlClient.SqlClientFactory
 
             DbProviderFactory dbClient = dbServer.CreateDbProviderFactoryInstance();
 
             xDatabaseAccessorFactory databaseAccessorFactory = new xDatabaseAccessorFactory(dbClient, "Initial Catalog=MyDB");
+
+            var test8 = Helpline.Data.HelplineData.CanExecute(databaseAccessorFactory, 710, 123);
+            Console.WriteLine("test8: " + test8);
 
             var test7 = TestDML.GetAllAgentIdentities(databaseAccessorFactory);
             foreach (var row in test7)
