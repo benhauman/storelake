@@ -1,6 +1,10 @@
 ﻿using System.Data;
 using Helpline.Data.TestStore;
 using System.Linq;
+using Helpline.Data;
+using System.Collections.Generic;
+using Microsoft.SqlServer.Server;
+using System;
 
 namespace ConsoleApp4
 {
@@ -67,5 +71,23 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
         {
             // do nothing
         }
+
+        public override int AddToWatchList(DataSet db, int agentid, IEnumerable<Tuple<int, int, int>> ids)
+        {
+            //Helpline.Data.IntThreeSet
+            //return base.AddToWatchList(db, agentid, ids);
+            return 999;
+        }
+
+        //public override int AddToWatchList(DataSet db, int agentid, IEnumerable<SqlDataRecord> ids)
+        //{
+        //    //System.Tuple<int, int, int>
+        //    return base.AddToWatchList(db, agentid, ids);
+        //}
+
+        //public int AddToWatchListX(DataSet db, int agentid, IntThreeSet ids)
+        //{
+        //    return 1;
+        //}
     }
 }

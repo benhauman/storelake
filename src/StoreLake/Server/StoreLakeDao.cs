@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.SqlServer.Server;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -383,7 +384,14 @@ namespace StoreLake.TestStore.Server
                     {
                         if (h_prm.ParameterType != a_prm.ParameterType)
                         {
-                            throw new InvalidOperationException(BuildMismatchMethodExpectionText(a_method, h_method, "Wrong handle parameter '" + h_prm.ParameterType + "' type at position:" + (ix + 1) + "/" + h_prms.Length));
+                            if (typeof(IEnumerable<SqlDataRecord>).IsAssignableFrom(a_prm.ParameterType))
+                            {
+                                // udt
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException(BuildMismatchMethodExpectionText(a_method, h_method, "Wrong handle parameter '" + h_prm.ParameterType + "' type at position:" + (ix + 1) + "/" + h_prms.Length));
+                            }
                         }
                     }
                 }
@@ -682,8 +690,57 @@ namespace StoreLake.TestStore.Server
                 return cmd.GetCommandParameterInt32NotNull(method_prm.Name);
             }
 
-            string debug_method_prm; debug_method_prm = TypeNameAsText(method_prm.ParameterType);
-            throw new NotImplementedException("Command parameter for { " + debug_method_prm + " " + method_prm.Name + " }");
+            Type parameterType = method_prm.ParameterType;
+            if (parameterType.IsGenericType && typeof(System.Collections.IEnumerable).IsAssignableFrom(parameterType))
+            {
+                string parameterName = method_prm.Name;
+                DbParameter prm = cmd.Parameters.TryFindParameter(parameterName);
+                if (prm == null)
+                {
+                    throw new InvalidOperationException("Parameter could not be found:" + parameterName);
+                }
+
+                if (prm.Value == null || prm.Value == DBNull.Value)
+                {
+                    throw new InvalidOperationException("Parameter value is null:" + parameterName);
+                }
+
+
+                IEnumerable<Microsoft.SqlServer.Server.SqlDataRecord> records = (IEnumerable<Microsoft.SqlServer.Server.SqlDataRecord>)prm.Value;
+
+
+                Type tupleType = parameterType.GetGenericArguments()[0];
+                Type listType = typeof(List<>).MakeGenericType(tupleType);
+                object udt = Activator.CreateInstance(listType);
+                //object udt = Activator.CreateInstance(parameterType);
+                var udt_Add = listType.GetMethod("Add");
+                if (udt_Add == null)
+                {
+                    throw new InvalidOperationException("UDT method 'Add' could be found:" + parameterType.FullName);
+                }
+
+                foreach (Microsoft.SqlServer.Server.SqlDataRecord record in records)
+                {
+                    object[] udt_record_values = new object[record.FieldCount];
+                    for (int ix = 0; ix < record.FieldCount; ix++)
+                    {
+                        udt_record_values[ix] = record[ix];
+                    }
+
+                    object udt_row = Activator.CreateInstance(tupleType, udt_record_values);
+                    udt_Add.Invoke(udt, new object[] { udt_row });
+                }
+
+                return udt;
+                //if (typeof(Dibix.StructuredType) method_prm.ParameterType.)
+                // Assert_DbParameter_GetValue_Udt_record
+            }
+            
+                        {
+
+                string debug_method_prm; debug_method_prm = TypeNameAsText(method_prm.ParameterType);
+                throw new NotImplementedException("Command parameter for { " + debug_method_prm + " " + method_prm.Name + " }");
+            }
         }
 
 

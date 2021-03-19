@@ -174,6 +174,11 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         ParameterInfo accessMethodParameter = acessMethodParameters[parameter_index];
                         Type parameterType = accessMethodParameter.ParameterType.IsByRef ? accessMethodParameter.ParameterType.GetElementType() : accessMethodParameter.ParameterType;
+                        if (IsUDT(parameterType))
+                        {
+                            //parameterType = typeof(IEnumerable<Microsoft.SqlServer.Server.SqlDataRecord>);
+                            parameterType = CreateUdtParameterType(parameterType);
+                        }
                         string accessParameterTypeName = TypeNameAsText(parameterType);
 
                         CodeParameterDeclarationExpression prm_decl = new CodeParameterDeclarationExpression(new CodeTypeReference(parameterType), accessMethodParameter.Name);
@@ -202,27 +207,95 @@ namespace StoreLake.Sdk.CodeGeneration
 
             if (t.IsGenericType)
             {
-                if (typeof(System.Collections.IEnumerable).IsAssignableFrom(t))
+                var genericType = t.GetGenericTypeDefinition();
+                var genericTypeName = GetGenericTypeNameWithoutGenericArity(genericType);
+                Type[] genericArguments = t.GetGenericArguments();
+
+                if (typeof(Nullable<>) == genericType)
                 {
-                    if (t.GetGenericArguments().Length == 1)
+                    //return genericTypeName + "<" + TypeNameAsText(genericArguments[0]) + ">";
+                }
+                else if (typeof(System.Collections.IEnumerable).IsAssignableFrom(t))
+                {
+                }
+                else
+                {
+
+                }
+                {
+
+                    StringBuilder buffer = new StringBuilder();
+                    buffer.Append(genericTypeName);
+                    buffer.Append("<");
+                    for (int ix = 0; ix < genericArguments.Length; ix++)
+                    //if (genericArguments.Length == 1)
                     {
-                        var typeT = t.GetGenericArguments()[0];
-                        return "IEnumerable<" + TypeNameAsText(typeT) + ">";
+                        var typeT = genericArguments[ix];
+                        if (ix > 0)
+                        {
+                            buffer.Append(", ");
+                        }
+                        buffer.Append(TypeNameAsText(typeT));
                     }
-                    throw new NotImplementedException(t.FullName);
+                    buffer.Append(">");
+                    return buffer.ToString();
+
                 }
             }
             return t.FullName;
         }
-
-        private static FieldDirection GetRefValueType(ParameterInfo accessMethodParameter)
+        private static string GetGenericTypeNameWithoutGenericArity(Type t)
         {
-            if (accessMethodParameter.IsOut)
-                return FieldDirection.Out;
-            else if (accessMethodParameter.ParameterType.IsByRef)
-                return FieldDirection.Ref;
-            else
-                return FieldDirection.In;
+            string name = t.Name;
+            int index = name.IndexOf('`');
+            return index == -1 ? name : name.Substring(0, index);
         }
+
+
+        private static bool IsUDT(Type parameterType)
+        {
+            if (typeof(Dibix.StructuredType).IsAssignableFrom(parameterType))
+                return true;
+            return false;
+        }
+
+        private static Type CreateUdtParameterType(Type parameterType)
+        {
+            //  IntThreeSet : StructuredType<IntThreeSet, int, int, int>
+            Type[] genericArguments = parameterType.BaseType.GetGenericArguments();
+            if (genericArguments.Length < 2)
+            {
+                throw new NotImplementedException("generic_prms.Length:" + genericArguments.Length);
+            }
+
+            Type itemType;
+            if (genericArguments.Length == 2)
+            {
+                itemType = genericArguments[1];
+            }
+            else
+            {
+                List<Type> arg_types = new List<Type>();
+
+                for (int ix = 1; ix < genericArguments.Length; ix++)
+                {
+                    Type typeT = genericArguments[ix];
+                    arg_types.Add(typeT);
+                }
+
+                //var xx2 = typeof(Tuple<,>).FullName; // System.Tuple`2
+                //var xx3 = typeof(Tuple<,,>).FullName; // System.Tuple`3
+                Type tupleDefinitionType = Type.GetType("System.Tuple`" + arg_types.Count);
+                itemType = tupleDefinitionType.MakeGenericType(arg_types.ToArray());
+            }
+
+
+            Type resultType = typeof(IEnumerable<>).MakeGenericType(itemType);
+
+            var xxx = TypeNameAsText(resultType);
+            return resultType;
+        }
+
+
     }
 }

@@ -66,6 +66,11 @@ namespace ConsoleApp4
 
             xDatabaseAccessorFactory databaseAccessorFactory = new xDatabaseAccessorFactory(dbClient, "Initial Catalog=MyDB");
 
+
+            var test10_udt = Helpline.Data.IntThreeSet.From(new int[] { 3, 2, 1 }, (udt, item) => udt.Add(item, (100*item)+item, (100 * item)));
+            var test10 = Helpline.Data.HelplineData.AddToWatchList(databaseAccessorFactory, 710, test10_udt);
+            Console.WriteLine("test10: " + test10);
+
             Helpline.Data.HelplineData.AdministrationRefreshRelationModels(databaseAccessorFactory);
 
             var test8 = Helpline.Data.HelplineData.CanExecute(databaseAccessorFactory, 710, 123);
