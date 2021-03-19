@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.SqlServer.Server;
+using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
@@ -79,7 +80,20 @@ namespace StoreLake.Sdk.CodeGeneration
                 {
                     GenerateCommandHandlerFacade(ccu, type);
                 }
+                else if (type.IsDefined(typeof(Dibix.StructuredTypeAttribute)))
+                {
+                    GenerateStructureTypeRow(ccu, type);
+                }
             }
+
+        }
+
+        private static void GenerateStructureTypeRow(CodeCompileUnit ccu, Type udtType)
+        {
+            Console.WriteLine("" + udtType.FullName);
+            CodeNamespace ns = EnsureNamespace(ccu, udtType);
+            CodeTypeDeclaration typedecl = BuildeStructureTypeRowType(udtType);
+            ns.Types.Add(typedecl);
 
         }
 
@@ -110,7 +124,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
         private static void GenerateCommandHandlerFacade(CodeCompileUnit ccu, Type databaseAccessorType)
         {
-            Console.WriteLine("" + databaseAccessorType.FullName);
+            //Console.WriteLine("" + databaseAccessorType.FullName);
             CodeNamespace ns = EnsureNamespace(ccu, databaseAccessorType);
             CodeTypeDeclaration typedecl = BuildCommandHandlerFacadeType(databaseAccessorType);
             ns.Types.Add(typedecl);
@@ -137,6 +151,66 @@ namespace StoreLake.Sdk.CodeGeneration
             return ns;
         }
 
+        private static CodeTypeDeclaration BuildeStructureTypeRowType(Type udtType)
+        {
+            string typeName = udtType.Name + "Row";
+            CodeTypeDeclaration typedecl = new CodeTypeDeclaration() { Name = typeName, IsClass = true, Attributes = MemberAttributes.Public | MemberAttributes.Final };
+
+            MethodInfo mi = udtType.GetMethod("Add", BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly); // public void Add(int va, int vb, int vc) 'Helpline.Data.IntThreeSet'
+            if (mi == null)
+            {
+                throw new NotSupportedException("UDT method 'Add' could not be found:" + udtType.AssemblyQualifiedName);
+            }
+
+            CodeMemberField field_record = new CodeMemberField(typeof(IDataRecord), "record");
+            typedecl.Members.Add(field_record);
+
+            CodeConstructor ctor = new CodeConstructor();
+            ctor.Attributes = MemberAttributes.Public;
+            ctor.Parameters.Add(new CodeParameterDeclarationExpression(typeof(IDataRecord), "record"));
+            typedecl.Members.Add(ctor);
+
+            CodeAssignStatement assign_record = new CodeAssignStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "record"), new CodeVariableReferenceExpression("record"));
+            ctor.Statements.Add(assign_record);
+
+            foreach (var pi in mi.GetParameters())
+            {
+                CodeMemberProperty member_property = new CodeMemberProperty()
+                {
+                    Name = pi.Name,
+                    Type = new CodeTypeReference(pi.ParameterType),
+                    Attributes = MemberAttributes.Public | MemberAttributes.Final
+                };
+
+                typedecl.Members.Add(member_property);
+
+                CodeIndexerExpression indexer = new CodeIndexerExpression(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "record"), new CodePrimitiveExpression(pi.Name));
+
+                CodeExpression var_value_ref;
+                if (pi.ParameterType.IsValueType)
+                {
+                    var_value_ref = indexer;
+                }
+                else
+                {
+                    CodeVariableDeclarationStatement var_value_decl = new CodeVariableDeclarationStatement(typeof(object), "raw_value", indexer);
+                    var_value_ref = new CodeVariableReferenceExpression(var_value_decl.Name);
+                    var conditionExpr =
+                    new CodeBinaryOperatorExpression(var_value_ref,
+                        CodeBinaryOperatorType.ValueEquality,
+                        new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(DBNull)), "Value"));
+                    CodeConditionStatement ifNull = new CodeConditionStatement(conditionExpr, new CodeMethodReturnStatement(new CodePrimitiveExpression(null)));
+
+                    member_property.GetStatements.Add(var_value_decl);
+                    member_property.GetStatements.Add(ifNull);
+                }
+
+
+                member_property.GetStatements.Add(new CodeMethodReturnStatement(new CodeCastExpression(member_property.Type, var_value_ref)));
+            }
+
+            return typedecl;
+        }
 
         private static CodeTypeDeclaration BuildCommandHandlerFacadeType(Type databaseAccessorType)
         {
@@ -174,14 +248,20 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         ParameterInfo accessMethodParameter = acessMethodParameters[parameter_index];
                         Type parameterType = accessMethodParameter.ParameterType.IsByRef ? accessMethodParameter.ParameterType.GetElementType() : accessMethodParameter.ParameterType;
+
+                        CodeTypeReference parameterTypeRef;
                         if (IsUDT(parameterType))
                         {
                             //parameterType = typeof(IEnumerable<Microsoft.SqlServer.Server.SqlDataRecord>);
-                            parameterType = CreateUdtParameterType(parameterType);
+                            parameterTypeRef = CreateUdtParameterType(parameterType);
                         }
-                        string accessParameterTypeName = TypeNameAsText(parameterType);
+                        else
+                        {
+                            string accessParameterTypeName = TypeNameAsText(parameterType);
+                            parameterTypeRef = new CodeTypeReference(parameterType);
+                        }
 
-                        CodeParameterDeclarationExpression prm_decl = new CodeParameterDeclarationExpression(new CodeTypeReference(parameterType), accessMethodParameter.Name);
+                        CodeParameterDeclarationExpression prm_decl = new CodeParameterDeclarationExpression(parameterTypeRef, accessMethodParameter.Name);
                         code_method.Parameters.Add(prm_decl);
                         prm_decl.Direction = accessMethodParameter.IsOut
                                                     ? FieldDirection.Out
@@ -259,7 +339,12 @@ namespace StoreLake.Sdk.CodeGeneration
             return false;
         }
 
-        private static Type CreateUdtParameterType(Type parameterType)
+        private static CodeTypeReference CreateUdtParameterType(Type parameterType)
+        {
+            return new CodeTypeReference("System.Collections.Generic.IEnumerable<" + parameterType.FullName + "Row" + ">");
+        }
+
+        private static Type CreateUdtParameterTypeX(Type parameterType)
         {
             //  IntThreeSet : StructuredType<IntThreeSet, int, int, int>
             Type[] genericArguments = parameterType.BaseType.GetGenericArguments();

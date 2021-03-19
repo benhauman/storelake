@@ -721,13 +721,13 @@ namespace StoreLake.TestStore.Server
 
                 foreach (Microsoft.SqlServer.Server.SqlDataRecord record in records)
                 {
-                    object[] udt_record_values = new object[record.FieldCount];
-                    for (int ix = 0; ix < record.FieldCount; ix++)
-                    {
-                        udt_record_values[ix] = record[ix];
-                    }
+                    //object[] udt_record_values = new object[record.FieldCount];
+                    //for (int ix = 0; ix < record.FieldCount; ix++)
+                    //{
+                    //    udt_record_values[ix] = record[ix];
+                    //}
 
-                    object udt_row = Activator.CreateInstance(tupleType, udt_record_values);
+                    object udt_row = Activator.CreateInstance(tupleType, record);
                     udt_Add.Invoke(udt, new object[] { udt_row });
                 }
 

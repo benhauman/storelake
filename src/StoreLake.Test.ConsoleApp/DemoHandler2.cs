@@ -5,6 +5,7 @@ using Helpline.Data;
 using System.Collections.Generic;
 using Microsoft.SqlServer.Server;
 using System;
+using StoreLake.TestStore.Database;
 
 namespace ConsoleApp4
 {
@@ -71,14 +72,26 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
         {
             // do nothing
         }
-
-        public override int AddToWatchList(DataSet db, int agentid, IEnumerable<Tuple<int, int, int>> ids)
+        public override int AddToWatchList(DataSet db, int agentid, IEnumerable<IntThreeSetRow> ids)
         {
-            //Helpline.Data.IntThreeSet
-            //return base.AddToWatchList(db, agentid, ids);
-            return 999;
-        }
+            foreach(var id in ids)
+            {
+                db.hlsyswatchlist().AddRowWithValues(agentid, id.vb, id.vc, db.GetUtcDate());
+            }
 
+            return db.hlsyswatchlist().Count;
+        }
+        //public override int AddToWatchList(DataSet db, int agentid, IEnumerable<Tuple<int, int, int>> ids)
+        //{
+        //    //foreach (var id in ids.Select(x => new IntTreeSetRow(null)))
+        //    //{
+        //    //    id.va
+        //    //}
+        //        //Helpline.Data.IntThreeSet
+        //        //return base.AddToWatchList(db, agentid, ids);
+        //        return 999;
+        //}
+        //
         //public override int AddToWatchList(DataSet db, int agentid, IEnumerable<SqlDataRecord> ids)
         //{
         //    //System.Tuple<int, int, int>
@@ -89,5 +102,23 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
         //{
         //    return 1;
         //}
+    }
+
+    public sealed class IntTreeSetRow
+    {
+        private readonly SqlDataRecord record;
+        public IntTreeSetRow(SqlDataRecord record)
+        {
+            this.record = record;
+
+        }
+
+        public int va
+        {
+            get
+            {
+                return record.GetInt32(0);
+            }
+        }
     }
 }
