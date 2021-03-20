@@ -103,22 +103,4 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
         //    return 1;
         //}
     }
-
-    public sealed class IntTreeSetRow
-    {
-        private readonly SqlDataRecord record;
-        public IntTreeSetRow(SqlDataRecord record)
-        {
-            this.record = record;
-
-        }
-
-        public int va
-        {
-            get
-            {
-                return record.GetInt32(0);
-            }
-        }
-    }
 }

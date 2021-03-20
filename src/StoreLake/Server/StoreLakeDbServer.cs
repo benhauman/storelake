@@ -33,6 +33,11 @@ namespace StoreLake.TestStore.Server
             };
         }
 
+        public DataSet GetDatabaseForConnection(DbConnection connection)
+        {
+            return GetDatabaseForConnectionCore(connection);
+        }
+
         internal DbCommand CreateCommand(StoreLakeDbConnection connection)
         {
             return new StoreLakeDbCommand(connection)
@@ -62,12 +67,7 @@ namespace StoreLake.TestStore.Server
 
         private int HandleExecuteNonQuery(DbCommand cmd)
         {
-            string databaseName = cmd.Connection.Database;
-            if (!_dbs.TryGetValue(databaseName.ToUpperInvariant(), out DataSet db))
-            //if (!string.Equals(_db.DataSetName, databaseName, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Unknown datatabase [" + databaseName + "]");
-            }
+            DataSet db = GetDatabaseForConnectionCore(cmd.Connection);
             Func<DataSet, DbCommand, int> handlerMethod = null;
             foreach (var handler in handlers)
             {
@@ -94,6 +94,18 @@ namespace StoreLake.TestStore.Server
                 return res;
             }
             throw new NotImplementedException("SQL (" + cmd.Parameters.Count + "):" + cmd.CommandText);
+        }
+
+        private DataSet GetDatabaseForConnectionCore(DbConnection connection)
+        {
+            string databaseName = connection.Database;
+            if (!_dbs.TryGetValue(databaseName.ToUpperInvariant(), out DataSet db))
+            //if (!string.Equals(_db.DataSetName, databaseName, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Unknown datatabase [" + databaseName + "]");
+            }
+
+            return db;
         }
 
         private DbDataReader HandleExecuteDbDataReader(CommandBehavior cb, DbCommand cmd)

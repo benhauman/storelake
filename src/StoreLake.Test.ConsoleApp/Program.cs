@@ -62,12 +62,16 @@ namespace ConsoleApp4
             dbServer.RegisterCommandHandlerMethods(typeof(TestDML), typeof(DemoHandler1)); // dml.methods(+text) => handler(+text)
             //System.Data.SqlClient.SqlClientFactory
 
+            StoreLakeDabaseAccessorGate accessorGate = new StoreLakeDabaseAccessorGate();
+            //accessorGate.RegisterRead(typeof(Helpline.Data.HelplineData), (_) => new DemoHandler3().CanExecute(db, 0, 0));
+            accessorGate.RegisterAccessHandlerFacade<DemoHandler3>(typeof(Helpline.Data.HelplineData));
+
             DbProviderFactory dbClient = dbServer.CreateDbProviderFactoryInstance();
 
-            xDatabaseAccessorFactory databaseAccessorFactory = new xDatabaseAccessorFactory(dbClient, "Initial Catalog=MyDB");
+            xDatabaseAccessorFactory databaseAccessorFactory = new xDatabaseAccessorFactory(dbServer, accessorGate, dbClient, "Initial Catalog=MyDB");
 
 
-            var test10_udt = Helpline.Data.IntThreeSet.From(new int[] { 3, 2, 1 }, (udt, item) => udt.Add(item, (100*item)+item, (100 * item)));
+            var test10_udt = Helpline.Data.IntThreeSet.From(new int[] { 3, 2, 1 }, (udt, item) => udt.Add(item, (100 * item) + item, (100 * item)));
             var test10 = Helpline.Data.HelplineData.AddToWatchList(databaseAccessorFactory, 710, test10_udt);
             Console.WriteLine("test10: " + test10);
 
@@ -100,28 +104,7 @@ namespace ConsoleApp4
                 Console.WriteLine(row);
         }
     }
-    public class xDatabaseAccessorFactory : Dibix.IDatabaseAccessorFactory
-    {
-        private readonly DbProviderFactory dbClient;
-        private readonly string connectionString;
-        public xDatabaseAccessorFactory(DbProviderFactory dbClient, string connectionString)
-        {
-            this.dbClient = dbClient;
-            this.connectionString = connectionString;
-        }
 
-        public Dibix.IDatabaseAccessor Create()
-        {
-            return new Dibix.Dapper.DapperDatabaseAccessor(CreateConnection());
-        }
-
-        public DbConnection CreateConnection()
-        {
-            DbConnection connection = dbClient.CreateConnection();
-            connection.ConnectionString = connectionString;
-            return connection;
-        }
-    }
 
     public sealed class AgentInfo
     {

@@ -254,9 +254,6 @@ namespace StoreLake.TestStore.Server
             _commandText = commandText;
         }
 
-        public TypedMethodHandler()
-        {
-        }
 
         internal string DebuggerText
         {
