@@ -4,6 +4,9 @@ REM SETLOCAL ENABLEDELAYEDEXPANSION
 cd "D:\GitHub\StoreLake\"
 IF NOT %ERRORLEVEL%==0 (call :REGERROR "change directory failed.")
 
+"D:\GitHub\StoreLake\src\ThirdParty\StoreLake.Versioning.exe" /root=D:\GitHub\StoreLake\
+IF NOT %ERRORLEVEL%==0 (call :REGERROR "version incrementing failed.")
+
 REM del /S /Q "D:\GitHub\StoreLake\src\StoreLake\bin\Debug\*.*"
 rmdir "D:\GitHub\StoreLake\src\StoreLake\bin\Debug" /S /Q
 rmdir "D:\GitHub\StoreLake\src\StoreLake.Sdk\bin\Debug" /S /Q

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "StoreLake.Versioning": {
+      "commandName": "Project",
+      "commandLineArgs": "/root=..\\..\\..\\..\\..\\"
+    }
+  }
+}

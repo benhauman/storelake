@@ -1,3 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project>
   <PropertyGroup>
     <Product>StoreLakex1</Product>
@@ -5,11 +6,9 @@
     <Copyright>Copyright (c) 2021</Copyright>
     <Description>AAdeesssc</Description>
   </PropertyGroup>
-
   <PropertyGroup>
-    <PackageVersion>1.0.7</PackageVersion>
+    <PackageVersion>1.0.14</PackageVersion>
   </PropertyGroup>
-
   <!--<PropertyGroup>
     <VersionMajor>66</VersionMajor>
     <VersionMinor>77</VersionMinor>
@@ -19,15 +18,12 @@
     <VersionPrefix>$(VersionMajor).$(VersionMinor)</VersionPrefix>
     <VersionSuffix></VersionSuffix>
   </PropertyGroup>-->
-
   <PropertyGroup>
     <SignAssembly>true</SignAssembly>
     <GenerateReleaseNotes Condition="'$(GenerateReleaseNotes)' == ''">false</GenerateReleaseNotes>
     <GenerateAssemblyBuildDateAttribute Condition="'$(GenerateAssemblyBuildDateAttribute)' == ''">true</GenerateAssemblyBuildDateAttribute>
   </PropertyGroup>
-
   <ItemGroup>
     <None Remove="*.dotsettings" />
   </ItemGroup>
-
 </Project>
