@@ -14,3 +14,5 @@
 /src/StoreLake.Sdk/obj
 /src/StoreLake.Versioning/obj
 /src/StoreLake.Versioning/bin/Debug
+/src/StoreLake.ClientApp/.vs/StoreLake.ClientApp
+/src/StoreLake.ClientApp/bin/Debug/net48

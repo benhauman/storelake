@@ -7,7 +7,7 @@
     <Description>AAdeesssc</Description>
   </PropertyGroup>
   <PropertyGroup>
-    <PackageVersion>1.0.14</PackageVersion>
+    <PackageVersion>1.0.5</PackageVersion>
   </PropertyGroup>
   <!--<PropertyGroup>
     <VersionMajor>66</VersionMajor>

@@ -54,7 +54,7 @@ namespace StoreLake.Versioning
 
         private static void DumpException(Exception ex)
         {
-            Console.WriteLine(ex);
+            Console.Error.WriteLine(ex);
             if (ex.InnerException != null)
             {
                 DumpException(ex.InnerException);
@@ -62,7 +62,7 @@ namespace StoreLake.Versioning
             ReflectionTypeLoadException rtlex = ex as ReflectionTypeLoadException;
             if (rtlex != null)
             {
-                Console.WriteLine("LoaderExceptions:" + rtlex.LoaderExceptions.Length);
+                Console.Error.WriteLine("LoaderExceptions:" + rtlex.LoaderExceptions.Length);
                 foreach (var err in rtlex.LoaderExceptions)
                 {
                     DumpException(err);
@@ -103,7 +103,7 @@ namespace StoreLake.Versioning
                             vv = new Version(vv.Major + 1, 0);
                         }
                         xPackageVersion.Value = vv.ToString();
-                        //Console.WriteLine(xPackageVersion.Value);
+                        Console.WriteLine(xPackageVersion.Value);
                         updates_count++;
                         fileChanged = true;
                     }
