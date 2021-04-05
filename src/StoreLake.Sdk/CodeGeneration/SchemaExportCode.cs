@@ -17,9 +17,14 @@ namespace StoreLake.Sdk.CodeGeneration
 {
     public static class SchemaExportCode
     {
-        public static void ExportTypedDataSetCode(RegistrationResult rr, string inputdir, string outputdir, string dacNameFilter)
+        public static void ExportTypedDataSetCode(RegistrationResult rr, string libdir, string inputdir, string outputdir, string dacNameFilter, string storeSuffix, bool writeSchemaFile)
         {
             AssemblyResolver assemblyResolver = new AssemblyResolver();
+            AssemblyName an_DibixHttp = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.Http.dll"));
+            //Assembly.Load(an_DibixHttp); // probing?
+            assemblyResolver.ResolveAssembyByName(an_DibixHttp);
+
+
             var level_count = rr.registered_dacpacs.Values.Max(x => x.DacPacDependencyLevel);
             for (int level = 1; level <= level_count; level++)
             {
@@ -41,12 +46,22 @@ namespace StoreLake.Sdk.CodeGeneration
                         else
                         {
                             string schemaFileName = System.IO.Path.Combine(outputdir, dacName + ".Schema.xsd");
-                            string filenameNoExtension = dacName + ".TestStore";
+                            string filenameNoExtension = dacName + "." + storeSuffix; // .TestStore
 
-                            SchemaExportCode.ExportSchemaXsd(rr.ds, schemaFileName);
-                            string schemaContent = File.ReadAllText(schemaFileName);
+                            string schemaContent;
+                            using (StringWriter xsdWriter = new StringWriter())
+                            {
+                                rr.ds.WriteXmlSchema(xsdWriter);
+                                //SchemaExportCode.ExportSchemaXsd(rr.ds, schemaFileName);
+                                schemaContent = xsdWriter.GetStringBuilder().ToString();
+                            }
+                            if (writeSchemaFile)
+                            {
+                                File.WriteAllText(schemaFileName, schemaContent);
+                                //string schemaContent = File.ReadAllText(schemaFileName);
+                            }
 
-                            ImportSchemasAsDataSets(assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName);
+                            ImportSchemasAsDataSets(assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName, storeSuffix);
                         }
                     }
 
@@ -61,8 +76,15 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static void ImportSchemasAsDataSets(AssemblyResolver  assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName)
+        private static void ImportSchemasAsDataSets(AssemblyResolver  assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix)
         {
+            DirectoryInfo tempDirInfo = new DirectoryInfo(Path.Combine(outputdir, "TempFiles", DateTime.UtcNow.Ticks + "_" + fileName));
+            if (tempDirInfo.Exists)
+            {
+                tempDirInfo.Delete(true);
+            }
+            tempDirInfo.Create();
+
             Microsoft.CSharp.CSharpCodeProvider codeProvider = new Microsoft.CSharp.CSharpCodeProvider();// //CodeDomProvider.CreateProvider(language);
 
             CodeCompileUnit ccu = new CodeCompileUnit();
@@ -71,11 +93,11 @@ namespace StoreLake.Sdk.CodeGeneration
             GenerateDataSetClasses(ccu, schemaContent, namespaceName, codeProvider);
 
 
-            Adjust_CCU(rr, dacpac, ccu);
+            Adjust_CCU(rr, dacpac, ccu, storeSuffix);
 
             StoreAccessorCodeGenerator.GeneratorAccessors(assemblyResolver, dacpac, comparam, ccu, inputdir);
 
-            using (TextWriter textWriter = new StreamWriter(Path.Combine(outputdir, fileName + ".cs"), append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
+            using (TextWriter textWriter = new StreamWriter(Path.Combine(tempDirInfo.FullName, fileName + ".cs"), append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
             //using (TextWriter textWriter = CreateOutputWriter(Path.Combine(outputdir, path), fileName, "cs"))
             {
                 codeProvider.GenerateCodeFromCompileUnit(ccu, textWriter, null);
@@ -84,7 +106,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
             string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
             string fullFileName_err = System.IO.Path.Combine(outputdir, fileName + ".errors.txt");
-            CompileCode(comparam, ccu, outputdir, fileName, fullFileName_dll, fullFileName_err);
+            CompileCode(comparam, ccu, outputdir, fileName, fullFileName_dll, fullFileName_err, tempDirInfo);
 
             assemblyResolver.ResolveAssembyByLocation(fullFileName_dll);
             dacpac.DacPacTestStoreAssemblyFileName = fullFileName_dll;
@@ -117,7 +139,7 @@ namespace StoreLake.Sdk.CodeGeneration
             internal CodeTypeDeclaration Member;
         }
 
-        private static void Adjust_CCU(RegistrationResult rr, DacPacRegistration dacpac, CodeCompileUnit ccu)
+        private static void Adjust_CCU(RegistrationResult rr, DacPacRegistration dacpac, CodeCompileUnit ccu, string storeSuffix)
         {
             if (ccu.Namespaces.Count > 1)
             {
@@ -140,11 +162,11 @@ namespace StoreLake.Sdk.CodeGeneration
             }
             if (dacpacName == "")
             {
-                ns.Name = "Helpline" + ".TestStore";
+                ns.Name = "Helpline" + "." + storeSuffix; // .TestStore
             }
             else
             {
-                ns.Name = "Helpline" + "." + dacpacName + ".TestStore";
+                ns.Name = "Helpline" + "." + dacpacName + "." + storeSuffix; // .TestStore
             }
             string setName = dacpacSetName.Replace(".", "").Replace("-", ""); // type_decl.Name;
 
@@ -1438,15 +1460,8 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static void CompileCode(CompilerParameters comparam, CodeCompileUnit codeCompileUnit, string outputFolder, string fileName, string outputAssemblyFullFileName, string outputErrorsFullFileName)
+        private static void CompileCode(CompilerParameters comparam, CodeCompileUnit codeCompileUnit, string outputFolder, string fileName, string outputAssemblyFullFileName, string outputErrorsFullFileName, DirectoryInfo tempDirInfo)
         {
-            DirectoryInfo tempDirInfo = new DirectoryInfo(Path.Combine(outputFolder, "TempFiles", DateTime.UtcNow.Ticks + "_" + fileName));
-            if (tempDirInfo.Exists)
-            {
-                tempDirInfo.Delete(true);
-            }
-            tempDirInfo.Create();
-
             string snkPath = GetSnkPath(Path.Combine(tempDirInfo.FullName, "GeneratedModel.snk"));
 
             StringBuilder compilerOpt = new StringBuilder();

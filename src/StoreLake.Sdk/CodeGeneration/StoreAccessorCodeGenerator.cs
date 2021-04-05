@@ -33,7 +33,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 AddReferencedAssemblies(assemblyResolver, comparam, asm_location);
             });
 
-            foreach (var ref_asm_name in asm.GetReferencedAssemblies())
+            foreach (AssemblyName ref_asm_name in asm.GetReferencedAssemblies())
             {
                 if (ref_asm_name.FullName.StartsWith("mscorlib", StringComparison.OrdinalIgnoreCase)
                     || ref_asm_name.FullName.StartsWith("System.", StringComparison.OrdinalIgnoreCase)
@@ -70,7 +70,7 @@ namespace StoreLake.Sdk.CodeGeneration
             ;
             AddReferencedAssemblies(assemblyResolver, comparam, assemblyResolver.CacheType(typeof(System.Xml.Linq.XElement)).Location); // System.Xml.Linq
 
-
+            typeof(Dibix.Http.ApiRegistrationAttribute).ToString().GetHashCode();
 
             Type databaseAccessorAttributeType = typeof(Dibix.DatabaseAccessorAttribute);
 

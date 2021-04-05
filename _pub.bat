@@ -23,7 +23,6 @@ IF NOT %ERRORLEVEL%==0 (call :REGERROR "pack failed.")
 FOR %%F IN ("D:\GitHub\StoreLake\src\StoreLake\bin\Debug\*.symbols.nupkg"
            ,"D:\GitHub\StoreLake\src\StoreLake.Sdk\bin\Debug\*.symbols.nupkg"
 		   ,"D:\GitHub\StoreLake\src\StoreLake.Sdk.Cli\bin\Debug\*.symbols.nupkg"
-		   ,"D:\GitHub\StoreLake\src\StoreLake.Test.ConsoleApp\bin\Debug\*.symbols.nupkg"
 ) DO ( 
 	call :REGPUSH %%F
 )

@@ -46,7 +46,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
     public static class SchemaImportDacPac // 'Dedicated Administrator Connection (for Data Tier Application) Package'
     {
-        public static RegistrationResult ImportDacPac(string databaseName, string inputdir, string dacpacFullFileName)
+        public static RegistrationResult ImportDacPac(string inputdir, string dacpacFullFileName)
         {
             //string databaseName = "DemoTestData";
             DataSet ds = new DataSet() { Namespace = "[dbo]" }; // see 'https://www.codeproject.com/articles/30490/how-to-manually-create-a-typed-datatable'

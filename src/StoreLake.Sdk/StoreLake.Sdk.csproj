@@ -35,8 +35,12 @@
     <Reference Include="Dibix">
       <HintPath>..\ThirdParty\Dibix.1.0.0\lib\net452\Dibix.dll</HintPath>
     </Reference>
+    <Reference Include="Dibix.Http">
+      <HintPath>..\ThirdParty\Dibix.Http.dll</HintPath>
+    </Reference>
     <Reference Include="System.Design" />
   </ItemGroup>
+
 
   <ItemGroup>
     <EmbeddedResource Include="CodeGeneration\GeneratedModel.snk" />
