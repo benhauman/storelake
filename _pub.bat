@@ -4,16 +4,41 @@ REM SETLOCAL ENABLEDELAYEDEXPANSION
 cd "D:\GitHub\StoreLake\"
 IF NOT %ERRORLEVEL%==0 (call :REGERROR "change directory failed.")
 
+CALL :DropFolder ".vs"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake\bin\Debug\net48"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake\bin\Debug"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake\bin"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake\obj\Debug\net48"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake\obj\Debug"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake\obj"
+
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Sdk\bin\Debug\net48"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Sdk\bin\Debug"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Sdk\bin"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Sdk\obj\Debug\net48"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Sdk\obj\Debug"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Sdk\obj"
+
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Sdk.Cli\bin\Debug\net48"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Sdk.Cli\bin\Debug"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Sdk.Cli\bin"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Sdk.Cli\obj\Debug\net48"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Sdk.Cli\obj\Debug"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Sdk.Cli\obj"
+
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Test.ConsoleApp\bin"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Test.ConsoleApp\obj\Debug\net48"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Test.ConsoleApp\obj\Debug"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake.Test.ConsoleApp\obj"
+
+REM EXIT /B
+
+
 "D:\GitHub\StoreLake\src\ThirdParty\StoreLake.Versioning.exe" /root=D:\GitHub\StoreLake\
 IF NOT %ERRORLEVEL%==0 (call :REGERROR "version incrementing failed.")
 
-REM del /S /Q "D:\GitHub\StoreLake\src\StoreLake\bin\Debug\*.*"
-rmdir "D:\GitHub\StoreLake\src\StoreLake\bin\Debug" /S /Q
-rmdir "D:\GitHub\StoreLake\src\StoreLake.Sdk\bin\Debug" /S /Q
-rmdir "D:\GitHub\StoreLake\src\StoreLake.Sdk.Cli\bin\Debug" /S /Q
-rmdir "D:\GitHub\StoreLake\src\StoreLake.Test.ConsoleApp\bin\Debug" /S /Q
 
-dotnet build
+dotnet build --no-incremental
 IF NOT %ERRORLEVEL%==0 (call :REGERROR "build failed.")
 
 dotnet pack --verbosity normal --force --include-symbols
@@ -154,6 +179,32 @@ REM + .\storelake.1.0.45.nupkg
 REM + .\storelake.1.0.45.nupkg.sha512
 REM + .\storelake.nuspec
 
+
+EXIT /B
+REM -------------------------------------------------------------
+
+
+REM -------------------------------------------------------------
+:DropFolder
+:: %1 - <INPUT> PackageVersion
+ECHO DropFolder(%1)
+
+IF NOT EXIST "%1" (
+	REM ECHO Files folder '%1' does not exists.
+) ELSE (
+	attrib -h -r -s %1\*.* /s /d
+	REM ECHO __ delete files from: %1
+	del /f /s /q %1\*.*
+
+	REM ECHO +r
+    REM attrib +r "%1\*.*" /s /d
+	REM ECHO -r
+	REM attrib -r "%1\*.*" /s /d
+	REM ECHO __ drop folder: %1
+	rmdir "%1"
+	REM dir /x %1
+)
+REM ECHO drop done.
 
 EXIT /B
 REM -------------------------------------------------------------

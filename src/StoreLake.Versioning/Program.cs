@@ -87,7 +87,9 @@ namespace StoreLake.Versioning
                 bool fileChanged = false;
                 foreach (var xPropertyGroup in xProject.Elements().Where(e => e.Name.LocalName == "PropertyGroup"))
                 {
-                    foreach (var xPackageVersion in xPropertyGroup.Elements().Where(e => e.Name.LocalName == "PackageVersion"))
+                    foreach (var xPackageVersion in xPropertyGroup.Elements().Where(e => e.Name.LocalName == "PackageVersion" 
+                    || e.Name.LocalName == "FileVersion")
+                        )
                     {
                         //Console.WriteLine(xPackageVersion.Value);
                         Version vv = new Version(xPackageVersion.Value);

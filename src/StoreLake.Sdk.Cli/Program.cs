@@ -9,6 +9,7 @@ namespace StoreLake.Sdk.Cli
     {
         static int Main(string[] args)
         {
+            Console.WriteLine("CurrentDirectory: " + Environment.CurrentDirectory);
             try
             {
                 ToolArguments targs = ParseArguments(args);
@@ -163,7 +164,10 @@ namespace StoreLake.Sdk.Cli
             {
                 targs.GenerateSchema = true;
             }
-            
+            targs.InputDirectory = ExpandPath(targs.InputDirectory);
+            targs.OutputDirectory = ExpandPath(targs.OutputDirectory);
+            targs.LibraryDirectory = ExpandPath(targs.LibraryDirectory);
+
             Console.WriteLine("InputDirectory=" + targs.InputDirectory);
             Console.WriteLine("OutputDirectory=" + targs.OutputDirectory);
             Console.WriteLine("LibraryDirectory=" + targs.LibraryDirectory);
@@ -189,6 +193,16 @@ namespace StoreLake.Sdk.Cli
             //filter = "HelplineData";
             //filter = "SLM.Database.Data";
             SchemaExportCode.ExportTypedDataSetCode(ds, targs.LibraryDirectory, inputdir, targs.OutputDirectory, filter, targs.StoreNameAssemblySuffix, targs.GenerateSchema.Value);
+        }
+
+        private static string ExpandPath(string dir)
+        {
+            if (dir.Contains("..") || dir.StartsWith(".\\"))
+            {
+                return Path.GetFullPath(dir);
+            }
+
+            return Path.GetFullPath(dir);
         }
     }
 }
