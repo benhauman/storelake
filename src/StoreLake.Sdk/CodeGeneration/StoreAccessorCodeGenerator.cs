@@ -70,7 +70,7 @@ namespace StoreLake.Sdk.CodeGeneration
             ;
             AddReferencedAssemblies(assemblyResolver, comparam, assemblyResolver.CacheType(typeof(System.Xml.Linq.XElement)).Location); // System.Xml.Linq
 
-            typeof(Dibix.Http.ApiRegistrationAttribute).ToString().GetHashCode();
+            typeof(Dibix.AreaRegistrationAttribute).ToString().GetHashCode();
 
             Type databaseAccessorAttributeType = typeof(Dibix.DatabaseAccessorAttribute);
 

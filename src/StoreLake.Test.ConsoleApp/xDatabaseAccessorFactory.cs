@@ -72,12 +72,12 @@ namespace ConsoleApp4
             GC.SuppressFinalize(this);
         }
 
-        int IDatabaseAccessor.Execute(string sql, CommandType commandType, int? commandTimeout, IParametersVisitor parameters)
+        int IDatabaseAccessor.Execute(string sql, CommandType commandType, int? commandTimeout, ParametersVisitor parameters)
         {
             return accessor.Execute(sql, commandType, commandTimeout, parameters);
         }
 
-        Task<int> IDatabaseAccessor.ExecuteAsync(string sql, CommandType commandType, int? commandTimeout, IParametersVisitor parameters, CancellationToken cancellationToken)
+        Task<int> IDatabaseAccessor.ExecuteAsync(string sql, CommandType commandType, int? commandTimeout, ParametersVisitor parameters, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
@@ -87,99 +87,99 @@ namespace ConsoleApp4
             return accessor.Parameters();
         }
 
-        IEnumerable<T> IDatabaseAccessor.QueryMany<T>(string sql, CommandType commandType, IParametersVisitor parameters)
+        IEnumerable<T> IDatabaseAccessor.QueryMany<T>(string sql, CommandType commandType, ParametersVisitor parameters)
         {
             return accessor.QueryMany<T>(sql, commandType, parameters);
         }
 
-        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TReturn, TSecond>(string sql, CommandType commandType, IParametersVisitor parameters, string splitOn)
+        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TReturn, TSecond>(string sql, CommandType commandType, ParametersVisitor parameters, string splitOn)
         {
             throw new NotImplementedException();
         }
 
-        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TReturn, TSecond, TThird>(string sql, CommandType commandType, IParametersVisitor parameters, string splitOn)
+        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TReturn, TSecond, TThird>(string sql, CommandType commandType, ParametersVisitor parameters, string splitOn)
         {
             throw new NotImplementedException();
         }
 
-        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TReturn>(string sql, CommandType commandType, IParametersVisitor parameters, Func<TFirst, TSecond, TReturn> map, string splitOn)
+        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TReturn>(string sql, CommandType commandType, ParametersVisitor parameters, Func<TFirst, TSecond, TReturn> map, string splitOn)
         {
             throw new NotImplementedException();
         }
 
-        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TThird, TReturn>(string sql, CommandType commandType, IParametersVisitor parameters, Func<TFirst, TSecond, TThird, TReturn> map, string splitOn)
+        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TThird, TReturn>(string sql, CommandType commandType, ParametersVisitor parameters, Func<TFirst, TSecond, TThird, TReturn> map, string splitOn)
         {
             throw new NotImplementedException();
         }
 
-        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TThird, TFourth, TReturn>(string sql, CommandType commandType, IParametersVisitor parameters, Func<TFirst, TSecond, TThird, TFourth, TReturn> map, string splitOn)
+        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TThird, TFourth, TReturn>(string sql, CommandType commandType, ParametersVisitor parameters, Func<TFirst, TSecond, TThird, TFourth, TReturn> map, string splitOn)
         {
             throw new NotImplementedException();
         }
 
-        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(string sql, CommandType commandType, IParametersVisitor parameters, Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn> map, string splitOn)
+        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(string sql, CommandType commandType, ParametersVisitor parameters, Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn> map, string splitOn)
         {
             throw new NotImplementedException();
         }
 
-        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>(string sql, CommandType commandType, IParametersVisitor parameters, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn> map, string splitOn)
+        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>(string sql, CommandType commandType, ParametersVisitor parameters, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn> map, string splitOn)
         {
             throw new NotImplementedException();
         }
 
-        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TEighth, TNinth, TReturn>(string sql, CommandType commandType, IParametersVisitor parameters, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TEighth, TNinth, TReturn> map, string splitOn)
+        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TEighth, TNinth, TReturn>(string sql, CommandType commandType, ParametersVisitor parameters, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TEighth, TNinth, TReturn> map, string splitOn)
         {
             throw new NotImplementedException();
         }
 
-        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TEighth, TNinth, TTenth, TEleventh, TReturn>(string sql, CommandType commandType, IParametersVisitor parameters, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TEighth, TNinth, TTenth, TEleventh, TReturn> map, string splitOn)
+        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TEighth, TNinth, TTenth, TEleventh, TReturn>(string sql, CommandType commandType, ParametersVisitor parameters, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TEighth, TNinth, TTenth, TEleventh, TReturn> map, string splitOn)
         {
             throw new NotImplementedException();
         }
 
-        Task<IEnumerable<T>> IDatabaseAccessor.QueryManyAsync<T>(string sql, CommandType commandType, IParametersVisitor parameters, bool buffered, CancellationToken cancellationToken)
+        Task<IEnumerable<T>> IDatabaseAccessor.QueryManyAsync<T>(string sql, CommandType commandType, ParametersVisitor parameters, bool buffered, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
 
-        IMultipleResultReader IDatabaseAccessor.QueryMultiple(string sql, CommandType commandType, IParametersVisitor parameters)
+        IMultipleResultReader IDatabaseAccessor.QueryMultiple(string sql, CommandType commandType, ParametersVisitor parameters)
         {
             throw new NotImplementedException();
         }
 
-        Task<IMultipleResultReader> IDatabaseAccessor.QueryMultipleAsync(string sql, CommandType commandType, IParametersVisitor parameters, CancellationToken cancellationToken)
+        Task<IMultipleResultReader> IDatabaseAccessor.QueryMultipleAsync(string sql, CommandType commandType, ParametersVisitor parameters, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
 
-        T IDatabaseAccessor.QuerySingle<T>(string sql, CommandType commandType, IParametersVisitor parameters)
+        T IDatabaseAccessor.QuerySingle<T>(string sql, CommandType commandType, ParametersVisitor parameters)
         {
             return accessor.QuerySingle<T>(sql, commandType, parameters);
         }
 
-        TReturn IDatabaseAccessor.QuerySingle<TReturn, TSecond>(string sql, CommandType commandType, IParametersVisitor parameters, string splitOn)
+        TReturn IDatabaseAccessor.QuerySingle<TReturn, TSecond>(string sql, CommandType commandType, ParametersVisitor parameters, string splitOn)
         {
             throw new NotImplementedException();
         }
 
-        TReturn IDatabaseAccessor.QuerySingle<TReturn, TSecond, TThird>(string sql, CommandType commandType, IParametersVisitor parameters, string splitOn)
+        TReturn IDatabaseAccessor.QuerySingle<TReturn, TSecond, TThird>(string sql, CommandType commandType, ParametersVisitor parameters, string splitOn)
         {
             throw new NotImplementedException();
         }
 
-        TReturn IDatabaseAccessor.QuerySingle<TReturn, TSecond, TThird, TFourth>(string sql, CommandType commandType, IParametersVisitor parameters, string splitOn)
+        TReturn IDatabaseAccessor.QuerySingle<TReturn, TSecond, TThird, TFourth>(string sql, CommandType commandType, ParametersVisitor parameters, string splitOn)
         {
             throw new NotImplementedException();
         }
 
-        Task<T> IDatabaseAccessor.QuerySingleAsync<T>(string sql, CommandType commandType, IParametersVisitor parameters, CancellationToken cancellationToken)
+        Task<T> IDatabaseAccessor.QuerySingleAsync<T>(string sql, CommandType commandType, ParametersVisitor parameters, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
 
-        T IDatabaseAccessor.QuerySingleOrDefault<T>(string sql, CommandType commandType, IParametersVisitor parameters)
+        T IDatabaseAccessor.QuerySingleOrDefault<T>(string sql, CommandType commandType, ParametersVisitor parameters)
         {
-            Func<DataSet, IParametersVisitor, object> handler = gate.TryGetHandlerRead(sql); // 1xSet
+            Func<DataSet, ParametersVisitor, object> handler = gate.TryGetHandlerRead(sql); // 1xSet
             if (handler != null)
             {
                 object result_object = handler(db, parameters);

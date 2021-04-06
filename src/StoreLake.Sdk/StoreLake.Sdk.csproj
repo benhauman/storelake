@@ -33,7 +33,7 @@
 
   <ItemGroup>
     <Reference Include="Dibix">
-      <HintPath>..\ThirdParty\Dibix.1.0.0\lib\net452\Dibix.dll</HintPath>
+      <HintPath>..\ThirdParty\Dibix.dll</HintPath>
     </Reference>
     <Reference Include="Dibix.Http">
       <HintPath>..\ThirdParty\Dibix.Http.dll</HintPath>

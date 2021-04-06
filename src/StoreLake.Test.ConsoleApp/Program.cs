@@ -323,7 +323,7 @@ namespace ConsoleApp4
         {
             using (Dibix.IDatabaseAccessor accessor = databaseAccessorFactory.Create())
             {
-                Dibix.IParametersVisitor @params = accessor.Parameters().SetFromTemplate(new
+                Dibix.ParametersVisitor @params = accessor.Parameters().SetFromTemplate(new
                 {
                 }).Build();
                 return accessor.QueryMany<int>(GetAllAgentIdentitiesCommandText, System.Data.CommandType.Text, @params).ToArray();

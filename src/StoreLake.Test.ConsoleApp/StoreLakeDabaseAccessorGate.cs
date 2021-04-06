@@ -66,7 +66,7 @@ namespace ConsoleApp4
                 public object value;
                 public bool isOutput;
             }
-            internal object HandleRead(DataSet db, IParametersVisitor parameters)
+            internal object HandleRead(DataSet db, Dibix.ParametersVisitor parameters)
             {
                 IDictionary<string, InvokeParameter> parameters_values = new SortedDictionary<string, InvokeParameter>();
                 parameters.VisitInputParameters((string name, DbType type, object value, bool isOutput) =>
@@ -166,7 +166,7 @@ namespace ConsoleApp4
 
             handlers_read.Add(handlerCommandText, new MyHandlerRead(methodCallExpr.Method.DeclaringType, methodCallExpr.Method, handlerCommandText));
         }
-        public Func<DataSet, Dibix.IParametersVisitor, object> TryGetHandlerRead(string sql)
+        public Func<DataSet, Dibix.ParametersVisitor, object> TryGetHandlerRead(string sql)
         {
             if (handlers_read.TryGetValue(sql, out MyHandlerRead handler))
             {
