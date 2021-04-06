@@ -10,6 +10,8 @@ namespace StoreLake.Sdk.Cli
         static int Main(string[] args)
         {
             Console.WriteLine("CurrentDirectory: " + Environment.CurrentDirectory);
+            Console.WriteLine("FileVersion:" + typeof(Program).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
+            
             try
             {
                 ToolArguments targs = ParseArguments(args);
@@ -40,6 +42,7 @@ namespace StoreLake.Sdk.Cli
             public string DacpacFileName { get; set; }
             public string StoreNameAssemblySuffix { get; set; }
             public bool? GenerateSchema { get; set; }
+            public string TempDirectory { get; set; }
         }
 
         private static ToolArguments ParseArguments(string[] args)
@@ -106,7 +109,15 @@ namespace StoreLake.Sdk.Cli
                                     }
                                     else
                                     {
-                                        Console.Error.WriteLine("Unknown argument specified:" + arg);
+                                        if (string.Equals(kv[0], "tempdir", StringComparison.Ordinal))
+                                        {
+                                            targs.TempDirectory = kv[1];
+                                        }
+                                        else
+                                        {
+                                            Console.Error.WriteLine("Unknown argument specified:" + arg);
+                                            return null;
+                                        }
                                     }
                                 }
                             }
@@ -164,9 +175,14 @@ namespace StoreLake.Sdk.Cli
             {
                 targs.GenerateSchema = true;
             }
+            if (string.IsNullOrEmpty(targs.TempDirectory))
+            {
+                targs.TempDirectory = Path.Combine(targs.OutputDirectory, "TempFiles");
+            }
             targs.InputDirectory = ExpandPath(targs.InputDirectory);
             targs.OutputDirectory = ExpandPath(targs.OutputDirectory);
             targs.LibraryDirectory = ExpandPath(targs.LibraryDirectory);
+            targs.TempDirectory = ExpandPath(targs.TempDirectory);
 
             Console.WriteLine("InputDirectory=" + targs.InputDirectory);
             Console.WriteLine("OutputDirectory=" + targs.OutputDirectory);
@@ -174,6 +190,7 @@ namespace StoreLake.Sdk.Cli
             Console.WriteLine("DacpacFileName=" + targs.DacpacFileName);
             Console.WriteLine("StoreNameAssemblySuffix=" + targs.StoreNameAssemblySuffix);
             Console.WriteLine("GenerateSchema=" + targs.StoreNameAssemblySuffix);
+            Console.WriteLine("TempDirectory=" + targs.TempDirectory);
 
             ////string databaseName = "DemoTestDataX";
             //string databaseName = targs.DatabaseName;
@@ -192,7 +209,7 @@ namespace StoreLake.Sdk.Cli
             string filter = null;
             //filter = "HelplineData";
             //filter = "SLM.Database.Data";
-            SchemaExportCode.ExportTypedDataSetCode(ds, targs.LibraryDirectory, inputdir, targs.OutputDirectory, filter, targs.StoreNameAssemblySuffix, targs.GenerateSchema.Value);
+            SchemaExportCode.ExportTypedDataSetCode(ds, targs.LibraryDirectory, inputdir, targs.OutputDirectory, filter, targs.StoreNameAssemblySuffix, targs.GenerateSchema.Value, targs.TempDirectory);
         }
 
         private static string ExpandPath(string dir)

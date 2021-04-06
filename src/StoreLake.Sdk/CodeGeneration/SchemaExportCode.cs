@@ -17,7 +17,7 @@ namespace StoreLake.Sdk.CodeGeneration
 {
     public static class SchemaExportCode
     {
-        public static void ExportTypedDataSetCode(RegistrationResult rr, string libdir, string inputdir, string outputdir, string dacNameFilter, string storeSuffix, bool writeSchemaFile)
+        public static void ExportTypedDataSetCode(RegistrationResult rr, string libdir, string inputdir, string outputdir, string dacNameFilter, string storeSuffix, bool writeSchemaFile, string tempdir)
         {
             AssemblyResolver assemblyResolver = new AssemblyResolver();
             AssemblyName an_DibixHttp = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.Http.dll"));
@@ -61,7 +61,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                 //string schemaContent = File.ReadAllText(schemaFileName);
                             }
 
-                            ImportSchemasAsDataSets(assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName, storeSuffix);
+                            ImportSchemasAsDataSets(assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName, storeSuffix, tempdir);
                         }
                     }
 
@@ -76,9 +76,17 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static void ImportSchemasAsDataSets(AssemblyResolver  assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix)
+        private static void ImportSchemasAsDataSets(AssemblyResolver  assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir)
         {
-            DirectoryInfo tempDirInfo = new DirectoryInfo(Path.Combine(outputdir, "TempFiles", DateTime.UtcNow.Ticks + "_" + fileName));
+            if (!Directory.Exists(outputdir))
+            {
+                Directory.CreateDirectory(outputdir);
+            }
+            if (!Directory.Exists(tempdir))
+            {
+                Directory.CreateDirectory(tempdir);
+            }
+            DirectoryInfo tempDirInfo = new DirectoryInfo(Path.Combine(tempdir, DateTimeNow() + "_" + fileName));
             if (tempDirInfo.Exists)
             {
                 tempDirInfo.Delete(true);
@@ -105,12 +113,17 @@ namespace StoreLake.Sdk.CodeGeneration
 
 
             string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
-            string fullFileName_err = System.IO.Path.Combine(outputdir, fileName + ".errors.txt");
+            string fullFileName_err = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".errors.txt");
             CompileCode(comparam, ccu, outputdir, fileName, fullFileName_dll, fullFileName_err, tempDirInfo);
 
             assemblyResolver.ResolveAssembyByLocation(fullFileName_dll);
             dacpac.DacPacTestStoreAssemblyFileName = fullFileName_dll;
             Console.WriteLine(fullFileName_dll);
+        }
+
+        private static string DateTimeNow()
+        {
+            return DateTime.UtcNow.ToString("yyyyMMddHHmmss");
         }
 
         internal static void GenerateDataSetClasses(CodeCompileUnit ccu, string schemaContent, string namespaceName, CodeDomProvider codeProvider)
