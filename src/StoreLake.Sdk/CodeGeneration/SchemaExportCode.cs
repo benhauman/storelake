@@ -248,7 +248,14 @@ namespace StoreLake.Sdk.CodeGeneration
                     else
                     {
                         Adjust_TypeDecl(rr, dacpac, extensions_type_decl, ns.Name, type_decl);
-                        ns.Types.Add(type_decl);
+                        if (isSetClassDeclaration)
+                        {
+                            // skip it : 'NewDataSet'
+                        }
+                        else
+                        {
+                            ns.Types.Add(type_decl);
+                        }
 
                         foreach (CodeTypeMember member_decl in type_decl.Members)
                         {
