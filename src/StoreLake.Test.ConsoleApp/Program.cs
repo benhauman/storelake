@@ -72,6 +72,10 @@ namespace ConsoleApp4
 
             xDatabaseAccessorFactory databaseAccessorFactory = new xDatabaseAccessorFactory(dbServer, accessorGate, dbClient, "Initial Catalog=MyDB");
 
+            /* "accessor.QueryMany<TReturn,TSecond>"
+            var test12 = Helpline.Data.HelplineData.GetAttributesOfCmdbFlows(databaseAccessorFactory);
+            */
+
             var test11 = Helpline.Repository.Data.HelplineData.GetUserInfo(databaseAccessorFactory, 710);
             Console.WriteLine("Test11:  UserInfo.Agents : Count = " + test11.Agents.Count);
             foreach (var agent in test11.Agents)

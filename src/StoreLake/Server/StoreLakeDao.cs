@@ -635,6 +635,15 @@ namespace StoreLake.TestStore.Server
             }
             foreach (var pi in elementType.GetProperties())
             {
+                if (pi.PropertyType.IsPrimitive || pi.PropertyType == typeof(string))
+                {
+                    // ok
+                }
+                else
+                {
+                    // ?Collection =>  multiple rows....
+                    throw new NotImplementedException("" + elementType.FullName + " # " + pi.Name + " # " + pi.PropertyType.FullName);
+                }
                 var column_p = new DataColumn(pi.Name, pi.PropertyType);
                 tb_table.Columns.Add(column_p);
                 property_column_map.Add(new KeyValuePair<MemberInfo, DataColumn>(pi, column_p));

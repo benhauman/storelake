@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Microsoft.SqlServer.Server;
 using System;
 using StoreLake.TestStore.Database;
+using Helpline.SubProcess.DomainModel;
 
 namespace ConsoleApp4
 {
@@ -102,5 +103,23 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
         //{
         //    return 1;
         //}
+
+        public override IEnumerable<AttributesOfCmdbFlows> GetAttributesOfCmdbFlows(DataSet db)
+        {
+            var flow2 = new AttributesOfCmdbFlows {
+                AttributeDefId = 19,
+            };
+            flow2.CmdbFlowLabel.Add("L1");
+            flow2.CmdbFlowLabel.Add("L2");
+
+            var flow1 = new AttributesOfCmdbFlows
+            {
+                AttributeDefId = 19,
+            };
+            flow1.CmdbFlowLabel.Add("L1");
+            flow1.CmdbFlowLabel.Add("L2");
+
+            return new AttributesOfCmdbFlows[] { flow1, flow2 };
+        }
     }
 }

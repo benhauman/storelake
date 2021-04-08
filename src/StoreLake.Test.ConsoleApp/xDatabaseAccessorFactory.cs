@@ -94,7 +94,7 @@ namespace ConsoleApp4
 
         IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TReturn, TSecond>(string sql, CommandType commandType, ParametersVisitor parameters, string splitOn)
         {
-            throw new NotImplementedException();
+            return accessor.QueryMany<TReturn, TSecond>(sql, commandType, parameters, splitOn);
         }
 
         IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TReturn, TSecond, TThird>(string sql, CommandType commandType, ParametersVisitor parameters, string splitOn)
