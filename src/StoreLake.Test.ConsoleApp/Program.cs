@@ -48,7 +48,8 @@ namespace ConsoleApp4
             // AutoIncrement?
             // ReadOnlyPK
             var agent2 = db.hlsysagent().AddRowWithValues(712, "InternetAgent2", null, null, 1); //e.active = 1; see 'DF_hlsysagent_active'
-            //db.hlsysaccount().Last ;
+            db.hlsysagentroutingblacklist().AddRowWithValues(712);
+            
 
             db.hlsysagenttogroup().AddRowWithValues(710, 700);
             db.hlsysglobalacl().AddRowWithValues(123, 700, 0x0010);
@@ -58,6 +59,7 @@ namespace ConsoleApp4
             StoreLakeDbServer dbServer = new StoreLakeDbServer(db);
             //dbServer.RegisterHandlerReadWithCommandText((d, c) => DemoHandler1.GetAgentNameById(d, c)); // any / text-static
             //dbServer.RegisterHandlerReadForCommandText(typeof(TestDML), (d, c) => DemoHandler1.GetAgentInfoById(d, c)); // static-text / static
+            dbServer.RegisterCommandHandlerFacade<DemoHandler2Repository>(typeof(Helpline.Repository.Data.HelplineData));
             dbServer.RegisterCommandHandlerFacade<DemoHandler2>(typeof(Helpline.Data.HelplineData));
             dbServer.RegisterCommandHandlerMethods(typeof(TestDML), typeof(DemoHandler1)); // dml.methods(+text) => handler(+text)
             //System.Data.SqlClient.SqlClientFactory
@@ -70,6 +72,12 @@ namespace ConsoleApp4
 
             xDatabaseAccessorFactory databaseAccessorFactory = new xDatabaseAccessorFactory(dbServer, accessorGate, dbClient, "Initial Catalog=MyDB");
 
+            var test11 = Helpline.Repository.Data.HelplineData.GetUserInfo(databaseAccessorFactory, 710);
+            Console.WriteLine("Test11:  UserInfo.Agents : Count = " + test11.Agents.Count);
+            foreach (var agent in test11.Agents)
+            {
+                Console.WriteLine("    " + agent.Id + ", " + agent.Name + ", HideForRouting=" + agent.HideForRouting);
+            }
 
             var test10_udt = Helpline.Data.IntThreeSet.From(new int[] { 3, 2, 1 }, (udt, item) => udt.Add(item, (100 * item) + item, (100 * item)));
             var test10 = Helpline.Data.HelplineData.AddToWatchList(databaseAccessorFactory, 710, test10_udt);

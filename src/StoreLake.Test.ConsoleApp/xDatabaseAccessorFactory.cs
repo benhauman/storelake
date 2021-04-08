@@ -144,7 +144,8 @@ namespace ConsoleApp4
 
         IMultipleResultReader IDatabaseAccessor.QueryMultiple(string sql, CommandType commandType, ParametersVisitor parameters)
         {
-            throw new NotImplementedException();
+            // see : Helpline.Repository.Data.HelplineData.GetUserInfo(databaseAccessorFactory, 710);
+            return accessor.QueryMultiple(sql, commandType, parameters);
         }
 
         Task<IMultipleResultReader> IDatabaseAccessor.QueryMultipleAsync(string sql, CommandType commandType, ParametersVisitor parameters, CancellationToken cancellationToken)

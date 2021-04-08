@@ -505,16 +505,16 @@ namespace StoreLake.TestStore.Server
                 if (_mi.IsStatic)
                 {
                     object returnValues = _mi.Invoke(null, invoke_parameters.ToArray());
-                    DbDataReader result = CreateDbDataReaderFromSingleSetReturnValues(_mi.ReturnType, returnValues); // single/multiple result set(from dibix); enumerable or not; complex or not(names for columns?(from SQL/accessor)) 
-                    return result;
+                    DataTable[] result_tables = CreateDbDataReaderFromSingleSetReturnValues(_mi.ReturnType, returnValues); // single/multiple result set(from dibix); enumerable or not; complex or not(names for columns?(from SQL/accessor)) 
+                    return new DataTableReader(result_tables);
                 }
                 else
                 {
                     object handlerInstance = Activator.CreateInstance(this._instanceType);
                     object returnValues = _mi.Invoke(handlerInstance, invoke_parameters.ToArray());
 
-                    DbDataReader result = CreateDbDataReaderFromSingleSetReturnValues(_mi.ReturnType, returnValues); // single/multiple result set(from dibix); enumerable or not; complex or not(names for columns?(from SQL/accessor)) 
-                    return result;
+                    DataTable[] result_tables = CreateDbDataReaderFromSingleSetReturnValues(_mi.ReturnType, returnValues); // single/multiple result set(from dibix); enumerable or not; complex or not(names for columns?(from SQL/accessor)) 
+                    return new DataTableReader(result_tables);
                     //string debug_ret; debug_ret = TypeNameAsText(_mi.ReturnType);
                     //throw new NotImplementedException("public " + debug_ret + " " + _mi.Name + "(DataSet db" + debug_params.ToString() + ") of '" + _instanceType.Name + "'");
                 }
@@ -543,22 +543,27 @@ namespace StoreLake.TestStore.Server
             return t.FullName;
         }
 
-        private static DbDataReader CreateDbDataReaderFromSingleSetReturnValues(Type returnType, object returnValues)
+        private static DataTable[] CreateDbDataReaderFromSingleSetReturnValues(Type returnType, object returnValues)
         {
             if (returnValues == null)
             {
-                var tb_table = new DataTable();
-                var column_value = new DataColumn("value", returnType);
-                tb_table.Columns.Add(column_value);
-                // 
-                return new DataTableReader(tb_table);
+                if (returnType.IsPrimitive || returnType == typeof(string))
+                {
+                    var tb_table = new DataTable();
+                    var column_value = new DataColumn("value", returnType);
+                    tb_table.Columns.Add(column_value);
+                    // 
+                    return new DataTable[] { tb_table };
+                }
+                else
+                {
+                    // multiple columns!
+                    throw new NotImplementedException();
+                }
             }
             else
             {
-                //if (returnValues.GetType().IsArray)
-                //{
-                //    throw new NotImplementedException("array");
-                //}
+                // single result set : 0..N-rows
                 if (typeof(System.Collections.IEnumerable).IsAssignableFrom(returnType) && returnType.IsGenericType)
                 {
                     var elementType = returnType.GetGenericArguments()[0];
@@ -585,80 +590,16 @@ namespace StoreLake.TestStore.Server
                             row[column_value] = col_value;
                             tb_table.Rows.Add(row);
                         }
-                        return new DataTableReader(tb_table);
+                        return new DataTable[] { tb_table };
                     }
                     // complex type : multiple rows
                     {
-                        List<KeyValuePair<MemberInfo, DataColumn>> property_column_map = new List<KeyValuePair<MemberInfo, DataColumn>>();
-                        var tb_table = new DataTable();
-                        foreach (var pi in elementType.GetFields()) // public fields
-                        {
-                            var column_p = new DataColumn(pi.Name, pi.FieldType);
-                            tb_table.Columns.Add(column_p);
-                            property_column_map.Add(new KeyValuePair<MemberInfo, DataColumn>(pi, column_p));
-                        }
-                        foreach (var pi in elementType.GetProperties())
-                        {
-                            var column_p = new DataColumn(pi.Name, pi.PropertyType);
-                            tb_table.Columns.Add(column_p);
-                            property_column_map.Add(new KeyValuePair<MemberInfo, DataColumn>(pi, column_p));
-                        }
-
-                        if (property_column_map.Count == 0)
-                        {
-                            throw new InvalidOperationException("no members");
-                        }
-
-                        System.Collections.IEnumerable ie = (System.Collections.IEnumerable)returnValues;
-                        var etor = ie.GetEnumerator();
-                        while (etor.MoveNext())
-                        {
-                            object item = etor.Current;
-
-                            DataRow row = tb_table.NewRow();
-                            foreach (var mi_col in property_column_map)
-                            {
-                                var col = mi_col.Value;
-                                object col_value;
-                                var pi = mi_col.Key as PropertyInfo;
-                                if (pi != null)
-                                {
-                                    col_value = pi.GetValue(item);
-                                    if (col_value.GetType() != pi.PropertyType)
-                                    {
-                                        throw new InvalidOperationException(pi.Name);
-                                    }
-                                    if (col_value.GetType() != col.DataType)
-                                    {
-                                        throw new InvalidOperationException(pi.Name);
-                                    }
-
-                                    row[mi_col.Value] = col_value;
-                                }
-                                else
-                                {
-                                    var fi = ((FieldInfo)mi_col.Key);
-                                    col_value = fi.GetValue(item);
-                                    if (col_value.GetType() != fi.FieldType)
-                                    {
-                                        throw new InvalidOperationException(fi.Name);
-                                    }
-                                    if (col_value.GetType() != col.DataType)
-                                    {
-                                        throw new InvalidOperationException(fi.Name);
-                                    }
-
-
-                                    row[mi_col.Value] = col_value;
-                                }
-
-                            }
-                            tb_table.Rows.Add(row);
-                        }
-                        return new DataTableReader(tb_table);
+                        DataTable tb_table = ConvertComplexTypeValuesToTable(returnValues, elementType);
+                        return new DataTable[] { tb_table };
                     }
                 }
 
+                // single result set : 1-row
                 if (returnValues.GetType().IsPrimitive
                     || returnValues.GetType() == typeof(string)
                     || returnValues.GetType() == typeof(Guid)
@@ -673,11 +614,137 @@ namespace StoreLake.TestStore.Server
                     DataRow row = tb_table.NewRow();
                     row[column_value] = returnValues;
                     tb_table.Rows.Add(row);
-                    return new DataTableReader(tb_table);
+                    return new DataTable[] { tb_table };
                 }
-                throw new NotImplementedException(returnValues.GetType().Name);
+
+                // IDatabaseAccessor.QueryMultiple
+                return ConvertToMultipleTables(returnType, returnValues);
             }
 
+        }
+
+        private static DataTable ConvertComplexTypeValuesToTable(object returnValues, Type elementType)
+        {
+            List<KeyValuePair<MemberInfo, DataColumn>> property_column_map = new List<KeyValuePair<MemberInfo, DataColumn>>();
+            var tb_table = new DataTable();
+            foreach (var pi in elementType.GetFields()) // public fields
+            {
+                var column_p = new DataColumn(pi.Name, pi.FieldType);
+                tb_table.Columns.Add(column_p);
+                property_column_map.Add(new KeyValuePair<MemberInfo, DataColumn>(pi, column_p));
+            }
+            foreach (var pi in elementType.GetProperties())
+            {
+                var column_p = new DataColumn(pi.Name, pi.PropertyType);
+                tb_table.Columns.Add(column_p);
+                property_column_map.Add(new KeyValuePair<MemberInfo, DataColumn>(pi, column_p));
+            }
+
+            if (property_column_map.Count == 0)
+            {
+                throw new InvalidOperationException("no members");
+            }
+
+            System.Collections.IEnumerable ie = (System.Collections.IEnumerable)returnValues;
+            var etor = ie.GetEnumerator();
+            while (etor.MoveNext())
+            {
+                object item = etor.Current;
+
+                DataRow row = tb_table.NewRow();
+                foreach (var mi_col in property_column_map)
+                {
+                    var col = mi_col.Value;
+                    object col_value;
+                    var pi = mi_col.Key as PropertyInfo;
+                    if (pi != null)
+                    {
+                        col_value = pi.GetValue(item);
+                        if (col_value == null)
+                        {
+                            // null value
+                            col_value = DBNull.Value;
+                        }
+                        else
+                        {
+                            if (col_value.GetType() != pi.PropertyType)
+                            {
+                                throw new InvalidOperationException(pi.Name);
+                            }
+                            if (col_value.GetType() != col.DataType)
+                            {
+                                throw new InvalidOperationException(pi.Name);
+                            }
+                        }
+
+                        row[mi_col.Value] = col_value;
+                    }
+                    else
+                    {
+                        var fi = ((FieldInfo)mi_col.Key);
+                        col_value = fi.GetValue(item);
+                        if (col_value.GetType() != fi.FieldType)
+                        {
+                            throw new InvalidOperationException(fi.Name);
+                        }
+                        if (col_value.GetType() != col.DataType)
+                        {
+                            throw new InvalidOperationException(fi.Name);
+                        }
+
+
+                        row[mi_col.Value] = col_value;
+                    }
+
+                }
+                tb_table.Rows.Add(row);
+            }
+
+            return tb_table;
+        }
+
+        private static DataTable[] ConvertToMultipleTables(Type returnType, object returnValues)
+        {
+            List<DataTable> tables = new List<DataTable>();
+            PropertyInfo[] pis = returnType.GetProperties();
+            foreach (PropertyInfo pi in pis)
+            {
+                //ICollection<>
+                // public ICollection<Agent> Agents
+/*                Type elementType;
+
+                if (pi.PropertyType.IsGenericType && pi.PropertyType.GetGenericArguments().Length == 1)
+                {
+                    var gt = pi.PropertyType.GetGenericTypeDefinition(); // typeof(ICollection<>)
+                    elementType = pi.PropertyType.GetGenericArguments()[0];
+                }
+                else
+                {
+                    throw new NotImplementedException(returnType.FullName + " # " + pi.Name + " # " + pi.PropertyType.FullName);
+                }
+                if (elementType.IsPrimitive)
+                {
+                }
+                else
+                {
+
+                }
+*/
+                var prop_values = pi.GetValue(returnValues); // property_values can be null / empty table
+                DataTable[] property_tables = CreateDbDataReaderFromSingleSetReturnValues(pi.PropertyType, prop_values);
+                if (property_tables.Length == 0)
+                {
+                    throw new NotSupportedException("No set for property. " + returnType.FullName + " # " + pi.Name + " # " + pi.PropertyType.FullName);
+                }
+                if (property_tables.Length > 1)
+                {
+                    throw new NotSupportedException("Multiple sets for property. " + returnType.FullName + " # " + pi.Name + " # " + pi.PropertyType.FullName);
+                }
+                var tb_table = property_tables[0];
+                //var tb_table = ConvertComplexTypeValuesToTable(, elementType);
+                tables.Add(tb_table);
+            }
+            return tables.ToArray();
         }
 
         private static object GetTypedCommandParameter(DbCommand cmd, ParameterInfo method_prm)
@@ -732,8 +799,8 @@ namespace StoreLake.TestStore.Server
                 //if (typeof(Dibix.StructuredType) method_prm.ParameterType.)
                 // Assert_DbParameter_GetValue_Udt_record
             }
-            
-                        {
+
+            {
 
                 string debug_method_prm; debug_method_prm = TypeNameAsText(method_prm.ParameterType);
                 throw new NotImplementedException("Command parameter for { " + debug_method_prm + " " + method_prm.Name + " }");
