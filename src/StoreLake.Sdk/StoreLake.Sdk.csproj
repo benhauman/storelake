@@ -38,6 +38,7 @@
     <Reference Include="Dibix.Http">
       <HintPath>..\ThirdParty\Dibix.Http.dll</HintPath>
     </Reference>
+    <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Design" />
   </ItemGroup>
 

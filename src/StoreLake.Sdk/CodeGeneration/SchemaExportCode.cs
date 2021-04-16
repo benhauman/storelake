@@ -86,7 +86,7 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static void ImportSchemasAsDataSets(AssemblyResolver  assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir, string libdir)
+        private static void ImportSchemasAsDataSets(AssemblyResolver assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir, string libdir)
         {
             if (!Directory.Exists(outputdir))
             {
@@ -106,7 +106,15 @@ namespace StoreLake.Sdk.CodeGeneration
             Microsoft.CSharp.CSharpCodeProvider codeProvider = new Microsoft.CSharp.CSharpCodeProvider();// //CodeDomProvider.CreateProvider(language);
 
             CodeCompileUnit ccu = new CodeCompileUnit();
+
             CompilerParameters comparam = new CompilerParameters(new string[] { });
+            assemblyResolver.ResolveAssembyByName(typeof(System.Data.DataTable).Assembly.GetName());
+            assemblyResolver.ResolveAssembyByName(typeof(System.Data.TypedTableBase<>).Assembly.GetName());
+            AddReferencedAssembly(assemblyResolver, comparam, typeof(System.ComponentModel.MarshalByValueComponent));
+            AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.DataTable));
+            AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.TypedTableBase<>));
+            AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Xml.Serialization.IXmlSerializable));
+
             AddAssemblyAttributes(ccu);
             GenerateDataSetClasses(ccu, schemaContent, namespaceName, codeProvider);
 
@@ -115,21 +123,29 @@ namespace StoreLake.Sdk.CodeGeneration
 
             StoreAccessorCodeGenerator.GeneratorAccessors(assemblyResolver, dacpac, comparam, ccu, inputdir);
 
-            using (TextWriter textWriter = new StreamWriter(Path.Combine(tempDirInfo.FullName, fileName + ".cs"), append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
+            string codeFileName = Path.Combine(tempDirInfo.FullName, fileName + ".cs");
+            using (TextWriter textWriter = new StreamWriter(codeFileName, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
             //using (TextWriter textWriter = CreateOutputWriter(Path.Combine(outputdir, path), fileName, "cs"))
             {
                 codeProvider.GenerateCodeFromCompileUnit(ccu, textWriter, null);
             }
-
+            s_tracer.TraceEvent(TraceEventType.Verbose, 0, "codeFileName:" + codeFileName);
 
             string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
             string fullFileName_err = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".errors.txt");
-            CompileCode(comparam, ccu, libdir, outputdir, fileName, fullFileName_dll, fullFileName_err, tempDirInfo);
+            CompileCode(comparam, ccu, libdir, outputdir, fileName, fullFileName_dll, fullFileName_err, tempDirInfo, codeFileName);
 
             assemblyResolver.ResolveAssembyByLocation(fullFileName_dll);
             dacpac.DacPacTestStoreAssemblyFileName = fullFileName_dll;
 
-            s_tracer.TraceEvent( TraceEventType.Information, 0, fullFileName_dll);
+            s_tracer.TraceEvent(TraceEventType.Information, 0, fullFileName_dll);
+        }
+
+        private static void AddReferencedAssembly(AssemblyResolver assemblyResolver, CompilerParameters comparam, Type asm_type)
+        {
+            assemblyResolver.ResolveAssembyByName(asm_type.Assembly.GetName());
+            assemblyResolver.VerifyAssemblyLocation(asm_type.Assembly.Location);
+            comparam.ReferencedAssemblies.Add(asm_type.Assembly.Location);
         }
 
         private static string DateTimeNow()
@@ -1438,7 +1454,7 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        internal  static void AddAssemblyAttributes(CodeCompileUnit ccu)
+        internal static void AddAssemblyAttributes(CodeCompileUnit ccu)
         {
             CodeAttributeDeclaration attributeAssemblyVersion = new CodeAttributeDeclaration(typeof(AssemblyVersionAttribute).FullName);
             attributeAssemblyVersion.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("1.0.0.0")));
@@ -1491,11 +1507,12 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static void CompileCode(CompilerParameters comparam, CodeCompileUnit codeCompileUnit, string libdir, string outputFolder, string fileName, string outputAssemblyFullFileName, string outputErrorsFullFileName, DirectoryInfo tempDirInfo)
+        private static void CompileCode(CompilerParameters comparam, CodeCompileUnit codeCompileUnit, string libdir, string outputFolder, string fileName, string outputAssemblyFullFileName, string outputErrorsFullFileName, DirectoryInfo tempDirInfo, string codeFileName)
         {
             string snkPath = GetSnkPath(Path.Combine(tempDirInfo.FullName, "GeneratedModel.snk"));
 
             StringBuilder compilerOpt = new StringBuilder();
+            compilerOpt.Append("/target:library ");
             compilerOpt.AppendFormat("/lib:{0} ", libdir);
             compilerOpt.AppendFormat("/keyfile:\"{0}\" ", snkPath);
             //CompilerParameters comparam = new CompilerParameters(new string[] { });
@@ -1508,6 +1525,12 @@ namespace StoreLake.Sdk.CodeGeneration
             comparam.IncludeDebugInformation = true;
             comparam.TempFiles.KeepFiles = true;
             comparam.TempFiles = new TempFileCollection(tempDirInfo.FullName, true);
+            s_tracer.TraceEvent(TraceEventType.Verbose, 0, "ReferencedAssemblies:" + comparam.ReferencedAssemblies.Count);
+            for (int ix = 0; ix < comparam.ReferencedAssemblies.Count; ix++)
+            {
+                s_tracer.TraceEvent(TraceEventType.Verbose, 0, "  ReferencedAssembly (" + (ix + 1) + "/" + comparam.ReferencedAssemblies.Count + ") : " + comparam.ReferencedAssemblies[ix]);
+            }
+
             //  compilerOptions.ReferencedAssemblies.Add(new FileInfo(typeof(System.ComponentModel.DescriptionAttribute).Assembly.Location).Name); // system.dll
             //provide the name of the class which contains the Main Entry //point method  
             //comparam.MainClass = "mynamespace.CMyclass";
@@ -1521,7 +1544,9 @@ namespace StoreLake.Sdk.CodeGeneration
             //The CompileAssemblyFromDom would either return the list of  
             //compile time errors (if any), or would create the  
             //assembly in the respective path in case of successful //compilation  
-            CompilerResults compres = icc.CompileAssemblyFromDom(comparam, codeCompileUnit);
+            //CompilerResults compres = icc.CompileAssemblyFromDom(comparam, codeCompileUnit);
+            CompilerResults compres = icc.CompileAssemblyFromFile(comparam, codeFileName);
+
             if (compres == null || compres.Errors.Count > 0)
             {
                 StringBuilder errorFileContent = new StringBuilder();
