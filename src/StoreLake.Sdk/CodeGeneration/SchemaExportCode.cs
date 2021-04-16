@@ -71,7 +71,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                 //string schemaContent = File.ReadAllText(schemaFileName);
                             }
 
-                            ImportSchemasAsDataSets(assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName, storeSuffix, tempdir);
+                            ImportSchemasAsDataSets(assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName, storeSuffix, tempdir, libdir);
                         }
                     }
 
@@ -86,7 +86,7 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static void ImportSchemasAsDataSets(AssemblyResolver  assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir)
+        private static void ImportSchemasAsDataSets(AssemblyResolver  assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir, string libdir)
         {
             if (!Directory.Exists(outputdir))
             {
@@ -124,7 +124,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
             string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
             string fullFileName_err = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".errors.txt");
-            CompileCode(comparam, ccu, outputdir, fileName, fullFileName_dll, fullFileName_err, tempDirInfo);
+            CompileCode(comparam, ccu, libdir, outputdir, fileName, fullFileName_dll, fullFileName_err, tempDirInfo);
 
             assemblyResolver.ResolveAssembyByLocation(fullFileName_dll);
             dacpac.DacPacTestStoreAssemblyFileName = fullFileName_dll;
@@ -1491,15 +1491,16 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static void CompileCode(CompilerParameters comparam, CodeCompileUnit codeCompileUnit, string outputFolder, string fileName, string outputAssemblyFullFileName, string outputErrorsFullFileName, DirectoryInfo tempDirInfo)
+        private static void CompileCode(CompilerParameters comparam, CodeCompileUnit codeCompileUnit, string libdir, string outputFolder, string fileName, string outputAssemblyFullFileName, string outputErrorsFullFileName, DirectoryInfo tempDirInfo)
         {
             string snkPath = GetSnkPath(Path.Combine(tempDirInfo.FullName, "GeneratedModel.snk"));
 
             StringBuilder compilerOpt = new StringBuilder();
-            //compilerOpt.AppendFormat("/lib:\"{0}\" ", "binDirectoryFullName");
+            compilerOpt.AppendFormat("/lib:{0} ", libdir);
             compilerOpt.AppendFormat("/keyfile:\"{0}\" ", snkPath);
             //CompilerParameters comparam = new CompilerParameters(new string[] { });
             comparam.CompilerOptions = compilerOpt.ToString(); // "/optimize";
+            s_tracer.TraceEvent(TraceEventType.Verbose, 0, "CompilerOptions:" + comparam.CompilerOptions);
             comparam.WarningLevel = 4; // max
             comparam.GenerateInMemory = false;
             //Indicates whether the output is an executable.  

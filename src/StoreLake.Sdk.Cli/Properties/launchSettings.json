@@ -2,7 +2,8 @@
   "profiles": {
     "StoreLake.Sdk.Cli": {
       "commandName": "Project",
-      "commandLineArgs": "libdir=\"..\\..\\..\\..\\..\\..\\..\\..\\Helpline\\Current\\bin\\Debug\\output\" inputdir=\"..\\..\\..\\..\\..\\..\\..\\..\\Helpline\\Current\\bin\\Debug\\output\\database\" dacpac=SLM.Database.Data.dacpac outputdir=\"..\\..\\..\\..\\..\\..\\..\\..\\Helpline\\CurrentTemp\\test\\DataStores\\lib\" storesuffix=TestStore generateschema=false tempdir=\"..\\..\\..\\..\\..\\..\\..\\..\\Helpline\\CurrentTemp\\test\\DataStores\\TempFiles\" "
+      "commandLineArgs": "libdir=D:\\Helpline\\Current\\SQL\\HelplineData\\obj\\Debug\\TestStore\\ inputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ dacpac=HelplineData.dacpac outputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ storesuffix=TestStore generateschema=false tempdir=D:\\Helpline\\Current\\SQL\\HelplineData\\obj\\Debug\\TestStore\\",
+      "workingDirectory": "D:\\Helpline\\Current\\SQL\\HelplineData"
     }
   }
 }
