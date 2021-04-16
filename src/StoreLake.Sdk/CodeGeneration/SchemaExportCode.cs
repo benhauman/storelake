@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -17,12 +18,21 @@ namespace StoreLake.Sdk.CodeGeneration
 {
     public static class SchemaExportCode
     {
+
+        private static readonly TraceSource s_tracer = new TraceSource("StoreLake.Sdk") { Switch = new SourceSwitch("TraceAll") { Level = SourceLevels.All } };
+        public static TraceSource CreateTraceSource()
+        {
+            return s_tracer;
+        }
+
         public static void ExportTypedDataSetCode(RegistrationResult rr, string libdir, string inputdir, string outputdir, string dacNameFilter, string storeSuffix, bool writeSchemaFile, string tempdir)
         {
             AssemblyResolver assemblyResolver = new AssemblyResolver();
-            AssemblyName an_DibixHttp = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.Http.dll"));
+            AssemblyName an_DibixHttpServer = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.Http.Server.dll"));
+            AssemblyName an_DibixHttpClient = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.Http.Client.dll"));
             //Assembly.Load(an_DibixHttp); // probing?
-            assemblyResolver.ResolveAssembyByName(an_DibixHttp);
+            assemblyResolver.ResolveAssembyByName(an_DibixHttpServer);
+            assemblyResolver.ResolveAssembyByName(an_DibixHttpClient);
 
 
             var level_count = rr.registered_dacpacs.Values.Max(x => x.DacPacDependencyLevel);
@@ -118,7 +128,8 @@ namespace StoreLake.Sdk.CodeGeneration
 
             assemblyResolver.ResolveAssembyByLocation(fullFileName_dll);
             dacpac.DacPacTestStoreAssemblyFileName = fullFileName_dll;
-            Console.WriteLine(fullFileName_dll);
+
+            s_tracer.TraceEvent( TraceEventType.Information, 0, fullFileName_dll);
         }
 
         private static string DateTimeNow()

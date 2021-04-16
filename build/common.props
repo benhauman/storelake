@@ -1,14 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project>
   <PropertyGroup>
-    <Product>StoreLakex1</Product>
+    <Product>StoreLake</Product>
     <Company></Company>
     <Copyright>Copyright (c) 2021</Copyright>
-    <Description>AAdeesssc</Description>
+    <Description>AAddeesscc</Description>
   </PropertyGroup>
   <PropertyGroup>
-    <PackageVersion>1.0.25</PackageVersion>
-    <FileVersion>1.0.25</FileVersion>
+    <PackageVersion>1.0.26</PackageVersion>
+    <FileVersion>1.0.26</FileVersion>
   </PropertyGroup>
   <!--<PropertyGroup>
     <VersionMajor>66</VersionMajor>

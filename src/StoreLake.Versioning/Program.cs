@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -54,7 +55,7 @@ namespace StoreLake.Versioning
 
         private static void DumpException(Exception ex)
         {
-            Console.Error.WriteLine(ex);
+            Trace.TraceError("" + ex);
             if (ex.InnerException != null)
             {
                 DumpException(ex.InnerException);
@@ -62,7 +63,7 @@ namespace StoreLake.Versioning
             ReflectionTypeLoadException rtlex = ex as ReflectionTypeLoadException;
             if (rtlex != null)
             {
-                Console.Error.WriteLine("LoaderExceptions:" + rtlex.LoaderExceptions.Length);
+                Trace.TraceError("LoaderExceptions:" + rtlex.LoaderExceptions.Length);
                 foreach (var err in rtlex.LoaderExceptions)
                 {
                     DumpException(err);

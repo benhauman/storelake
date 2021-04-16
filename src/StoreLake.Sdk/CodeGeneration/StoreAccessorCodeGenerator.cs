@@ -90,7 +90,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
         private static void GenerateStructureTypeRow(CodeCompileUnit ccu, Type udtType)
         {
-            Console.WriteLine("" + udtType.FullName);
+            //Console.WriteLine("" + udtType.FullName);
             CodeNamespace ns = EnsureNamespace(ccu, udtType);
             CodeTypeDeclaration typedecl = BuildeStructureTypeRowType(udtType);
             ns.Types.Add(typedecl);

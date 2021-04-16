@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using StoreLake.Sdk.CodeGeneration;
@@ -7,18 +8,26 @@ namespace StoreLake.Sdk.Cli
 {
     class Program
     {
+        private static readonly TraceSource s_tracer = SchemaExportCode.CreateTraceSource();
+
         static int Main(string[] args)
         {
-            Console.WriteLine("CurrentDirectory: " + Environment.CurrentDirectory);
-            Console.WriteLine("FileVersion:" + typeof(Program).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
-            
+            ConsoleTraceListener listener = new ColoredConsoleTraceListener(false);
+            Trace.Listeners.Clear();
+            Trace.Listeners.Add(listener); // SharedListeners
+            s_tracer.Listeners.Add(listener);
+
+            //s_tracer.Listeners.Add(listener);
+
+            s_tracer.TraceEvent(TraceEventType.Information, 0, "CurrentDirectory: " + Environment.CurrentDirectory);
+            s_tracer.TraceEvent(TraceEventType.Information, 0, "FileVersion:" + typeof(Program).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>().Version);
             try
             {
                 ToolArguments targs = ParseArguments(args);
                 if (targs == null)
                 {
-                    Console.Error.WriteLine("USAGE:");
-                    Console.Error.WriteLine(" StoreLake.Sdk.Cli.exe inputdir=... dacpac=sample.dacpac");
+                    s_tracer.TraceEvent(TraceEventType.Information, 0, "USAGE:");
+                    s_tracer.TraceEvent(TraceEventType.Information, 0, " StoreLake.Sdk.Cli.exe inputdir=... dacpac=sample.dacpac");
                     return -2;
                 }
                 else
@@ -49,27 +58,27 @@ namespace StoreLake.Sdk.Cli
         {
             if (args == null || args.Length == 0)
             {
-                Console.Error.WriteLine("No arguments specified.");
+                s_tracer.TraceEvent(TraceEventType.Error, 0, "No arguments specified.");
                 return null;
             }
             ToolArguments targs = new ToolArguments();
             foreach (string arg in args)
             {
-                Console.WriteLine(arg);
+                //Console.WriteLine(arg);
                 string[] kv = arg.Split('=');
                 if (kv.Length != 2)
                 {
-                    Console.Error.WriteLine("Invalid argument specified:" + arg);
+                    s_tracer.TraceEvent(TraceEventType.Error, 0, "Invalid argument specified:" + arg);
                     return null;
                 }
                 if (string.IsNullOrEmpty(kv[0]))
                 {
-                    Console.Error.WriteLine("Invalid argument key specified:" + arg);
+                    s_tracer.TraceEvent(TraceEventType.Error, 0, "Invalid argument key specified:" + arg);
                     return null;
                 }
                 if (string.IsNullOrEmpty(kv[1]))
                 {
-                    Console.Error.WriteLine("Invalid argument value specified:" + arg);
+                    s_tracer.TraceEvent(TraceEventType.Error, 0, "Invalid argument value specified:" + arg);
                     return null;
                 }
 
@@ -115,7 +124,7 @@ namespace StoreLake.Sdk.Cli
                                         }
                                         else
                                         {
-                                            Console.Error.WriteLine("Unknown argument specified:" + arg);
+                                            s_tracer.TraceEvent(TraceEventType.Error, 0, "Unknown argument specified:" + arg);
                                             return null;
                                         }
                                     }
@@ -132,7 +141,7 @@ namespace StoreLake.Sdk.Cli
 
         private static void DumpException(Exception ex)
         {
-            Console.Error.WriteLine(ex);
+            s_tracer.TraceEvent(TraceEventType.Error, 0, "" + ex);
             if (ex.InnerException != null)
             {
                 DumpException(ex.InnerException);
@@ -140,7 +149,7 @@ namespace StoreLake.Sdk.Cli
             ReflectionTypeLoadException rtlex = ex as ReflectionTypeLoadException;
             if (rtlex != null)
             {
-                Console.Error.WriteLine("LoaderExceptions:" + rtlex.LoaderExceptions.Length);
+                s_tracer.TraceEvent(TraceEventType.Error, 0, "LoaderExceptions:" + rtlex.LoaderExceptions.Length);
                 foreach (var err in rtlex.LoaderExceptions)
                 {
                     DumpException(err);
@@ -184,13 +193,13 @@ namespace StoreLake.Sdk.Cli
             targs.LibraryDirectory = ExpandPath(targs.LibraryDirectory);
             targs.TempDirectory = ExpandPath(targs.TempDirectory);
 
-            Console.WriteLine("InputDirectory=" + targs.InputDirectory);
-            Console.WriteLine("OutputDirectory=" + targs.OutputDirectory);
-            Console.WriteLine("LibraryDirectory=" + targs.LibraryDirectory);
-            Console.WriteLine("DacpacFileName=" + targs.DacpacFileName);
-            Console.WriteLine("StoreNameAssemblySuffix=" + targs.StoreNameAssemblySuffix);
-            Console.WriteLine("GenerateSchema=" + targs.StoreNameAssemblySuffix);
-            Console.WriteLine("TempDirectory=" + targs.TempDirectory);
+            s_tracer.TraceInformation("InputDirectory=" + targs.InputDirectory);
+            s_tracer.TraceInformation("OutputDirectory=" + targs.OutputDirectory);
+            s_tracer.TraceInformation("LibraryDirectory=" + targs.LibraryDirectory);
+            s_tracer.TraceInformation("DacpacFileName=" + targs.DacpacFileName);
+            s_tracer.TraceInformation("StoreNameAssemblySuffix=" + targs.StoreNameAssemblySuffix);
+            s_tracer.TraceInformation("GenerateSchema=" + targs.StoreNameAssemblySuffix);
+            s_tracer.TraceInformation("TempDirectory=" + targs.TempDirectory);
 
             ////string databaseName = "DemoTestDataX";
             //string databaseName = targs.DatabaseName;
