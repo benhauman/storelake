@@ -192,7 +192,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 typedecl.Members.Add(member_property);
 
-                CodeIndexerExpression indexer = new CodeIndexerExpression(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "record"), new CodePrimitiveExpression(pi.Name));
+                CodeIndexerExpression indexer = new CodeIndexerExpression(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "record"), new_CodePrimitiveExpression(pi.Name));
 
                 CodeExpression var_value_ref;
                 if (pi.ParameterType.IsValueType)
@@ -207,7 +207,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     new CodeBinaryOperatorExpression(var_value_ref,
                         CodeBinaryOperatorType.ValueEquality,
                         new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(DBNull)), "Value"));
-                    CodeConditionStatement ifNull = new CodeConditionStatement(conditionExpr, new CodeMethodReturnStatement(new CodePrimitiveExpression(null)));
+                    CodeConditionStatement ifNull = new CodeConditionStatement(conditionExpr, new CodeMethodReturnStatement(new_CodePrimitiveExpression(null)));
 
                     member_property.GetStatements.Add(var_value_decl);
                     member_property.GetStatements.Add(ifNull);
@@ -220,13 +220,21 @@ namespace StoreLake.Sdk.CodeGeneration
             return typedecl;
         }
 
+        private static CodeExpression new_CodePrimitiveExpression(object value)
+        {
+            if (value != null && value is byte[])
+            {
+                throw new NotSupportedException();
+            }
+            return new CodePrimitiveExpression(value);
+        }
         private static CodeTypeDeclaration BuildCommandHandlerFacadeType(Type databaseAccessorType)
         {
             string typeName = databaseAccessorType.Name + "CommandHandlerFacade";
             CodeTypeDeclaration typedecl = new CodeTypeDeclaration() { Name = typeName, IsClass = true, Attributes = MemberAttributes.Public };
 
             //typedecl.Comments.Add(new CodeCommentStatement("Generated (at:" + DateTime.UtcNow + ")", true));
-            typedecl.CustomAttributes.Add(new CodeAttributeDeclaration(new CodeTypeReference(typeof(System.ComponentModel.DescriptionAttribute)), new CodeAttributeArgument(new CodePrimitiveExpression("Generated (at:" + DateTime.UtcNow + ")"))));
+            typedecl.CustomAttributes.Add(new CodeAttributeDeclaration(new CodeTypeReference(typeof(System.ComponentModel.DescriptionAttribute)), new CodeAttributeArgument(new_CodePrimitiveExpression("Generated (at:" + DateTime.UtcNow + ")"))));
 
             foreach (MethodInfo accessMethod in databaseAccessorType.GetMethods(BindingFlags.Public | BindingFlags.Static))
             {

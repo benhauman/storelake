@@ -190,8 +190,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
                 s_tracer.TraceEvent(TraceEventType.Verbose, 0, "codeFileName:" + codeFileName);
 
-                string fullFileName_err = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".errors.txt");
-                CompileCode(dacpac, comparam, ccu, libdir, outputdir, fileName, fullFileName_dll, fullFileName_err, tempDirInfo, codeFileName);
+                CompileCode(dacpac, comparam, ccu, libdir, outputdir, fileName, fullFileName_dll, tempDirInfo, codeFileName);
             }
             assemblyResolver.ResolveAssembyByLocation(fullFileName_dll);
             dacpac.DacPacTestStoreAssemblyFileName = fullFileName_dll;
@@ -295,8 +294,8 @@ namespace StoreLake.Sdk.CodeGeneration
                 CodeCastExpression cast_expr = new CodeCastExpression("TTable", indexer);
                 var_decl_table.InitExpression = cast_expr;
 
-                var ifTableNull = new CodeBinaryOperatorExpression(var_ref_table, CodeBinaryOperatorType.ValueEquality, new CodePrimitiveExpression(null));
-                var throwExpr = new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(ArgumentException), new CodeSnippetExpression("\"Table [\" + tableName + \"] could not be found.\""), new CodePrimitiveExpression("tableName")));
+                var ifTableNull = new CodeBinaryOperatorExpression(var_ref_table, CodeBinaryOperatorType.ValueEquality, new_CodePrimitiveExpression(null));
+                var throwExpr = new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(ArgumentException), new CodeSnippetExpression("\"Table [\" + tableName + \"] could not be found.\""), new_CodePrimitiveExpression("tableName")));
                 method_gettable.Statements.Add(new CodeConditionStatement(ifTableNull, throwExpr));
 
                 //method_gettable.Statements.Add(new CodeAssignStatement(var_ref_table, cast_expr));
@@ -367,6 +366,15 @@ namespace StoreLake.Sdk.CodeGeneration
                     ns.Types.Add(nested_type.Member);
                 }
             }
+        }
+
+        private static CodeExpression new_CodePrimitiveExpression(object value)
+        {
+            if (value != null && value is byte[])
+            {
+                throw new NotSupportedException();
+            }
+            return new CodePrimitiveExpression(value);
         }
 
         private static bool IsTableOwnedByDacPac(RegistrationResult rr, DacPacRegistration dacpac, string tableName)
@@ -846,10 +854,10 @@ namespace StoreLake.Sdk.CodeGeneration
 
             ///var conditionExpr2 = new CodeBinaryOperatorExpression(var_value_ref,
             ///        CodeBinaryOperatorType.ValueEquality,
-            ///        new CodePrimitiveExpression("null));
+            ///        new_CodePrimitiveExpression("null));
             ///
 
-            CodeConditionStatement ifNull = new CodeConditionStatement(conditionExpr, new CodeMethodReturnStatement(new CodePrimitiveExpression(null)));
+            CodeConditionStatement ifNull = new CodeConditionStatement(conditionExpr, new CodeMethodReturnStatement(new_CodePrimitiveExpression(null)));
             member_property.GetStatements.Clear();
 
             member_property.GetStatements.Add(var_value_decl);
@@ -992,12 +1000,16 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         //var dt = (DateTime)column.DefaultValue;
                         //var kind = new CodeFieldReferenceExpression(new CodeTypeReferenceExpression(dt.Kind.GetType()), Enum.GetName(dt.Kind.GetType(), dt.Kind));
-                        //defaultParameterValue = new CodeObjectCreateExpression(typeof(System.DateTime), new CodePrimitiveExpression(dt.Ticks), kind);
+                        //defaultParameterValue = new CodeObjectCreateExpression(typeof(System.DateTime), new_CodePrimitiveExpression(dt.Ticks), kind);
                         defaultParameterValue = (DateTime)column.DefaultValue;
                     }
                     else if (column.DefaultValue is string)
                     {
                         defaultParameterValue = (string)column.DefaultValue;
+                    }
+                    else if (column.DefaultValue is byte[])
+                    {
+                        defaultParameterValue = (byte[])column.DefaultValue;
                     }
                     else
                     {
@@ -1029,11 +1041,11 @@ namespace StoreLake.Sdk.CodeGeneration
                     //{
                     //if (defaultParameterValue == null)
                     //{
-                    //    expr = new CodePrimitiveExpression(null);
+                    //    expr = new_CodePrimitiveExpression(null);
                     //}
                     //else
                     //{
-                    //expr = new CodePrimitiveExpression(defaultParameterValue);
+                    //expr = new_CodePrimitiveExpression(defaultParameterValue);
 
                     string codeText = null;
                     if (defaultParameterValue == null)
@@ -1074,9 +1086,22 @@ namespace StoreLake.Sdk.CodeGeneration
                         var kind = Enum.GetName(dt.Kind.GetType(), dt.Kind);
                         //codeText = string.Format(CultureInfo.InvariantCulture, "new System.DateTime({0}, System.DateTimeKind.{1})", dt.Ticks, dt.Kind);
                     }
+                    else if (defaultParameterValue is byte[])
+                    {
+                        //byte[] valueBytes = (byte[])defaultParameterValue;
+                        //if (valueBytes.Length == 0)
+                        //{
+                        //    codeText = "new byte[0]";
+                        //}
+                        //else
+                        //{
+                        //    throw new StoreLakeSdkException("NotImplemented DefaultValue is not empty byte array:" + "Column [" + table.TableName + "] '" + prm_decl.Name + " (" + column.DefaultValue.GetType().Name + ")=[" + column.DefaultValue + "]");
+                        //}
+                        codeText = null;
+                    }
                     else
                     {
-                        throw new StoreLakeSdkException("NotImplemented:" + "Column [" + table.TableName + "] '" + prm_decl.Name + " (" + column.DefaultValue.GetType().Name + ")=[" + column.DefaultValue + "]");
+                        throw new StoreLakeSdkException("NotImplemented DefaultValue :" + "Column [" + table.TableName + "] '" + prm_decl.Name + " (" + column.DefaultValue.GetType().Name + ")=[" + column.DefaultValue + "]");
                     }
 
                     if (!string.IsNullOrEmpty(codeText))
@@ -1174,9 +1199,9 @@ namespace StoreLake.Sdk.CodeGeneration
                         CodeArrayCreateExpression prm_columns = new CodeArrayCreateExpression(typeof(DataColumn), col_refs.ToArray());
 
                         CodeObjectCreateExpression createExpr = new CodeObjectCreateExpression(typeof(UniqueConstraint),
-                            new CodePrimitiveExpression(uq.ConstraintName)
+                            new_CodePrimitiveExpression(uq.ConstraintName)
                             , prm_columns
-                            , new CodePrimitiveExpression(false));
+                            , new_CodePrimitiveExpression(false));
 
 
                         CodeMethodInvokeExpression invoke_expr = new CodeMethodInvokeExpression();
@@ -1286,10 +1311,10 @@ namespace StoreLake.Sdk.CodeGeneration
 
 
                                     CodeMethodInvokeExpression invoke_IndexOf = new CodeMethodInvokeExpression(prop_Table, "IndexOf", new CodeExpression[] {
-                                        new CodePrimitiveExpression(tableName)
+                                        new_CodePrimitiveExpression(tableName)
                                     });
 
-                                    var ifTableExists = new CodeBinaryOperatorExpression(invoke_IndexOf, CodeBinaryOperatorType.LessThan, new CodePrimitiveExpression(0));
+                                    var ifTableExists = new CodeBinaryOperatorExpression(invoke_IndexOf, CodeBinaryOperatorType.LessThan, new_CodePrimitiveExpression(0));
 
                                     CodeConditionStatement if_not_Exists_Add = new CodeConditionStatement(ifTableExists, stmt_expr);
 
@@ -1327,7 +1352,7 @@ namespace StoreLake.Sdk.CodeGeneration
             member_method.Attributes = MemberAttributes.Public | MemberAttributes.Static;
 
             //CodePropertyReferenceExpression base_Tables = new CodePropertyReferenceExpression(new CodeBaseReferenceExpression(), "Tables");
-            //CodeArrayIndexerExpression indexer = new CodeArrayIndexerExpression(base_Tables, new CodeExpression[] { new CodePrimitiveExpression(member_property.Name) });
+            //CodeArrayIndexerExpression indexer = new CodeArrayIndexerExpression(base_Tables, new CodeExpression[] { new_CodePrimitiveExpression(member_property.Name) });
             //CodeCastExpression cast_expr = new CodeCastExpression(member_property.Type, indexer);
             //member_method.Statements.Add(new CodeMethodReturnStatement(cast_expr));
 
@@ -1338,7 +1363,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                      "GetTable",
                                              new CodeTypeReference[] { member_property.Type }),
                                               new CodeVariableReferenceExpression("ds"),
-                                                       new CodePrimitiveExpression(member_property.Name))));
+                                                       new_CodePrimitiveExpression(member_property.Name))));
 
             return member_method;
         }
@@ -1536,58 +1561,61 @@ namespace StoreLake.Sdk.CodeGeneration
         internal static void AddAssemblyAttributes(CodeCompileUnit ccu)
         {
             CodeAttributeDeclaration attributeAssemblyVersion = new CodeAttributeDeclaration(typeof(AssemblyVersionAttribute).FullName);
-            attributeAssemblyVersion.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("1.0.0.0")));
+            attributeAssemblyVersion.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression("1.0.0.0")));
             ccu.AssemblyCustomAttributes.Add(attributeAssemblyVersion);
 
             CodeAttributeDeclaration attributeAssemblyFileVersion = new CodeAttributeDeclaration(typeof(AssemblyFileVersionAttribute).FullName);
-            attributeAssemblyFileVersion.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("1.0.0.0")));
+            attributeAssemblyFileVersion.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression("1.0.0.0")));
             ccu.AssemblyCustomAttributes.Add(attributeAssemblyFileVersion);
 
             CodeAttributeDeclaration attributeAssemblyTitle = new CodeAttributeDeclaration(typeof(AssemblyTitleAttribute).FullName);
-            attributeAssemblyTitle.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("generated")));
+            attributeAssemblyTitle.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression("generated")));
             ccu.AssemblyCustomAttributes.Add(attributeAssemblyTitle);
 
             CodeAttributeDeclaration attributeAssemblyDescription = new CodeAttributeDeclaration(typeof(AssemblyDescriptionAttribute).FullName);
-            attributeAssemblyDescription.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("generated")));
+            attributeAssemblyDescription.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression("generated")));
             ccu.AssemblyCustomAttributes.Add(attributeAssemblyDescription);
 
             //CodeAttributeDeclaration attributeAssemblyGuid = new CodeAttributeDeclaration(typeof(System.Runtime.InteropServices.GuidAttribute).FullName);
-            //attributeAssemblyGuid.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression(ModelAssemblyGuid.ToString())));
+            //attributeAssemblyGuid.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression(ModelAssemblyGuid.ToString())));
             //ccu.AssemblyCustomAttributes.Add(attributeAssemblyGuid);
 
             CodeAttributeDeclaration attributeComVisible = new CodeAttributeDeclaration(typeof(ComVisibleAttribute).FullName);
-            attributeComVisible.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression(false)));
+            attributeComVisible.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression(false)));
             ccu.AssemblyCustomAttributes.Add(attributeComVisible);
 
             CodeAttributeDeclaration attributeAssemblyProduct = new CodeAttributeDeclaration(typeof(AssemblyProductAttribute).FullName);
-            attributeAssemblyProduct.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("Model")));
+            attributeAssemblyProduct.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression("Model")));
             ccu.AssemblyCustomAttributes.Add(attributeAssemblyProduct);
 
             CodeAttributeDeclaration attributeAssemblyCompany = new CodeAttributeDeclaration(typeof(AssemblyCompanyAttribute).FullName);
-            attributeAssemblyCompany.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("By StoreLake")));
+            attributeAssemblyCompany.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression("By StoreLake")));
             ccu.AssemblyCustomAttributes.Add(attributeAssemblyCompany);
 
             CodeAttributeDeclaration attributeAssemblyCopyright = new CodeAttributeDeclaration(typeof(AssemblyCopyrightAttribute).FullName);
-            attributeAssemblyCopyright.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("Copyright © 20'21")));
+            attributeAssemblyCopyright.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression("Copyright © 20'21")));
             ccu.AssemblyCustomAttributes.Add(attributeAssemblyCopyright);
 
             CodeAttributeDeclaration attributeAssemblyTrademark = new CodeAttributeDeclaration(typeof(AssemblyTrademarkAttribute).FullName);
-            attributeAssemblyTrademark.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("")));
+            attributeAssemblyTrademark.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression("")));
             ccu.AssemblyCustomAttributes.Add(attributeAssemblyTrademark);
 
             CodeAttributeDeclaration attributeAssemblyConfiguration = new CodeAttributeDeclaration(typeof(AssemblyConfigurationAttribute).FullName);
-            attributeAssemblyConfiguration.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("")));
+            attributeAssemblyConfiguration.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression("")));
             ccu.AssemblyCustomAttributes.Add(attributeAssemblyConfiguration);
 
             CodeAttributeDeclaration attributeAssemblyCulture = new CodeAttributeDeclaration(typeof(AssemblyCultureAttribute).FullName);
-            attributeAssemblyCulture.Arguments.Add(new CodeAttributeArgument(new CodePrimitiveExpression("")));
+            attributeAssemblyCulture.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression("")));
             ccu.AssemblyCustomAttributes.Add(attributeAssemblyCulture);
 
         }
 
 
-        private static void CompileCode(DacPacRegistration dacpac, CompilerParameters comparam, CodeCompileUnit codeCompileUnit, string libdir, string outputFolder, string fileName, string outputAssemblyFullFileName, string outputErrorsFullFileName, DirectoryInfo tempDirInfo, string codeFileName)
+        private static void CompileCode(DacPacRegistration dacpac, CompilerParameters comparam, CodeCompileUnit codeCompileUnit, string libdir, string outputFolder, string fileName, string outputAssemblyFullFileName, DirectoryInfo tempDirInfo, string codeFileName)
         {
+            string errorsFullFileName = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".errors.txt");
+            string tmpDllFullFileName = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".dll");
+
             string snkPath = GetSnkPath(Path.Combine(tempDirInfo.FullName, "GeneratedModel.snk"));
 
             StringBuilder compilerOpt = new StringBuilder();
@@ -1614,7 +1642,7 @@ namespace StoreLake.Sdk.CodeGeneration
             //provide the name of the class which contains the Main Entry //point method  
             //comparam.MainClass = "mynamespace.CMyclass";
             //provide the path where the generated assembly would be placed  
-            comparam.OutputAssembly = outputAssemblyFullFileName;
+            comparam.OutputAssembly = tmpDllFullFileName;
             //Create an instance of the c# compiler and pass the assembly to //compile  
             Microsoft.CSharp.CSharpCodeProvider ccp = new Microsoft.CSharp.CSharpCodeProvider();
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -1637,12 +1665,15 @@ namespace StoreLake.Sdk.CodeGeneration
                     //Console.WriteLine(compres.Errors[i]);
                 }
 
-                File.WriteAllText(outputErrorsFullFileName, errorFileContent.ToString());
-                Console.WriteLine(outputErrorsFullFileName);
+                File.WriteAllText(errorsFullFileName, errorFileContent.ToString());
+                Console.WriteLine(errorsFullFileName);
 
                 var err = compres.Errors[0];
                 throw new StoreLakeSdkException("Compile failed: (" + err.Line + "," + err.Column + "): error " + err.ErrorNumber + " : " + err.ErrorText);
             }
+
+            s_tracer.TraceEvent(TraceEventType.Verbose, 0, "  Copy generated assembly : " + outputAssemblyFullFileName);
+            File.Copy(tmpDllFullFileName, outputAssemblyFullFileName, true);
         }
 
         private static void GenerateVersionComment(CodeNamespace codeNamespace)

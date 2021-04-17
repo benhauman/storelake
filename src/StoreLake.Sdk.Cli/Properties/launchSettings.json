@@ -1,8 +1,14 @@
 {
   "profiles": {
+    "Blob": {
+      "commandName": "Project",
+      "commandLineArgs": "generatemissingreferences=true regeneratereferences=true libdir=D:\\Helpline\\Current\\Core\\Infrastructure\\Data\\Blob.Database\\obj\\Debug\\TestStore\\ inputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ dacpac=Blob.Data.Database.dacpac outputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ storesuffix=TestStore generateschema=false tempdir=D:\\Helpline\\Current\\Core\\Infrastructure\\Data\\Blob.Database\\obj\\Debug\\TestStore\\",
+      "workingDirectory": "D:\\Helpline\\Current\\Core\\Infrastructure\\Data\\Blob.Database"
+    },
+
     "Helpline": {
       "commandName": "Project",
-      "commandLineArgs": "regeneratereferences=true libdir=D:\\Helpline\\Current\\SQL\\Helpline\\obj\\Debug\\TestStore\\ inputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ dacpac=Helpline.dacpac outputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ storesuffix=TestStore generateschema=false tempdir=D:\\Helpline\\Current\\SQL\\Helpline\\obj\\Debug\\TestStore\\",
+      "commandLineArgs": "generatemissingreferences=true regeneratereferences=true libdir=D:\\Helpline\\Current\\SQL\\Helpline\\obj\\Debug\\TestStore\\ inputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ dacpac=Helpline.dacpac outputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ storesuffix=TestStore generateschema=false tempdir=D:\\Helpline\\Current\\SQL\\Helpline\\obj\\Debug\\TestStore\\",
       "workingDirectory": "D:\\Helpline\\Current\\SQL\\Helpline"
     },
 

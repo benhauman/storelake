@@ -145,6 +145,10 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         column.DefaultValue = defaultContraint.ValueDateTime.Value;
                     }
+                    else if (column.DataType == typeof(byte[]) && defaultContraint.ValueBytes != null)
+                    {
+                        //column.DefaultValue = defaultContraint.ValueBytes;
+                    }
                     else
                     {
                         throw new StoreLakeSdkException("NotImplemented:" + "Column type table [" + table.TableName + "] column [" + column.ColumnName + "] type (" + column.DataType.Name + ")");

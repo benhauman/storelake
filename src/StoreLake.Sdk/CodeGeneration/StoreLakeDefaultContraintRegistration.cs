@@ -16,6 +16,8 @@ namespace StoreLake.Sdk.CodeGeneration
         public string ValueString { get; internal set; }
         public DateTime? ValueDateTime { get; internal set; }
         public decimal? ValueDecimal { get; internal set; }
+
+        public byte[] ValueBytes { get; internal set; }
     }
 
 }

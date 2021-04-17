@@ -294,6 +294,12 @@ namespace StoreLake.Sdk.CodeGeneration
                     df_reg.IsScalarValue = true;
                     df_reg.ValueDateTime = Parse_DATETIMEFROMPARTS(defaultExpressionScript_Value);
                 }
+                else if(string.Equals(defaultExpressionScript_Value, "CAST(N'' AS VARBINARY(MAX))", StringComparison.OrdinalIgnoreCase))
+                {
+                    // empty byte array
+                    df_reg.IsScalarValue = true;
+                    df_reg.ValueBytes = new byte[0];
+                }
                 else
                 {
                     throw new StoreLakeSdkException("Oops [" + df_reg.ConstraintName + "] " + defaultExpressionScript_Value + "");
