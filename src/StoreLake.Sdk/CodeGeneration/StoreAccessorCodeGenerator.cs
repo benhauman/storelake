@@ -14,7 +14,7 @@ namespace StoreLake.Sdk.CodeGeneration
 {
     internal static class StoreAccessorCodeGenerator
     {
-        internal static void GeneratorAccessors(AssemblyResolver assemblyResolver, DacPacRegistration dacpac, CompilerParameters comparam, CodeCompileUnit ccu, string inputdir)
+        internal static void GenerateAccessors(AssemblyResolver assemblyResolver, DacPacRegistration dacpac, bool doGenerate, CompilerParameters comparam, CodeCompileUnit ccu, string inputdir)
         {
 
             string dacpacDllFileName = Path.GetFileName(dacpac.DacPacAssemblyFileName);
@@ -22,70 +22,71 @@ namespace StoreLake.Sdk.CodeGeneration
             Console.WriteLine("Load '" + dacpacDllFullFileName + "'...");
             if (!File.Exists(dacpacDllFullFileName))
             {
-                throw new NotSupportedException("File could not be found:" + dacpacDllFullFileName);
+                throw new StoreLakeSdkException("File could not be found:" + dacpacDllFullFileName);
             }
 
             Assembly asm = assemblyResolver.ResolveAssembyByLocation(dacpacDllFullFileName);
-
-
-            CollectIndirectAssemblies(assemblyResolver, dacpac, (string asm_location) =>
+            if (doGenerate)
             {
-                AddReferencedAssemblies(assemblyResolver, comparam, asm_location);
-            });
 
-            foreach (AssemblyName ref_asm_name in asm.GetReferencedAssemblies())
-            {
-                if (ref_asm_name.FullName.StartsWith("mscorlib", StringComparison.OrdinalIgnoreCase)
-                    || ref_asm_name.FullName.StartsWith("System.", StringComparison.OrdinalIgnoreCase)
-                    || ref_asm_name.FullName.StartsWith("System,", StringComparison.OrdinalIgnoreCase)
-                    || ref_asm_name.FullName.StartsWith("Newtonsoft.", StringComparison.OrdinalIgnoreCase)
-                    )
+                CollectIndirectAssemblies(assemblyResolver, dacpac, (string asm_location) =>
                 {
+                    AddReferencedAssemblies(assemblyResolver, comparam, asm_location);
+                });
 
-                    // ignore
-
-                }
-                else
+                foreach (AssemblyName ref_asm_name in asm.GetReferencedAssemblies())
                 {
-
-                    Console.WriteLine(ref_asm_name.FullName);
-                    if (dacpac.referenced_assemblies.TryGetValue(ref_asm_name.FullName, out string ref_asm_location))
+                    if (ref_asm_name.FullName.StartsWith("mscorlib", StringComparison.OrdinalIgnoreCase)
+                        || ref_asm_name.FullName.StartsWith("System.", StringComparison.OrdinalIgnoreCase)
+                        || ref_asm_name.FullName.StartsWith("System,", StringComparison.OrdinalIgnoreCase)
+                        || ref_asm_name.FullName.StartsWith("Newtonsoft.", StringComparison.OrdinalIgnoreCase)
+                        )
                     {
+
+                        // ignore
 
                     }
                     else
                     {
-                        Assembly ref_asm = assemblyResolver.ResolveAssembyByName(ref_asm_name);
-                        ref_asm_location = ref_asm.Location;
+
+                        Console.WriteLine(ref_asm_name.FullName);
+                        if (dacpac.referenced_assemblies.TryGetValue(ref_asm_name.FullName, out string ref_asm_location))
+                        {
+
+                        }
+                        else
+                        {
+                            Assembly ref_asm = assemblyResolver.ResolveAssembyByName(ref_asm_name);
+                            ref_asm_location = ref_asm.Location;
 
 
-                        dacpac.referenced_assemblies.Add(ref_asm.GetName().FullName, ref_asm.Location);
+                            dacpac.referenced_assemblies.Add(ref_asm.GetName().FullName, ref_asm.Location);
+                        }
+
+                        AddReferencedAssemblies(assemblyResolver, comparam, ref_asm_location);
                     }
-
-                    AddReferencedAssemblies(assemblyResolver, comparam, ref_asm_location);
                 }
-            }
-            AddReferencedAssemblies(assemblyResolver, comparam, asm.Location);
-            dacpac.referenced_assemblies.Add(asm.GetName().FullName, asm.Location);
-            ;
-            AddReferencedAssemblies(assemblyResolver, comparam, assemblyResolver.CacheType(typeof(System.Xml.Linq.XElement)).Location); // System.Xml.Linq
+                AddReferencedAssemblies(assemblyResolver, comparam, asm.Location);
+                dacpac.referenced_assemblies.Add(asm.GetName().FullName, asm.Location);
+                ;
+                AddReferencedAssemblies(assemblyResolver, comparam, assemblyResolver.CacheType(typeof(System.Xml.Linq.XElement)).Location); // System.Xml.Linq
 
-            typeof(Dibix.AreaRegistrationAttribute).ToString().GetHashCode();
+                typeof(Dibix.AreaRegistrationAttribute).ToString().GetHashCode();
 
-            Type databaseAccessorAttributeType = typeof(Dibix.DatabaseAccessorAttribute);
+                Type databaseAccessorAttributeType = typeof(Dibix.DatabaseAccessorAttribute);
 
-            foreach (Type type in asm.GetTypes())
-            {
-                if (type.IsDefined(databaseAccessorAttributeType))
+                foreach (Type type in asm.GetTypes())
                 {
-                    GenerateCommandHandlerFacade(ccu, type);
+                    if (type.IsDefined(databaseAccessorAttributeType))
+                    {
+                        GenerateCommandHandlerFacade(ccu, type);
+                    }
+                    else if (type.IsDefined(typeof(Dibix.StructuredTypeAttribute)))
+                    {
+                        GenerateStructureTypeRow(ccu, type);
+                    }
                 }
-                else if (type.IsDefined(typeof(Dibix.StructuredTypeAttribute)))
-                {
-                    GenerateStructureTypeRow(ccu, type);
-                }
-            }
-
+            } // doGenerate
         }
 
         private static void GenerateStructureTypeRow(CodeCompileUnit ccu, Type udtType)
@@ -99,8 +100,15 @@ namespace StoreLake.Sdk.CodeGeneration
 
         private static void AddReferencedAssemblies(AssemblyResolver assemblyResolver, CompilerParameters comparam, string asm_location)
         {
-            assemblyResolver.VerifyAssemblyLocation(asm_location);
-            comparam.ReferencedAssemblies.Add(asm_location);
+            if (comparam.ReferencedAssemblies.Contains(asm_location))
+            {
+                // already referenced
+            }
+            else
+            {
+                assemblyResolver.VerifyAssemblyLocation(asm_location);
+                comparam.ReferencedAssemblies.Add(asm_location);
+            }
         }
 
         private static void CollectIndirectAssemblies(AssemblyResolver assemblyResolver, DacPacRegistration dacpac, Action<string> collector)
@@ -159,7 +167,7 @@ namespace StoreLake.Sdk.CodeGeneration
             MethodInfo mi = udtType.GetMethod("Add", BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly); // public void Add(int va, int vb, int vc) 'Helpline.Data.IntThreeSet'
             if (mi == null)
             {
-                throw new NotSupportedException("UDT method 'Add' could not be found:" + udtType.AssemblyQualifiedName);
+                throw new StoreLakeSdkException("UDT method 'Add' could not be found:" + udtType.AssemblyQualifiedName);
             }
 
             CodeMemberField field_record = new CodeMemberField(typeof(IDataRecord), "record");
@@ -225,13 +233,13 @@ namespace StoreLake.Sdk.CodeGeneration
                 ParameterInfo[] acessMethodParameters = accessMethod.GetParameters();
                 if (acessMethodParameters.Length == 0)
                 {
-                    throw new InvalidOperationException("Access method signature not correct. Method:" + accessMethod.Name + ", Type:" + databaseAccessorType.FullName);
+                    throw new StoreLakeSdkException("Access method signature not correct. Method:" + accessMethod.Name + ", Type:" + databaseAccessorType.FullName);
                 }
 
                 // first parameter must be of type 'IDatabaseAccessorFactory'
                 if (acessMethodParameters[0].ParameterType.Name != "IDatabaseAccessorFactory")
                 {
-                    throw new InvalidOperationException("Access method parameter signature not correct. Parameter:" + acessMethodParameters[0].Name + ", Method:" + accessMethod.Name + ", Type:" + databaseAccessorType.FullName);
+                    throw new StoreLakeSdkException("Access method parameter signature not correct. Parameter:" + acessMethodParameters[0].Name + ", Method:" + accessMethod.Name + ", Type:" + databaseAccessorType.FullName);
                 }
 
                 CodeMemberMethod code_method = new CodeMemberMethod() { Name = accessMethod.Name, Attributes = MemberAttributes.Public };
@@ -350,7 +358,7 @@ namespace StoreLake.Sdk.CodeGeneration
             Type[] genericArguments = parameterType.BaseType.GetGenericArguments();
             if (genericArguments.Length < 2)
             {
-                throw new NotImplementedException("generic_prms.Length:" + genericArguments.Length);
+                throw new StoreLakeSdkException("NotImplemented:" + "generic_prms.Length:" + genericArguments.Length);
             }
 
             Type itemType;

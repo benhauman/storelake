@@ -69,7 +69,7 @@ namespace StoreLake.Sdk.CodeGeneration
         {
             if (!location_name.ContainsKey(asm_location.ToUpperInvariant()))
             {
-                throw new InvalidOperationException("Location not registered:" + asm_location);
+                throw new StoreLakeSdkException("Location not registered:" + asm_location);
             }
         }
     }

@@ -14,9 +14,11 @@ namespace StoreLake.Sdk.CodeGeneration
     internal sealed class DacPacRegistration
     {
         internal readonly string FilePath;
-        internal DacPacRegistration(string filePath)
+        internal readonly bool IsReferencedPackage; // referenced dacpac do not generates models. this can be changed with 'dependencymodelgeneration'=true;
+        internal DacPacRegistration(string filePath, bool isReferencedPackage)
         {
             FilePath = filePath;
+            IsReferencedPackage = isReferencedPackage;
         }
 
         internal string DacPacAssemblyAssemblyName { get; set; }
@@ -34,10 +36,14 @@ namespace StoreLake.Sdk.CodeGeneration
 
     public sealed class RegistrationResult
     {
-        internal RegistrationResult(DataSet ds)
+        internal RegistrationResult(DataSet ds, bool forceReferencePackageRegeneration, bool generateMissingReferences)
         {
             this.ds = ds;
+            ForceReferencePackageRegeneration = forceReferencePackageRegeneration;
+            GenerateMissingReferences = generateMissingReferences;
         }
+        internal readonly bool ForceReferencePackageRegeneration;
+        internal readonly bool GenerateMissingReferences;
         internal readonly DataSet ds;
         internal readonly IDictionary<string, DacPacRegistration> registered_dacpacs = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
         internal readonly IDictionary<string, DacPacRegistration> procesed_files = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
@@ -46,24 +52,24 @@ namespace StoreLake.Sdk.CodeGeneration
 
     public static class SchemaImportDacPac // 'Dedicated Administrator Connection (for Data Tier Application) Package'
     {
-        public static RegistrationResult ImportDacPac(string inputdir, string dacpacFullFileName)
+        public static RegistrationResult ImportDacPac(string inputdir, string dacpacFullFileName, bool forceReferencePackageRegeneration, bool generateMissingReferences)
         {
             //string databaseName = "DemoTestData";
             DataSet ds = new DataSet() { Namespace = "[dbo]" }; // see 'https://www.codeproject.com/articles/30490/how-to-manually-create-a-typed-datatable'
-            RegistrationResult ctx = new RegistrationResult(ds);
-            RegisterDacpac(" ", ctx, inputdir, dacpacFullFileName);
+            RegistrationResult ctx = new RegistrationResult(ds, forceReferencePackageRegeneration, generateMissingReferences);
+            RegisterDacpac(" ", ctx, inputdir, dacpacFullFileName, false);
             return ctx;
         }
 
 
-        private static DacPacRegistration RegisterDacpac(string outputprefix, RegistrationResult ctx, string inputdir, string filePath)
+        private static DacPacRegistration RegisterDacpac(string outputprefix, RegistrationResult ctx, string inputdir, string filePath, bool isReferencedPackage)
         {
             DacPacRegistration dacpac;
             if (ctx.procesed_files.TryGetValue(filePath.ToUpperInvariant(), out dacpac))
             {
                 return dacpac;
             }
-            dacpac = new DacPacRegistration(filePath);
+            dacpac = new DacPacRegistration(filePath, isReferencedPackage);
             ctx.procesed_files.Add(filePath.ToUpperInvariant(), dacpac);
             Console.WriteLine(outputprefix + filePath);
             using (ZipArchive archive = ZipFile.OpenRead(filePath))
@@ -102,7 +108,7 @@ namespace StoreLake.Sdk.CodeGeneration
                             Console.WriteLine("Load '" + dacpacDllFullFileName + "'...");
                             if (!File.Exists(dacpacDllFullFileName))
                             {
-                                throw new NotSupportedException("File could not be found:" + dacpacDllFullFileName);
+                                throw new StoreLakeSdkException("File could not be found:" + dacpacDllFullFileName);
                             }
 
                             XElement xReference_Assembly_LogicalName = xReference_Assembly.Elements().Single(e => e.Name.LocalName == "Metadata"
@@ -151,7 +157,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                     }
                                     else
                                     {
-                                        external_dacpac = RegisterDacpac(outputprefix + "   ", ctx, inputdir, dacpacFileName);
+                                        external_dacpac = RegisterDacpac(outputprefix + "   ", ctx, inputdir, dacpacFileName, true);
 
                                     }
 
@@ -290,7 +296,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
                 else
                 {
-                    throw new NotImplementedException("Oops [" + df_reg.ConstraintName + "] " + defaultExpressionScript_Value + "");
+                    throw new StoreLakeSdkException("Oops [" + df_reg.ConstraintName + "] " + defaultExpressionScript_Value + "");
                 }
 
 
@@ -633,7 +639,7 @@ namespace StoreLake.Sdk.CodeGeneration
                             }
                             else
                             {
-                                throw new NotImplementedException("Oops [" + treg.TableName + "] COMPUTED [" + creg.ColumnName + "] AS " + expressionScript_Value + "");
+                                throw new StoreLakeSdkException("Oops [" + treg.TableName + "] COMPUTED [" + creg.ColumnName + "] AS " + expressionScript_Value + "");
                             }
                         }
                         else
@@ -738,7 +744,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         }
                         else
                         {
-                            throw new NotImplementedException("Column type table [" + treg.TableName + "] column [" + creg.ColumnName + "] type (" + xColumnTypeName.Value + ")");
+                            throw new StoreLakeSdkException("Column type table [" + treg.TableName + "] column [" + creg.ColumnName + "] type (" + xColumnTypeName.Value + ")");
                         }
                         //foreach (var e in xElement_Column.Elements())
                         //{
@@ -753,6 +759,14 @@ namespace StoreLake.Sdk.CodeGeneration
                     treg.Columns.Add(creg);
                 }// not a computedcolumn
             }
+        }
+    }
+
+    public sealed class StoreLakeSdkException : Exception
+    {
+        public StoreLakeSdkException(string message) : base(message)
+        {
+
         }
     }
 }

@@ -52,6 +52,9 @@ namespace StoreLake.Sdk.Cli
             public string StoreNameAssemblySuffix { get; set; }
             public bool? GenerateSchema { get; set; }
             public string TempDirectory { get; set; }
+            public bool ForceReferencePackageRegeneration { get; set; }
+
+            public bool GenerateMissingReferences { get; set; }
         }
 
         private static ToolArguments ParseArguments(string[] args)
@@ -61,6 +64,7 @@ namespace StoreLake.Sdk.Cli
                 s_tracer.TraceEvent(TraceEventType.Error, 0, "No arguments specified.");
                 return null;
             }
+            s_tracer.TraceEvent(TraceEventType.Information, 0, "Arguments count:" + args.Length);
             ToolArguments targs = new ToolArguments();
             foreach (string arg in args)
             {
@@ -124,8 +128,22 @@ namespace StoreLake.Sdk.Cli
                                         }
                                         else
                                         {
-                                            s_tracer.TraceEvent(TraceEventType.Error, 0, "Unknown argument specified:" + arg);
-                                            return null;
+                                            if (string.Equals(kv[0], "regeneratereferences", StringComparison.Ordinal))
+                                            {
+                                                targs.ForceReferencePackageRegeneration = bool.Parse(kv[1]);
+                                            }
+                                            else
+                                            {
+                                                if (string.Equals(kv[0], "generatemissingreferences", StringComparison.Ordinal))
+                                                {
+                                                    targs.GenerateMissingReferences = bool.Parse(kv[1]);
+                                                }
+                                                else
+                                                {
+                                                    s_tracer.TraceEvent(TraceEventType.Error, 0, "Unknown argument specified:" + arg);
+                                                    return null;
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -161,20 +179,20 @@ namespace StoreLake.Sdk.Cli
         {
             if (string.IsNullOrEmpty(targs.InputDirectory))
             {
-                throw new InvalidOperationException("'InputDirectory' is not specified");
+                throw new StoreLakeSdkException("'InputDirectory' is not specified");
             }
             if (string.IsNullOrEmpty(targs.OutputDirectory))
             {
-                throw new InvalidOperationException("'OutputDirectory' is not specified");
+                throw new StoreLakeSdkException("'OutputDirectory' is not specified");
             }
             if (string.IsNullOrEmpty(targs.LibraryDirectory))
             {
-                throw new InvalidOperationException("'LibraryDirectory' is not specified");
+                throw new StoreLakeSdkException("'LibraryDirectory' is not specified");
             }
 
             if (string.IsNullOrEmpty(targs.DacpacFileName))
             {
-                throw new InvalidOperationException("'DacpacFileName' is not specified");
+                throw new StoreLakeSdkException("'DacpacFileName' is not specified");
             }
             if (string.IsNullOrEmpty(targs.StoreNameAssemblySuffix))
             {
@@ -200,6 +218,9 @@ namespace StoreLake.Sdk.Cli
             s_tracer.TraceInformation("StoreNameAssemblySuffix=" + targs.StoreNameAssemblySuffix);
             s_tracer.TraceInformation("GenerateSchema=" + targs.StoreNameAssemblySuffix);
             s_tracer.TraceInformation("TempDirectory=" + targs.TempDirectory);
+            s_tracer.TraceInformation("ForceReferencePackageRegeneration=" + targs.ForceReferencePackageRegeneration);
+            s_tracer.TraceInformation("GenerateMissingReferences=" + targs.GenerateMissingReferences);
+            
 
             ////string databaseName = "DemoTestDataX";
             //string databaseName = targs.DatabaseName;
@@ -213,12 +234,12 @@ namespace StoreLake.Sdk.Cli
             //dacpacFileName = "NewsManagement.Database.dacpac";
             //string dacpacFileName = targs.DacpacFileName;
             string dacpacFullFileName = System.IO.Path.Combine(inputdir, targs.DacpacFileName);
-            var ds = SchemaImportDacPac.ImportDacPac(inputdir, dacpacFullFileName);
+            var rr = SchemaImportDacPac.ImportDacPac(inputdir, dacpacFullFileName, targs.ForceReferencePackageRegeneration, targs.GenerateMissingReferences);
 
             string filter = null;
             //filter = "HelplineData";
             //filter = "SLM.Database.Data";
-            SchemaExportCode.ExportTypedDataSetCode(ds, targs.LibraryDirectory, inputdir, targs.OutputDirectory, filter, targs.StoreNameAssemblySuffix, targs.GenerateSchema.Value, targs.TempDirectory);
+            SchemaExportCode.ExportTypedDataSetCode(rr, targs.LibraryDirectory, inputdir, targs.OutputDirectory, filter, targs.StoreNameAssemblySuffix, targs.GenerateSchema.Value, targs.TempDirectory);
         }
 
         private static string ExpandPath(string dir)

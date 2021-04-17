@@ -67,7 +67,14 @@ namespace StoreLake.Sdk.CodeGeneration
                             }
                             if (writeSchemaFile)
                             {
-                                File.WriteAllText(schemaFileName, schemaContent);
+                                if (dacpac.IsReferencedPackage && File.Exists(schemaFileName) && !rr.ForceReferencePackageRegeneration)
+                                {
+                                    // skip 
+                                }
+                                else
+                                {
+                                    File.WriteAllText(schemaFileName, schemaContent);
+                                }
                                 //string schemaContent = File.ReadAllText(schemaFileName);
                             }
 
@@ -88,53 +95,100 @@ namespace StoreLake.Sdk.CodeGeneration
 
         private static void ImportSchemasAsDataSets(AssemblyResolver assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir, string libdir)
         {
-            if (!Directory.Exists(outputdir))
+            string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
+
+            bool doGenerate;
+            if (dacpac.IsReferencedPackage && File.Exists(fullFileName_dll) && !rr.ForceReferencePackageRegeneration)
             {
-                Directory.CreateDirectory(outputdir);
+                // skip
+                doGenerate = false;
             }
-            if (!Directory.Exists(tempdir))
+            else
             {
-                Directory.CreateDirectory(tempdir);
+                doGenerate = true;
             }
-            DirectoryInfo tempDirInfo = new DirectoryInfo(Path.Combine(tempdir, DateTimeNow() + "_" + fileName));
-            if (tempDirInfo.Exists)
+
+            if (doGenerate)
             {
-                tempDirInfo.Delete(true);
             }
-            tempDirInfo.Create();
 
             Microsoft.CSharp.CSharpCodeProvider codeProvider = new Microsoft.CSharp.CSharpCodeProvider();// //CodeDomProvider.CreateProvider(language);
 
             CodeCompileUnit ccu = new CodeCompileUnit();
 
             CompilerParameters comparam = new CompilerParameters(new string[] { });
-            assemblyResolver.ResolveAssembyByName(typeof(System.Data.DataTable).Assembly.GetName());
-            assemblyResolver.ResolveAssembyByName(typeof(System.Data.TypedTableBase<>).Assembly.GetName());
-            AddReferencedAssembly(assemblyResolver, comparam, typeof(System.ComponentModel.MarshalByValueComponent));
-            AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.DataTable));
-            AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.TypedTableBase<>));
-            AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Xml.Serialization.IXmlSerializable));
-
-            AddAssemblyAttributes(ccu);
-            GenerateDataSetClasses(ccu, schemaContent, namespaceName, codeProvider);
-
-
-            Adjust_CCU(rr, dacpac, ccu, storeSuffix);
-
-            StoreAccessorCodeGenerator.GeneratorAccessors(assemblyResolver, dacpac, comparam, ccu, inputdir);
-
-            string codeFileName = Path.Combine(tempDirInfo.FullName, fileName + ".cs");
-            using (TextWriter textWriter = new StreamWriter(codeFileName, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
-            //using (TextWriter textWriter = CreateOutputWriter(Path.Combine(outputdir, path), fileName, "cs"))
+            if (doGenerate)
             {
-                codeProvider.GenerateCodeFromCompileUnit(ccu, textWriter, null);
+                assemblyResolver.ResolveAssembyByName(typeof(System.Data.DataTable).Assembly.GetName());
+                assemblyResolver.ResolveAssembyByName(typeof(System.Data.TypedTableBase<>).Assembly.GetName());
+                AddReferencedAssembly(assemblyResolver, comparam, typeof(System.ComponentModel.MarshalByValueComponent));
+                AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.DataTable));
+                AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.TypedTableBase<>));
+                AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Xml.Serialization.IXmlSerializable));
+
+                AddAssemblyAttributes(ccu);
+
+                GenerateDataSetClasses(ccu, schemaContent, namespaceName, codeProvider);
+
+
+                Adjust_CCU(rr, dacpac, ccu, storeSuffix);
             }
-            s_tracer.TraceEvent(TraceEventType.Verbose, 0, "codeFileName:" + codeFileName);
 
-            string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
-            string fullFileName_err = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".errors.txt");
-            CompileCode(comparam, ccu, libdir, outputdir, fileName, fullFileName_dll, fullFileName_err, tempDirInfo, codeFileName);
+            StoreAccessorCodeGenerator.GenerateAccessors(assemblyResolver, dacpac, doGenerate, comparam, ccu, inputdir);
 
+            if (!doGenerate)
+            {
+                s_tracer.TraceEvent(TraceEventType.Information, 0, "SKIP Assembly generation '" + fullFileName_dll + "'. Reason: already exists.");
+            }
+            else
+            {
+                if (dacpac.IsReferencedPackage)
+                {
+                    if (File.Exists(fullFileName_dll))
+                    {
+                        s_tracer.TraceEvent(TraceEventType.Warning, 0, "Regenerate reference package:" + fullFileName_dll);
+                    }
+                    else
+                    {
+                        if (rr.GenerateMissingReferences)
+                        {
+                            // ok
+                        }
+                        else
+                        {
+                            throw new StoreLakeSdkException("Referenced package assembly '" + fullFileName_dll + "' could not be found. To genenerate mising references use option 'GenerateMissingReferences'.");
+                        }
+                    }
+                }
+
+                if (!Directory.Exists(outputdir))
+                {
+                    Directory.CreateDirectory(outputdir);
+                }
+                if (!Directory.Exists(tempdir))
+                {
+                    Directory.CreateDirectory(tempdir);
+                }
+
+
+                DirectoryInfo tempDirInfo = new DirectoryInfo(Path.Combine(tempdir, DateTimeNow() + "_" + fileName));
+                if (tempDirInfo.Exists)
+                {
+                    tempDirInfo.Delete(true);
+                }
+                tempDirInfo.Create();
+
+                string codeFileName = Path.Combine(tempDirInfo.FullName, fileName + ".cs");
+                using (TextWriter textWriter = new StreamWriter(codeFileName, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
+                //using (TextWriter textWriter = CreateOutputWriter(Path.Combine(outputdir, path), fileName, "cs"))
+                {
+                    codeProvider.GenerateCodeFromCompileUnit(ccu, textWriter, null);
+                }
+                s_tracer.TraceEvent(TraceEventType.Verbose, 0, "codeFileName:" + codeFileName);
+
+                string fullFileName_err = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".errors.txt");
+                CompileCode(comparam, ccu, libdir, outputdir, fileName, fullFileName_dll, fullFileName_err, tempDirInfo, codeFileName);
+            }
             assemblyResolver.ResolveAssembyByLocation(fullFileName_dll);
             dacpac.DacPacTestStoreAssemblyFileName = fullFileName_dll;
 
@@ -143,9 +197,16 @@ namespace StoreLake.Sdk.CodeGeneration
 
         private static void AddReferencedAssembly(AssemblyResolver assemblyResolver, CompilerParameters comparam, Type asm_type)
         {
-            assemblyResolver.ResolveAssembyByName(asm_type.Assembly.GetName());
-            assemblyResolver.VerifyAssemblyLocation(asm_type.Assembly.Location);
-            comparam.ReferencedAssemblies.Add(asm_type.Assembly.Location);
+            if (comparam.ReferencedAssemblies.Contains(asm_type.Assembly.Location))
+            {
+                // already referenced
+            }
+            else
+            {
+                assemblyResolver.ResolveAssembyByName(asm_type.Assembly.GetName());
+                assemblyResolver.VerifyAssemblyLocation(asm_type.Assembly.Location);
+                comparam.ReferencedAssemblies.Add(asm_type.Assembly.Location);
+            }
         }
 
         private static string DateTimeNow()
@@ -183,7 +244,7 @@ namespace StoreLake.Sdk.CodeGeneration
         {
             if (ccu.Namespaces.Count > 1)
             {
-                throw new NotSupportedException("Multiple namespaces");
+                throw new StoreLakeSdkException("Multiple namespaces");
             }
             string dacpacName = Path.GetFileNameWithoutExtension(dacpac.DacPacAssemblyLogicalName);
             string dacpacSetName = dacpacName;
@@ -264,7 +325,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     }
                     else
                     {
-                        throw new NotImplementedException();
+                        throw new StoreLakeSdkException("NotImplemented:" + type_decl.Name);
                     }
 
 
@@ -310,7 +371,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 return true;
             if (!rr.registered_tables.ContainsKey(tableName))
             {
-                throw new InvalidOperationException("Table [" + tableName + "] could not be found.");
+                throw new StoreLakeSdkException("Table [" + tableName + "] could not be found.");
             }
             return false;
         }
@@ -339,7 +400,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 type_decl_table = rr.ds.Tables[type_decl_tableName];
                 if (type_decl_table == null)
                 {
-                    throw new InvalidOperationException("Table [" + type_decl_tableName + "] could not be found.");
+                    throw new StoreLakeSdkException("Table [" + type_decl_tableName + "] could not be found.");
                 }
             }
             else if (isRowClassDeclaration)
@@ -349,7 +410,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 type_decl_table = rr.ds.Tables[type_decl_tableName];
                 if (type_decl_table == null)
                 {
-                    throw new InvalidOperationException("Table [" + type_decl_tableName + "] could not be found.");
+                    throw new StoreLakeSdkException("Table [" + type_decl_tableName + "] could not be found.");
                 }
 
                 type_decl_rowName = type_decl.Name.Remove(type_decl.Name.Length - 3, 3); // suffix "Row"
@@ -399,7 +460,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         {
                             string tableName = member_type.Name.Remove(member_type.Name.Length - 9, 9); // suffix "DataTable"
                             isOwnedByDacPac = IsTableOwnedByDacPac(rr, dacpac, tableName);
-                            throw new NotImplementedException();
+                            throw new StoreLakeSdkException("NotImplemented:" + tableName);
                         }
                         else if (isRowClassDeclaration)
                         {
@@ -409,7 +470,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         }
                         else
                         {
-                            throw new NotImplementedException();
+                            throw new StoreLakeSdkException("NotImplemented:" + member_decl.Name + " - " + member_type.Name);
                         }
 
                         if (!isOwnedByDacPac)
@@ -739,7 +800,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 column = table.Columns[column_name];
                 if (column == null)
                 {
-                    throw new InvalidOperationException("Column [" + table.TableName + "] '" + member_property.Name + "' could not be found.");
+                    throw new StoreLakeSdkException("Column [" + table.TableName + "] '" + member_property.Name + "' could not be found.");
                 }
             }
 
@@ -755,10 +816,9 @@ namespace StoreLake.Sdk.CodeGeneration
                     }
                     else
                     {
-                        throw new NotImplementedException("Row property type for nullable column  [" + table.TableName + "] '" + column.ColumnName + "' (" + column.DataType.Name + ")=[" + member_property.Type.BaseType + "]");
+                        throw new StoreLakeSdkException("NotImplemented:" + "Row property type for nullable column  [" + table.TableName + "] '" + column.ColumnName + "' (" + column.DataType.Name + ")=[" + member_property.Type.BaseType + "]");
                     }
 
-                    //throw new NotImplementedException("Row property type for nullable column  [" + table.TableName + "] '" + column.ColumnName + "' (" + column.DataType.Name + ")=[" + member_property.Type.BaseType + "]");
                 } // IsValueType
             }// AllowDBNull
         }
@@ -827,7 +887,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     column = table.Columns[column_name];
                     if (column == null)
                     {
-                        throw new InvalidOperationException("Column [" + table.TableName + "] '" + prm_decl.Name + "' could not be found.");
+                        throw new StoreLakeSdkException("Column [" + table.TableName + "] '" + prm_decl.Name + "' could not be found.");
                     }
                 }
 
@@ -882,7 +942,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         }
                         else
                         {
-                            throw new NotImplementedException("Parameter type for nullable column  [" + table.TableName + "] '" + column.ColumnName + "' (" + column.DataType.Name + ")=[" + prm_decl.Type.BaseType + "]");
+                            throw new StoreLakeSdkException("NotImplemented:" + "Parameter type for nullable column  [" + table.TableName + "] '" + column.ColumnName + "' (" + column.DataType.Name + ")=[" + prm_decl.Type.BaseType + "]");
                         }
                     }
                 }
@@ -937,7 +997,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     }
                     else
                     {
-                        throw new NotImplementedException("Column [" + table.TableName + "] '" + prm_decl.Name + " (" + column.DefaultValue.GetType().Name + ")=[" + column.DefaultValue + "]");
+                        throw new StoreLakeSdkException("NotImplemented:" + "Column [" + table.TableName + "] '" + prm_decl.Name + " (" + column.DefaultValue.GetType().Name + ")=[" + column.DefaultValue + "]");
                     }
                 }
                 else
@@ -1012,7 +1072,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     }
                     else
                     {
-                        throw new NotImplementedException("Column [" + table.TableName + "] '" + prm_decl.Name + " (" + column.DefaultValue.GetType().Name + ")=[" + column.DefaultValue + "]");
+                        throw new StoreLakeSdkException("NotImplemented:" + "Column [" + table.TableName + "] '" + prm_decl.Name + " (" + column.DefaultValue.GetType().Name + ")=[" + column.DefaultValue + "]");
                     }
 
                     if (!string.IsNullOrEmpty(codeText))
@@ -1192,11 +1252,11 @@ namespace StoreLake.Sdk.CodeGeneration
                     CodeExpressionStatement stmt_expr = stmt as CodeExpressionStatement;
                     if (stmt_expr != null)
                     {
-                        CodeMethodInvokeExpression invoke_expr = stmt_expr.Expression as CodeMethodInvokeExpression;
-                        if (invoke_expr != null)
+                        CodeMethodInvokeExpression invoke_AddTable = stmt_expr.Expression as CodeMethodInvokeExpression;
+                        if (invoke_AddTable != null)
                         {
-                            var prop_Table = invoke_expr.Method.TargetObject as CodePropertyReferenceExpression;
-                            CodeFieldReferenceExpression fieldRefExpr = invoke_expr.Parameters.Count == 1 ? invoke_expr.Parameters[0] as CodeFieldReferenceExpression : null;
+                            var prop_Table = invoke_AddTable.Method.TargetObject as CodePropertyReferenceExpression;
+                            CodeFieldReferenceExpression fieldRefExpr = invoke_AddTable.Parameters.Count == 1 ? invoke_AddTable.Parameters[0] as CodeFieldReferenceExpression : null;
                             if (fieldRefExpr != null && prop_Table != null && prop_Table.TargetObject is CodeBaseReferenceExpression && prop_Table.PropertyName == "Tables")
                             {
                                 CodeAssignStatement field_assign_stmt;
@@ -1208,14 +1268,29 @@ namespace StoreLake.Sdk.CodeGeneration
                                 }
                                 else
                                 {
+                                    CodeObjectCreateExpression createObjectExpr = field_assign_stmt.Right as CodeObjectCreateExpression;
+                                    string tableName = createObjectExpr.CreateType.BaseType.Remove(createObjectExpr.CreateType.BaseType.Length - 9, 9); // suffix "DataTable"
+
                                     prop_Table.TargetObject = prm_ref_ds;
 
                                     CodeObjectCreateExpression createObj = (CodeObjectCreateExpression)field_assign_stmt.Right;
+                                    invoke_AddTable.Parameters.Clear();
+                                    invoke_AddTable.Parameters.Add(createObj);
 
-                                    invoke_expr.Parameters.Clear();
-                                    invoke_expr.Parameters.Add(createObj);
+                                    // if (ds.Tables.IndexOf("tableName") < 0)
+                                    // { AddTable(new ...) }
 
-                                    new_statements.Add(stmt_expr);
+
+                                    CodeMethodInvokeExpression invoke_IndexOf = new CodeMethodInvokeExpression(prop_Table, "IndexOf", new CodeExpression[] {
+                                        new CodePrimitiveExpression(tableName)
+                                    });
+
+                                    var ifTableExists = new CodeBinaryOperatorExpression(invoke_IndexOf, CodeBinaryOperatorType.LessThan, new CodePrimitiveExpression(0));
+
+                                    CodeConditionStatement if_not_Exists_Add = new CodeConditionStatement(ifTableExists, stmt_expr);
+
+                                    //new_statements.Add(stmt_expr);
+                                    new_statements.Add(if_not_Exists_Add);
                                 }
                             }
                         }
@@ -1442,7 +1517,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
             if (streamSnk == null)
             {
-                throw new InvalidOperationException("No SNK resource.");
+                throw new StoreLakeSdkException("NotImplemented:" + "No SNK resource.");
             }
 
             using (FileStream outputFileStream = new FileStream(snkPath, FileMode.CreateNew))
@@ -1561,7 +1636,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 Console.WriteLine(outputErrorsFullFileName);
 
                 var err = compres.Errors[0];
-                throw new InvalidOperationException("Compile failed: (" + err.Line + "," + err.Column + "): error " + err.ErrorNumber + " : " + err.ErrorText);
+                throw new StoreLakeSdkException("Compile failed: (" + err.Line + "," + err.Column + "): error " + err.ErrorNumber + " : " + err.ErrorText);
             }
         }
 

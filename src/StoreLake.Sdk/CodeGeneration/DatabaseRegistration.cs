@@ -89,7 +89,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
                 else
                 {
-                    throw new NotImplementedException("Column type table [" + treg.TableName + "] column [" + creg.ColumnName + "] type (" + creg.ColumnDbType + ")");
+                    throw new StoreLakeSdkException("NotImplemented:" + "Column type table [" + treg.TableName + "] column [" + creg.ColumnName + "] type (" + creg.ColumnDbType + ")");
                 }
 
                 DataColumn column = table.Columns.Add(creg.ColumnName, columnType);
@@ -105,7 +105,7 @@ namespace StoreLake.Sdk.CodeGeneration
             var column = table.Columns[defaultContraint.ColumnName];
             if (column == null)
             {
-                throw new NotImplementedException("Column not found. Table [" + table.TableName + "] column [" + defaultContraint.ColumnName + "]");
+                throw new StoreLakeSdkException("Column not found. Table [" + table.TableName + "] column [" + defaultContraint.ColumnName + "]");
             }
             if (defaultContraint.IsScalarValue)
             {
@@ -147,7 +147,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     }
                     else
                     {
-                        throw new NotImplementedException("Column type table [" + table.TableName + "] column [" + column.ColumnName + "] type (" + column.DataType.Name + ")");
+                        throw new StoreLakeSdkException("NotImplemented:" + "Column type table [" + table.TableName + "] column [" + column.ColumnName + "] type (" + column.DataType.Name + ")");
                     }
                 }
             }
@@ -171,7 +171,6 @@ namespace StoreLake.Sdk.CodeGeneration
                 {
                     column.Expression = defaultContraint.DefaultExpressionScript;
                 }
-                //throw new NotImplementedException("Default expression for column table [" + table.TableName + "] column [" + column.ColumnName + "] type (" + column.DataType.Name + ")");
             }
         }
 
@@ -185,7 +184,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 var column = table.Columns[pkcol.ColumnName];
                 if (column == null)
                 {
-                    throw new NotImplementedException("Column not found. Table [" + table.TableName + "] column [" + pkcol.ColumnName + "]");
+                    throw new StoreLakeSdkException("Column not found. Table [" + table.TableName + "] column [" + pkcol.ColumnName + "]");
                 }
                 column.ReadOnly = true;
                 pkColumns.Add(column);
@@ -205,7 +204,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 var column = table.Columns[pkcol.ColumnName];
                 if (column == null)
                 {
-                    throw new NotImplementedException("Column not found. Table [" + table.TableName + "] column [" + pkcol.ColumnName + "]");
+                    throw new StoreLakeSdkException("Column not found. Table [" + table.TableName + "] column [" + pkcol.ColumnName + "]");
                 }
                 pkColumns.Add(column);
             }

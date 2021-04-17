@@ -1,9 +1,24 @@
 {
   "profiles": {
-    "StoreLake.Sdk.Cli": {
+    "Helpline": {
+      "commandName": "Project",
+      "commandLineArgs": "regeneratereferences=true libdir=D:\\Helpline\\Current\\SQL\\Helpline\\obj\\Debug\\TestStore\\ inputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ dacpac=Helpline.dacpac outputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ storesuffix=TestStore generateschema=false tempdir=D:\\Helpline\\Current\\SQL\\Helpline\\obj\\Debug\\TestStore\\",
+      "workingDirectory": "D:\\Helpline\\Current\\SQL\\Helpline"
+    },
+
+    "HelplineData": {
+      "commandName": "Project",
+      "commandLineArgs": "libdir=D:\\Helpline\\Current\\SQL\\HelplineData\\obj\\Debug\\TestStore\\ inputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ dacpac=HelplineData.dacpac outputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ storesuffix=TestStore generateschema=false tempdir=D:\\Helpline\\Current\\SQL\\HelplineData\\obj\\Debug\\TestStore\\",
+      "workingDirectory": "D:\\Helpline\\Current\\SQL\\HelplineData"
+    },
+
+
+
+    "XXX_StoreLake.Sdk.Cli": {
       "commandName": "Project",
       "commandLineArgs": "libdir=D:\\Helpline\\Current\\SQL\\HelplineData\\obj\\Debug\\TestStore\\ inputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ dacpac=HelplineData.dacpac outputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ storesuffix=TestStore generateschema=false tempdir=D:\\Helpline\\Current\\SQL\\HelplineData\\obj\\Debug\\TestStore\\",
       "workingDirectory": "D:\\Helpline\\Current\\SQL\\HelplineData"
     }
+
   }
 }
