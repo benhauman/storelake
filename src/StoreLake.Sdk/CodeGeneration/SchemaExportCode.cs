@@ -152,13 +152,17 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         if (rr.GenerateMissingReferences)
                         {
-                            // ok
+                            s_tracer.TraceEvent(TraceEventType.Information, 0, "Generate missing referenced package:" + fullFileName_dll);
                         }
                         else
                         {
                             throw new StoreLakeSdkException("Referenced package assembly '" + fullFileName_dll + "' could not be found. To genenerate mising references use option 'GenerateMissingReferences'.");
                         }
                     }
+                }
+                else
+                {
+                    s_tracer.TraceEvent(TraceEventType.Information, 0, "Generate package:" + fullFileName_dll);
                 }
 
                 if (!Directory.Exists(outputdir))
@@ -187,7 +191,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 s_tracer.TraceEvent(TraceEventType.Verbose, 0, "codeFileName:" + codeFileName);
 
                 string fullFileName_err = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".errors.txt");
-                CompileCode(comparam, ccu, libdir, outputdir, fileName, fullFileName_dll, fullFileName_err, tempDirInfo, codeFileName);
+                CompileCode(dacpac, comparam, ccu, libdir, outputdir, fileName, fullFileName_dll, fullFileName_err, tempDirInfo, codeFileName);
             }
             assemblyResolver.ResolveAssembyByLocation(fullFileName_dll);
             dacpac.DacPacTestStoreAssemblyFileName = fullFileName_dll;
@@ -1582,7 +1586,7 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static void CompileCode(CompilerParameters comparam, CodeCompileUnit codeCompileUnit, string libdir, string outputFolder, string fileName, string outputAssemblyFullFileName, string outputErrorsFullFileName, DirectoryInfo tempDirInfo, string codeFileName)
+        private static void CompileCode(DacPacRegistration dacpac, CompilerParameters comparam, CodeCompileUnit codeCompileUnit, string libdir, string outputFolder, string fileName, string outputAssemblyFullFileName, string outputErrorsFullFileName, DirectoryInfo tempDirInfo, string codeFileName)
         {
             string snkPath = GetSnkPath(Path.Combine(tempDirInfo.FullName, "GeneratedModel.snk"));
 
@@ -1620,6 +1624,7 @@ namespace StoreLake.Sdk.CodeGeneration
             //compile time errors (if any), or would create the  
             //assembly in the respective path in case of successful //compilation  
             //CompilerResults compres = icc.CompileAssemblyFromDom(comparam, codeCompileUnit);
+            s_tracer.TraceEvent(TraceEventType.Verbose, 0, "Compiling assembly (ref:" + dacpac.IsReferencedPackage + "):" + outputAssemblyFullFileName);
             CompilerResults compres = icc.CompileAssemblyFromFile(comparam, codeFileName);
 
             if (compres == null || compres.Errors.Count > 0)
