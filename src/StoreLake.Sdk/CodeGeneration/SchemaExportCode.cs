@@ -30,10 +30,10 @@ namespace StoreLake.Sdk.CodeGeneration
             AssemblyResolver assemblyResolver = new AssemblyResolver();
             AssemblyName an_Dibix = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.dll"));
             AssemblyName an_DibixHttpServer = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.Http.Server.dll"));
-            AssemblyName an_DibixHttpClient = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.Http.Client.dll"));
+            //AssemblyName an_DibixHttpClient = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.Http.Client.dll"));
             Assembly asm_Dibix = assemblyResolver.ResolveAssembyByName(an_Dibix);
             assemblyResolver.ResolveAssembyByName(an_DibixHttpServer);
-            assemblyResolver.ResolveAssembyByName(an_DibixHttpClient);
+            //assemblyResolver.ResolveAssembyByName(an_DibixHttpClient);
 
             KnownDibixTypes dbx = StoreAccessorCodeGenerator.LoadKnownDibixTypes(asm_Dibix, assemblyResolver);
 
