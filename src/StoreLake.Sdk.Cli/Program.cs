@@ -216,7 +216,7 @@ namespace StoreLake.Sdk.Cli
             s_tracer.TraceInformation("LibraryDirectory=" + targs.LibraryDirectory);
             s_tracer.TraceInformation("DacpacFileName=" + targs.DacpacFileName);
             s_tracer.TraceInformation("StoreNameAssemblySuffix=" + targs.StoreNameAssemblySuffix);
-            s_tracer.TraceInformation("GenerateSchema=" + targs.StoreNameAssemblySuffix);
+            s_tracer.TraceInformation("GenerateSchema=" + targs.GenerateSchema);
             s_tracer.TraceInformation("TempDirectory=" + targs.TempDirectory);
             s_tracer.TraceInformation("ForceReferencePackageRegeneration=" + targs.ForceReferencePackageRegeneration);
             s_tracer.TraceInformation("GenerateMissingReferences=" + targs.GenerateMissingReferences);
