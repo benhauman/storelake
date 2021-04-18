@@ -1,13 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFramework>net45</TargetFramework>
     <AssemblyName>StoreLake</AssemblyName>
     <RootNamespace>StoreLake</RootNamespace>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>    
     <Authors>BenHauman</Authors>
     <Company>BenHauman</Company>
     <Description>Ddeesssc</Description>
+	  <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <!--<PropertyGroup>

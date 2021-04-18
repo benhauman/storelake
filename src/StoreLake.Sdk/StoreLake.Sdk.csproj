@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFramework>net45</TargetFramework>
     <AssemblyName>StoreLake.Sdk</AssemblyName>
     <RootNamespace>StoreLake.Sdk</RootNamespace>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>    
     <Authors>BenHauman</Authors>
     <Company>BenHauman</Company>
+	  <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -32,12 +33,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Dibix">
-      <HintPath>..\ThirdParty\Dibix.dll</HintPath>
-    </Reference>
-    <Reference Include="Dibix.Http">
-      <HintPath>..\ThirdParty\Dibix.Http.dll</HintPath>
-    </Reference>
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Design" />
   </ItemGroup>

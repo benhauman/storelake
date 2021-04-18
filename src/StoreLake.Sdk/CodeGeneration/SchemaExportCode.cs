@@ -28,12 +28,14 @@ namespace StoreLake.Sdk.CodeGeneration
         public static void ExportTypedDataSetCode(RegistrationResult rr, string libdir, string inputdir, string outputdir, string dacNameFilter, string storeSuffix, bool writeSchemaFile, string tempdir)
         {
             AssemblyResolver assemblyResolver = new AssemblyResolver();
+            AssemblyName an_Dibix = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.dll"));
             AssemblyName an_DibixHttpServer = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.Http.Server.dll"));
             AssemblyName an_DibixHttpClient = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.Http.Client.dll"));
-            //Assembly.Load(an_DibixHttp); // probing?
+            Assembly asm_Dibix = assemblyResolver.ResolveAssembyByName(an_Dibix);
             assemblyResolver.ResolveAssembyByName(an_DibixHttpServer);
             assemblyResolver.ResolveAssembyByName(an_DibixHttpClient);
 
+            KnownDibixTypes dbx = StoreAccessorCodeGenerator.LoadKnownDibixTypes(asm_Dibix, assemblyResolver);
 
             var level_count = rr.registered_dacpacs.Values.Max(x => x.DacPacDependencyLevel);
             for (int level = 1; level <= level_count; level++)
@@ -78,7 +80,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                 //string schemaContent = File.ReadAllText(schemaFileName);
                             }
 
-                            ImportSchemasAsDataSets(assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName, storeSuffix, tempdir, libdir);
+                            ImportSchemasAsDataSets(dbx, assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName, storeSuffix, tempdir, libdir);
                         }
                     }
 
@@ -93,7 +95,7 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static void ImportSchemasAsDataSets(AssemblyResolver assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir, string libdir)
+        private static void ImportSchemasAsDataSets(KnownDibixTypes dbx, AssemblyResolver assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir, string libdir)
         {
             string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
 
@@ -134,7 +136,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 Adjust_CCU(rr, dacpac, ccu, storeSuffix);
             }
 
-            StoreAccessorCodeGenerator.GenerateAccessors(assemblyResolver, dacpac, doGenerate, comparam, ccu, inputdir);
+            StoreAccessorCodeGenerator.GenerateAccessors(dbx, assemblyResolver, dacpac, doGenerate, comparam, ccu, inputdir);
 
             if (!doGenerate)
             {

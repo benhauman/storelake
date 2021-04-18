@@ -12,11 +12,11 @@ using System.Threading.Tasks;
 
 namespace StoreLake.Sdk.CodeGeneration
 {
+
     internal static class StoreAccessorCodeGenerator
     {
-        internal static void GenerateAccessors(AssemblyResolver assemblyResolver, DacPacRegistration dacpac, bool doGenerate, CompilerParameters comparam, CodeCompileUnit ccu, string inputdir)
+        internal static void GenerateAccessors(KnownDibixTypes dbx, AssemblyResolver assemblyResolver, DacPacRegistration dacpac, bool doGenerate, CompilerParameters comparam, CodeCompileUnit ccu, string inputdir)
         {
-
             string dacpacDllFileName = Path.GetFileName(dacpac.DacPacAssemblyFileName);
             string dacpacDllFullFileName = Path.Combine(inputdir, dacpacDllFileName);
             Console.WriteLine("Load '" + dacpacDllFullFileName + "'...");
@@ -71,22 +71,31 @@ namespace StoreLake.Sdk.CodeGeneration
                 ;
                 AddReferencedAssemblies(assemblyResolver, comparam, assemblyResolver.CacheType(typeof(System.Xml.Linq.XElement)).Location); // System.Xml.Linq
 
-                typeof(Dibix.AreaRegistrationAttribute).ToString().GetHashCode();
+                dbx.Dibix_DatabaseAccessorAttribute.ToString().GetHashCode();
 
-                Type databaseAccessorAttributeType = typeof(Dibix.DatabaseAccessorAttribute);
+                Type databaseAccessorAttributeType = dbx.Dibix_DatabaseAccessorAttribute;
 
                 foreach (Type type in asm.GetTypes())
                 {
                     if (type.IsDefined(databaseAccessorAttributeType))
                     {
-                        GenerateCommandHandlerFacade(ccu, type);
+                        GenerateCommandHandlerFacade(dbx, ccu, type);
                     }
-                    else if (type.IsDefined(typeof(Dibix.StructuredTypeAttribute)))
+                    else if (type.IsDefined(dbx.Dibix_StructuredTypeAttribute))
                     {
                         GenerateStructureTypeRow(ccu, type);
                     }
                 }
             } // doGenerate
+        }
+
+        internal static KnownDibixTypes LoadKnownDibixTypes(Assembly asm_Dibix, AssemblyResolver assemblyResolver)
+        {
+            KnownDibixTypes dbx = new KnownDibixTypes();
+            dbx.Dibix_DatabaseAccessorAttribute = asm_Dibix.GetType("Dibix.DatabaseAccessorAttribute", true);
+            dbx.Dibix_StructuredTypeAttribute = asm_Dibix.GetType("Dibix.StructuredTypeAttribute", true);
+            dbx.Dibix_StructuredType = asm_Dibix.GetType("Dibix.StructuredType", true);
+            return dbx;
         }
 
         private static void GenerateStructureTypeRow(CodeCompileUnit ccu, Type udtType)
@@ -130,11 +139,11 @@ namespace StoreLake.Sdk.CodeGeneration
 
         }
 
-        private static void GenerateCommandHandlerFacade(CodeCompileUnit ccu, Type databaseAccessorType)
+        private static void GenerateCommandHandlerFacade(KnownDibixTypes dbx, CodeCompileUnit ccu, Type databaseAccessorType)
         {
             //Console.WriteLine("" + databaseAccessorType.FullName);
             CodeNamespace ns = EnsureNamespace(ccu, databaseAccessorType);
-            CodeTypeDeclaration typedecl = BuildCommandHandlerFacadeType(databaseAccessorType);
+            CodeTypeDeclaration typedecl = BuildCommandHandlerFacadeType(dbx, databaseAccessorType);
             ns.Types.Add(typedecl);
         }
 
@@ -228,7 +237,7 @@ namespace StoreLake.Sdk.CodeGeneration
             }
             return new CodePrimitiveExpression(value);
         }
-        private static CodeTypeDeclaration BuildCommandHandlerFacadeType(Type databaseAccessorType)
+        private static CodeTypeDeclaration BuildCommandHandlerFacadeType(KnownDibixTypes dbx, Type databaseAccessorType)
         {
             string typeName = databaseAccessorType.Name + "CommandHandlerFacade";
             CodeTypeDeclaration typedecl = new CodeTypeDeclaration() { Name = typeName, IsClass = true, Attributes = MemberAttributes.Public };
@@ -266,7 +275,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         Type parameterType = accessMethodParameter.ParameterType.IsByRef ? accessMethodParameter.ParameterType.GetElementType() : accessMethodParameter.ParameterType;
 
                         CodeTypeReference parameterTypeRef;
-                        if (IsUDT(parameterType))
+                        if (IsUDT(dbx, parameterType))
                         {
                             //parameterType = typeof(IEnumerable<Microsoft.SqlServer.Server.SqlDataRecord>);
                             parameterTypeRef = CreateUdtParameterType(parameterType);
@@ -347,10 +356,9 @@ namespace StoreLake.Sdk.CodeGeneration
             return index == -1 ? name : name.Substring(0, index);
         }
 
-
-        private static bool IsUDT(Type parameterType)
+        private static bool IsUDT(KnownDibixTypes dbx, Type parameterType)
         {
-            if (typeof(Dibix.StructuredType).IsAssignableFrom(parameterType))
+            if (dbx.Dibix_StructuredType.IsAssignableFrom(parameterType))
                 return true;
             return false;
         }

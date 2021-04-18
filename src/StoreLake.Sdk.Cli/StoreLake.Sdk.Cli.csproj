@@ -1,13 +1,46 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net48</TargetFramework>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net45</TargetFramework>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\StoreLake\StoreLake.csproj" />
-    <ProjectReference Include="..\StoreLake.Sdk\StoreLake.Sdk.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\StoreLake\StoreLake.csproj" >
+			<PrivateAssets>All</PrivateAssets>
+		  <Private>true</Private>
+		</ProjectReference>			
+		<ProjectReference Include="..\StoreLake.Sdk\StoreLake.Sdk.csproj" >
+			<PrivateAssets>All</PrivateAssets>
+		  <Private>true</Private>
+		</ProjectReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="content/**/*.*" copyToOutput="false">
+			<Pack>true</Pack>
+			<PackagePath>contentPath</PackagePath>
+			<IncludeInPackage>true</IncludeInPackage>
+			<CopyToOutput>true</CopyToOutput>
+			<BuildAction>Content</BuildAction>
+			<copyToOutput>true</copyToOutput>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<CopyToPublishDirectory>Always</CopyToPublishDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="../ThirdParty/Dibix.*" copyToOutput="false">
+			<Pack>true</Pack>
+			<PackagePath>tools</PackagePath>
+			<IncludeInPackage>true</IncludeInPackage>
+			<CopyToOutput>true</CopyToOutput>
+			<BuildAction>Content</BuildAction>
+			<copyToOutput>true</copyToOutput>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<CopyToPublishDirectory>Always</CopyToPublishDirectory>
+		</Content>
+	</ItemGroup>
 
 </Project>
