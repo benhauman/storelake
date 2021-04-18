@@ -5,21 +5,28 @@
 		<TargetFramework>net45</TargetFramework>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\StoreLake\StoreLake.csproj" >
+		<ProjectReference Include="..\StoreLake\StoreLake.csproj">
+			<PrivateAssets>All</PrivateAssets>
+			<IncludeAssets>StoreLake.*</IncludeAssets>
+			<Private>true</Private>
+			<ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+		</ProjectReference>
+		<ProjectReference Include="..\StoreLake.Sdk\StoreLake.Sdk.csproj">
 			<PrivateAssets>All</PrivateAssets>
 			<ReferenceOutputAssembly>true</ReferenceOutputAssembly>
-			<IncludeAssets>StoreLake.dll</IncludeAssets>
+			<IncludeAssets>StoreLake.Sdk.*</IncludeAssets>
 			<Private>true</Private>
 		</ProjectReference>
-		<ProjectReference Include="..\StoreLake.Sdk\StoreLake.Sdk.csproj" >
-			<PrivateAssets>All</PrivateAssets>
-			<ReferenceOutputAssembly>true</ReferenceOutputAssembly>
-			<IncludeAssets>StoreLake.Sdk.dll</IncludeAssets>
-			<Private>true</Private>
-		</ProjectReference>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="App.config">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 
 	<!--<ItemGroup>
@@ -48,18 +55,31 @@
 		</Content>
 	</ItemGroup>-->
 
-	<Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
-		<ItemGroup>
-			<!-- Filter out unnecessary files -->
-			<_ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference')->WithMetadataValue('PrivateAssets', 'All'))"/>
-		</ItemGroup>
+  <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+    <!--<ItemGroup>
+      --><!-- Filter out unnecessary files --><!--
+      <_ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
+    </ItemGroup>
 
-		<!-- Print batches for debug purposes -->
-		<Message Text="Batch for .nupkg: ReferenceCopyLocalPaths = @(_ReferenceCopyLocalPaths), ReferenceCopyLocalPaths.DestinationSubDirectory = %(_ReferenceCopyLocalPaths.DestinationSubDirectory) Filename = %(_ReferenceCopyLocalPaths.Filename) Extension = %(_ReferenceCopyLocalPaths.Extension)" Importance="High" Condition="'@(_ReferenceCopyLocalPaths)' != ''" />
+    --><!-- Print batches for debug purposes -->
+    <!--<Message Text="lubo : Batch for .nupkg: ReferenceCopyLocalPaths = @(_ReferenceCopyLocalPaths), ReferenceCopyLocalPaths.DestinationSubDirectory = %(_ReferenceCopyLocalPaths.DestinationSubDirectory) Filename = %(_ReferenceCopyLocalPaths.Filename) Extension = %(_ReferenceCopyLocalPaths.Extension)" Importance="High" Condition="'@(_ReferenceCopyLocalPaths)' != ''" />-->
 
-		<ItemGroup>
-			<!-- Add file to package with consideration of sub folder. If empty, the root folder is chosen. -->
-			<BuildOutputInPackage Include="@(_ReferenceCopyLocalPaths)" TargetPath="%(_ReferenceCopyLocalPaths.DestinationSubDirectory)"/>
-		</ItemGroup>
-	</Target>
+	  <Message Text="lubo : Batch for $(OutputPath)" />
+    <ItemGroup>
+      <!-- Add file to package with consideration of sub folder. If empty, the root folder is chosen. -->
+      <!--<BuildOutputInPackage Include="@(_ReferenceCopyLocalPaths)" TargetPath="%(_ReferenceCopyLocalPaths.DestinationSubDirectory)" />-->
+		
+		<!--<BuildOutputInPackage Include="$(OutputPath)App.config" TargetPath="StoreLake.Sdk.Cli.exe.config" />  	
+		<BuildOutputInPackage Include="$(OutputPath)StoreLake.dll" TargetPath="bix\1.dll" />  
+		<BuildOutputInPackage Include="$(OutputPath)StoreLake.pdb" TargetPath="bix\1.pdb" />  
+		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.dll" TargetPath="bix\2.dll" />  
+		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.pdb" TargetPath="bix\2.pdb" />-->  
+	
+		<BuildOutputInPackage Include="$(OutputPath)StoreLake.dll" TargetPath="StoreLake.dll" />  
+		<BuildOutputInPackage Include="$(OutputPath)StoreLake.pdb" TargetPath="StoreLake.pdb" />  
+		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.dll" TargetPath="StoreLake.Sdk.dll" />  
+		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.pdb" TargetPath="StoreLake.Sdk.pdb" />
+  
+    </ItemGroup>
+  </Target>
 </Project>
