@@ -27,12 +27,15 @@
 	  <None Update="App.config">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
+	  <None Update="build\StoreLake.Sdk.Cli.targets">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 
-	<!--<ItemGroup>
-		<Content Include="content/**/*.*" copyToOutput="true">
+	<ItemGroup>
+		<Content Include="build/**/*.*" copyToOutput="true">
 			<Pack>true</Pack>
-			<PackagePath>contentPath</PackagePath>
+			<PackagePath>build</PackagePath>
 			<IncludeInPackage>true</IncludeInPackage>
 			<CopyToOutput>true</CopyToOutput>
 			<BuildAction>Content</BuildAction>
@@ -42,6 +45,7 @@
 		</Content>
 	</ItemGroup>
 
+	<!--
 	<ItemGroup>
 		<Content Include="../ThirdParty/Dibix.*" copyToOutput="false">
 			<Pack>true</Pack>
@@ -73,8 +77,9 @@
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.dll" TargetPath="bix\1.dll" />  
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.pdb" TargetPath="bix\1.pdb" />  
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.dll" TargetPath="bix\2.dll" />  
-		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.pdb" TargetPath="bix\2.pdb" />-->  
-	
+		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.pdb" TargetPath="bix\2.pdb" />-->
+
+		<!--<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.Cli.targets" TargetPath="build\StoreLake.Sdk.Cli.targets" />-->
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.dll" TargetPath="StoreLake.dll" />  
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.pdb" TargetPath="StoreLake.pdb" />  
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.dll" TargetPath="StoreLake.Sdk.dll" />  

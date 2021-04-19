@@ -1,0 +1,8 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <ItemGroup>
+    <PackageReference Include="Dibix.Sdk" Version="$(DibixSdkVersion)" PrivateAssets="All" />
+    <PackageReference Include="StoreLake.Sdk.Cli" Version="1.0.*" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>
