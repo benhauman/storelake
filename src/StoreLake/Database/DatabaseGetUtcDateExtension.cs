@@ -83,7 +83,7 @@ namespace StoreLake.TestStore.Database
             {
                 get
                 {
-                    return (DateTime)base[row_table.TimeNowColumn];
+                    return new DateTime(((DateTime)base[row_table.TimeNowColumn]).Ticks, DateTimeKind.Utc);
                 }
                 set
                 {
