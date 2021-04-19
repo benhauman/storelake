@@ -731,6 +731,13 @@ namespace StoreLake.Sdk.CodeGeneration
                         }
                     }
                 }
+
+
+            }
+
+            if (isTableClassDeclaration)
+            {
+                AddTableMethods(rr, dacpac, type_decl_table, type_decl);
             }
 
             foreach (var memberToRemove in membersToRemove)
@@ -749,6 +756,60 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 type_decl.Members.Add(memberToInsert);
             }
+        }
+
+        private static void AddTableMethods(RegistrationResult rr, DacPacRegistration dacpac, DataTable table, CodeTypeDeclaration type_decl)
+        {
+            CodeMemberMethod member_FindRowByPrimaryKey = GetMemberMethodByName(type_decl, "FindRowByPrimaryKey");
+
+            CodeMemberMethod member_DeleteRowByPrimaryKey = new CodeMemberMethod();
+            member_DeleteRowByPrimaryKey.Name = "DeleteRowByPrimaryKey";
+            member_DeleteRowByPrimaryKey.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+            member_DeleteRowByPrimaryKey.ReturnType = new CodeTypeReference(type_decl.Name);
+
+            // parameters
+            CodeMethodInvokeExpression invokeFind = new CodeMethodInvokeExpression(
+                new CodeMethodReferenceExpression(new CodeThisReferenceExpression(), member_FindRowByPrimaryKey.Name)
+                );
+
+            for (int ix = 0; ix < member_FindRowByPrimaryKey.Parameters.Count; ix++)
+            {
+                CodeParameterDeclarationExpression prm = member_FindRowByPrimaryKey.Parameters[ix];
+
+                member_DeleteRowByPrimaryKey.Parameters.Add(prm);
+
+                invokeFind.Parameters.Add(new CodeVariableReferenceExpression(prm.Name));
+            }
+
+            // body : FindRowByPrimaryKey(identifier).Delete();
+
+            CodeMethodInvokeExpression invokeDelete = new CodeMethodInvokeExpression(
+                new CodeMethodReferenceExpression(invokeFind, "Delete")
+                );
+            member_DeleteRowByPrimaryKey.Statements.Add(invokeDelete);
+
+            // return
+            member_DeleteRowByPrimaryKey.Statements.Add(new CodeMethodReturnStatement(new CodeThisReferenceExpression()));
+            type_decl.Members.Add(member_DeleteRowByPrimaryKey);
+        }
+
+        private static CodeMemberMethod GetMemberMethodByName(CodeTypeDeclaration type_decl, string methodName)
+        {
+            CodeMemberMethod member_FindRowByPrimaryKey = null;
+            for (int ix = 0; ix < type_decl.Members.Count; ix++)
+            {
+                CodeTypeMember member = type_decl.Members[ix];
+                if (member.Name == methodName)
+                {
+                    member_FindRowByPrimaryKey = (CodeMemberMethod)member;
+                }
+            }
+            if (member_FindRowByPrimaryKey == null)
+            {
+                throw new StoreLakeSdkException("Member not found 'FindRowByPrimaryKey' for type:" + type_decl.Name);
+            }
+
+            return member_FindRowByPrimaryKey;
         }
 
         private static void Adjust_Table_Constructor(CodeConstructor member_ctor)
