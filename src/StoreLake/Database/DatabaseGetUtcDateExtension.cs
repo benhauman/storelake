@@ -13,7 +13,7 @@ namespace StoreLake.TestStore.Database
 
         #region Registration
         // introduces a special table '__timenow__' with a datetimne column NOT NULL and one row with initial value
-        public static void Register(DataSet ds)
+        public static DataSet Register(DataSet ds)
         {
             ds.BeginInit();
             InitDataSetClass(ds);
@@ -24,6 +24,7 @@ namespace StoreLake.TestStore.Database
             table.Rows.Add(1, db_utc_now);
 
             ds.EndInit();
+            return ds;
         }
         #endregion
 

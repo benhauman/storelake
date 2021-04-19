@@ -26,7 +26,7 @@ namespace StoreLake.TestStore.Database
             return db;
         }
 
-        public StoreLakeDatabaseBuilder<TDataSet> Use(Action<DataSet> extension)
+        public StoreLakeDatabaseBuilder<TDataSet> UseAction(Action<DataSet> extension)
         {
             string key = extension.Method.DeclaringType.FullName + "::" + extension.Method.Name;
             return RegisterExtensionRegistrar(key, extension);
