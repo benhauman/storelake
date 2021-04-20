@@ -737,7 +737,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
             if (isTableClassDeclaration)
             {
-                AddTableMethods(rr, dacpac, type_decl_table, type_decl);
+                //AddTableMethods(rr, dacpac, type_decl_table, type_decl);
             }
 
             foreach (var memberToRemove in membersToRemove)

@@ -393,7 +393,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         if (xIndex_Property_FilterPredicate != null)
                         {
                             // skip for now filtered indices
-                            Console.WriteLine("SKIP:" + uqreg.KeyName);
+                            //Console.WriteLine("SKIP:" + uqreg.KeyName);
                         }
                         else
                         {
