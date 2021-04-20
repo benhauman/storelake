@@ -790,7 +790,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
             // return
             member_DeleteRowByPrimaryKey.Statements.Add(new CodeMethodReturnStatement(new CodeThisReferenceExpression()));
-            type_decl.Members.Add(member_DeleteRowByPrimaryKey);
+            // dont added it - not so useful type_decl.Members.Add(member_DeleteRowByPrimaryKey);
         }
 
         private static CodeMemberMethod GetMemberMethodByName(CodeTypeDeclaration type_decl, string methodName)
