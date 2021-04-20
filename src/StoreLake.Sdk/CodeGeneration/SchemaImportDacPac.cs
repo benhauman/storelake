@@ -50,6 +50,7 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly IDictionary<string, DacPacRegistration> registered_tables = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
     }
 
+
     public static class SchemaImportDacPac // 'Dedicated Administrator Connection (for Data Tier Application) Package'
     {
         public static RegistrationResult ImportDacPac(string inputdir, string dacpacFullFileName, bool forceReferencePackageRegeneration, bool generateMissingReferences)

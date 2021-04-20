@@ -1,11 +1,33 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 
 namespace StoreLake.Sdk.CodeGeneration
 {
     internal sealed class AssemblyResolver
     {
+        private static readonly TraceSource s_tracer = SchemaExportCode.CreateTraceSource();
+        private readonly string _libdir;
+        public AssemblyResolver(string libdir)
+        {
+            _libdir = libdir ?? string.Empty;
+        }
+        internal System.Reflection.Assembly OnAssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            s_tracer.TraceInformation("OnAssemblyResolve : " + args.Name);
+
+            AssemblyName asmName = new AssemblyName(args.Name); // Dibix.Http.Server, Version=1.0.0.0, Culture=neutral, PublicKeyToken=5b039a7bf8dc383e
+            string fileName = Path.Combine(_libdir, asmName.Name + ".dll");
+            if (File.Exists(fileName))
+            {
+                s_tracer.TraceInformation("OnAssemblyResolve (load) : " + fileName);
+                return Assembly.Load(AssemblyName.GetAssemblyName(fileName));
+            }
+            return null;
+        }
+
         private readonly IDictionary<string, string> name_location = new SortedDictionary<string, string>();
         private readonly IDictionary<string, string> location_name = new SortedDictionary<string, string>();
         private readonly IDictionary<string, Assembly> name_asm = new SortedDictionary<string, Assembly>();
