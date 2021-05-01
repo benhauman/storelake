@@ -99,6 +99,76 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
+        internal static void RegisterForeignKey(DataSet ds, StoreLakeForeignKeyRegistration foreignKey)
+        {
+            //throw new NotImplementedException("xForeignKeyName:" + xForeignKeyName.Value + " ON " + fk_reg.DefiningTableName + "() REFERENCES " + fk_reg.ForeignTableName);
+            DataTable definining_table = ds.Tables[foreignKey.DefiningTableName, foreignKey.DefiningTableSchema];
+            DataTable foreign_table = ds.Tables[foreignKey.ForeignTableName, foreignKey.ForeignTableSchema];
+            if (definining_table == null)
+            {
+                throw new StoreLakeSdkException("Foreign key 'Defining' table not found. Table [" + foreignKey.DefiningTableSchema + "] Key [" + foreignKey.ForeignKeyName + "]");
+            }
+            if (foreign_table == null)
+            {
+                throw new StoreLakeSdkException("Foreign key 'Foreign' table not found. Table [" + foreignKey.ForeignTableName + "] Key [" + foreignKey.ForeignKeyName + "]");
+            }
+            if (foreignKey.DefiningColumns == null || foreignKey.DefiningColumns.Count == 0)
+            {
+                throw new StoreLakeSdkException("Foreign key 'Defining' columns not specified. Table [" + foreignKey.DefiningTableSchema + "] Key [" + foreignKey.ForeignKeyName + "]");
+            }
+            if (foreignKey.ForeignColumns == null || foreignKey.ForeignColumns.Count == 0)
+            {
+                throw new StoreLakeSdkException("Foreign key 'Foreign' columns not specified. Table [" + foreignKey.ForeignTableName + "] Key [" + foreignKey.ForeignKeyName + "]");
+            }
+
+            if (foreignKey.DefiningColumns.Count != foreignKey.ForeignColumns.Count)
+            {
+                throw new StoreLakeSdkException("Foreign key mismatched columns count. Table [" + foreignKey.ForeignTableName + "] Key [" + foreignKey.ForeignKeyName + "]");
+            }
+            List<DataColumn> defining_columns = new List<DataColumn>();
+            List<DataColumn> foreign_columns = new List<DataColumn>();
+            for (int ix = 0; ix < foreignKey.DefiningColumns.Count; ix++)
+            {
+                string defining_column_name = foreignKey.DefiningColumns[ix].ColumnName;
+                string foreign_column_name = foreignKey.ForeignColumns[ix].ColumnName;
+                DataColumn defining_column = definining_table.Columns[defining_column_name];
+                DataColumn foreign_column = foreign_table.Columns[foreign_column_name];
+
+                defining_columns.Add(defining_column);
+                foreign_columns.Add(foreign_column);
+            }
+
+
+            ForeignKeyConstraint fk = new ForeignKeyConstraint(foreignKey.ForeignKeyName, foreign_columns.ToArray(), defining_columns.ToArray());
+            ForeignKeyConstraint found = FindForeignKeyConstraint(definining_table.Constraints, fk);
+            
+            if (found == null)
+            {
+                //Console.WriteLine("[" + foreignKey.ForeignKeyName + "] ON [" + foreignKey.DefiningTableName + "]" + " REFERENCES [" + foreignKey.ForeignTableName + "]");
+
+                definining_table.Constraints.Add(fk);
+            }
+            //definining_table.ParentRelations.Add(new DataRelation() { });
+        }
+        // System.Data.ConstraintCollection
+        internal static ForeignKeyConstraint FindForeignKeyConstraint(ConstraintCollection lst, ForeignKeyConstraint fk)
+        {
+            int count = lst.Count;
+            for (int i = 0; i < count; i++)
+            {
+                // name?
+                if (string.Equals(((Constraint)lst[i]).ConstraintName, fk.ConstraintName))
+                {
+                    return (ForeignKeyConstraint)lst[i];
+                }
+                // columns?
+                if (((Constraint)lst[i]).Equals(fk))
+                {
+                    return (ForeignKeyConstraint)lst[i];
+                }
+            }
+            return null;
+        }
         internal static void RegisterDefaultConstraint(DataSet ds, StoreLakeDefaultContraintRegistration defaultContraint)
         {
             var table = ds.Tables[defaultContraint.TableName, defaultContraint.TableSchema];

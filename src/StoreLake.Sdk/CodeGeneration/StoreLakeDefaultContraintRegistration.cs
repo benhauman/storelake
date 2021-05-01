@@ -19,5 +19,4 @@ namespace StoreLake.Sdk.CodeGeneration
 
         public byte[] ValueBytes { get; internal set; }
     }
-
 }

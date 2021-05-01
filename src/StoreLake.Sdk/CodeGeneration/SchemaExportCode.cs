@@ -110,8 +110,21 @@ namespace StoreLake.Sdk.CodeGeneration
                 doGenerate = true;
             }
 
+            string subtemp_stamp = "";
+            if (fullFileName_dll == null)
+            {
+                subtemp_stamp = DateTimeNow() + "_";
+            }
+
+            DirectoryInfo tempDirInfo = new DirectoryInfo(Path.Combine(tempdir, subtemp_stamp + fileName));
             if (doGenerate)
             {
+                if (tempDirInfo.Exists)
+                {
+                    tempDirInfo.Delete(true);
+                }
+                tempDirInfo.Create();
+
             }
 
             Microsoft.CSharp.CSharpCodeProvider codeProvider = new Microsoft.CSharp.CSharpCodeProvider();// //CodeDomProvider.CreateProvider(language);
@@ -132,6 +145,13 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 GenerateDataSetClasses(ccu, schemaContent, namespaceName, codeProvider);
 
+                //=================================================================================
+                //string codeFileName = Path.Combine(tempDirInfo.FullName, fileName + ".RawMSCode.cs");
+                //using (TextWriter textWriter = new StreamWriter(codeFileName, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
+                //{
+                //    codeProvider.GenerateCodeFromCompileUnit(ccu, textWriter, null);
+                //}
+                //=================================================================================
 
                 Adjust_CCU(rr, dacpac, ccu, storeSuffix);
             }
@@ -175,14 +195,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 {
                     Directory.CreateDirectory(tempdir);
                 }
-
-
-                DirectoryInfo tempDirInfo = new DirectoryInfo(Path.Combine(tempdir, DateTimeNow() + "_" + fileName));
-                if (tempDirInfo.Exists)
+                if (!Directory.Exists(tempDirInfo.FullName))
                 {
-                    tempDirInfo.Delete(true);
+                    Directory.CreateDirectory(tempDirInfo.FullName);
                 }
-                tempDirInfo.Create();
+
 
                 string codeFileName = Path.Combine(tempDirInfo.FullName, fileName + ".cs");
                 using (TextWriter textWriter = new StreamWriter(codeFileName, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
@@ -361,6 +378,18 @@ namespace StoreLake.Sdk.CodeGeneration
                     }
                 }
 
+                // add foreign keys between tables
+                CodeMemberMethod extensions_method_InitDataSet = TryGetMemberMethodByName(extensions_type_decl, "InitDataSetClass");
+                if (extensions_method_InitDataSet == null)
+                {
+                    throw new InvalidOperationException("Method 'InitDataSet' on DataSet extensions type could not be found.");
+                }
+
+                foreach (string table_name in dacpac.registered_tables.Keys)
+                {
+                    AddTableForeignKeys(rr, extensions_type_decl, extensions_method_InitDataSet, table_name);
+                }
+
                 // MoveNestedTypesToNamespace
                 foreach (NestedTypeDeclaration nested_type in nestedTypes)
                 {
@@ -368,6 +397,103 @@ namespace StoreLake.Sdk.CodeGeneration
                     ns.Types.Add(nested_type.Member);
                 }
             }
+
+        }
+
+        private static void AddTableForeignKeys(RegistrationResult rr, CodeTypeDeclaration extensions_type_decl, CodeMemberMethod extensions_method_InitDataSet, string tableName)
+        {
+            DataTable type_decl_table = rr.ds.Tables[tableName];
+            if (type_decl_table == null)
+            {
+                throw new StoreLakeSdkException("Table [" + tableName + "] could not be found.");
+            }
+
+            int count = type_decl_table.Constraints.Count;
+            for (int i = 0; i < count; i++)
+            {
+                ForeignKeyConstraint fk = type_decl_table.Constraints[i] as ForeignKeyConstraint;
+                if (fk != null)
+                {
+                    AddTableForeignKey(rr, extensions_type_decl, extensions_method_InitDataSet, type_decl_table, fk);
+                }
+            }
+        }
+
+        private static void AddTableForeignKey(RegistrationResult rr, CodeTypeDeclaration extensions_type_decl, CodeMemberMethod extensions_method_InitDataSet, DataTable type_decl_table, ForeignKeyConstraint fk)
+        {
+            //if (string.Equals(fk.Table.TableName, fk.RelatedTable.TableName))
+            //{
+            //    Console.WriteLine("SKIP:" + fk.ConstraintName);
+            //    return;
+            //}
+
+
+            var method_GetTable_defining = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(extensions_type_decl.Name),
+                             "GetTable", new CodeTypeReference[] { new CodeTypeReference(fk.Table.TableName + "DataTable") });
+            var method_GetTable_foreign = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(extensions_type_decl.Name),
+                            "GetTable", new CodeTypeReference[] { new CodeTypeReference(fk.RelatedTable.TableName + "DataTable") });
+
+            var invoke_GetTable_defining = new CodeMethodInvokeExpression(method_GetTable_defining, new CodeExpression[] {
+                new CodeVariableReferenceExpression("ds")
+                , new CodePrimitiveExpression(fk.Table.TableName)
+            });
+
+            var invoke_GetTable_foreign = new CodeMethodInvokeExpression(method_GetTable_foreign, new CodeExpression[] {
+                new CodeVariableReferenceExpression("ds")
+                , new CodePrimitiveExpression(fk.RelatedTable.TableName)
+            });
+
+
+            var decl_table_parent = new CodeVariableDeclarationStatement(new CodeTypeReference(fk.RelatedTable.TableName + "DataTable"), "table_parent");
+            decl_table_parent.InitExpression = invoke_GetTable_foreign;
+
+            var decl_table_child = new CodeVariableDeclarationStatement(new CodeTypeReference(fk.Table.TableName + "DataTable"), "table_child");
+            decl_table_child.InitExpression = invoke_GetTable_defining;
+
+            List<CodeExpression> defining_columns = new List<CodeExpression>();
+            List<CodeExpression> foreign_columns = new List<CodeExpression>();
+            for (int ix = 0; ix < fk.Columns.Length; ix++)
+            {
+                var defining_column = fk.Columns[ix];
+                var foreign_column = fk.RelatedColumns[ix];
+
+                defining_columns.Add(new CodePropertyReferenceExpression(new CodeVariableReferenceExpression(decl_table_child.Name), defining_column.ColumnName + "Column"));
+                foreign_columns.Add(new CodePropertyReferenceExpression(new CodeVariableReferenceExpression(decl_table_parent.Name), foreign_column.ColumnName + "Column"));
+            }
+
+            CodeArrayCreateExpression definint_arr = new CodeArrayCreateExpression(typeof(DataColumn), defining_columns.ToArray());
+            CodeArrayCreateExpression foreign_arr = new CodeArrayCreateExpression(typeof(DataColumn), foreign_columns.ToArray());
+            var decl_fk = new CodeVariableDeclarationStatement(new CodeTypeReference(typeof(ForeignKeyConstraint)), "fk");
+            //decl_fk.InitExpression = new CodeObjectCreateExpression(decl_fk.Type, new CodeExpression[] {
+            //        new CodePrimitiveExpression(fk.ConstraintName),
+            //        new CodePrimitiveExpression(fk.RelatedTable.TableName),
+            //        foreign_arr,
+            //        definint_arr
+            //        , new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(AcceptRejectRule)), "None") // AcceptRejectRule.None
+            //        , new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(Rule)), "None") // Rule.None
+            //        , new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(Rule)), "None") // Rule.None
+            //});
+
+            decl_fk.InitExpression = new CodeObjectCreateExpression(decl_fk.Type, new CodeExpression[] {
+                    new CodePrimitiveExpression(fk.ConstraintName),
+                    foreign_arr,
+                    definint_arr
+            });
+
+
+            var prop_If_Constraints = new CodePropertyReferenceExpression(invoke_GetTable_defining, "Constraints");
+            var invoke_IndexOf = new CodeMethodInvokeExpression(prop_If_Constraints, "IndexOf", new CodeExpression[] { new CodePrimitiveExpression(fk.ConstraintName) });
+
+            var prop_Constraints = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression(decl_table_child.Name), "Constraints");
+
+            var invoke_Add = new CodeMethodInvokeExpression(prop_Constraints, "Add", new CodeExpression[] { new CodeVariableReferenceExpression(decl_fk.Name) });
+
+            var ifTableExists = new CodeBinaryOperatorExpression(invoke_IndexOf, CodeBinaryOperatorType.LessThan, new_CodePrimitiveExpression(0));
+
+            CodeConditionStatement if_not_Exists_Add = new CodeConditionStatement(ifTableExists, decl_table_child, decl_table_parent, decl_fk);
+            if_not_Exists_Add.TrueStatements.Add(invoke_Add);
+
+            extensions_method_InitDataSet.Statements.Add(if_not_Exists_Add);
         }
 
         private static CodeExpression new_CodePrimitiveExpression(object value)

@@ -188,6 +188,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                 AddUniqueKeys(ctx.ds, xModel);
                                 AddUniqueIndexes(ctx.ds, xModel);
                                 AddDefaultConstraints(ctx.ds, xModel);
+                                AddForeignKeys(ctx.ds, xModel);
 
                                 ctx.registered_dacpacs.Add(dacpac.UniqueKey, dacpac);
                             }
@@ -212,7 +213,59 @@ namespace StoreLake.Sdk.CodeGeneration
             return level;
         }
 
+        private static void AddForeignKeys(DataSet ds, XElement xModel)
+        {
+            //     <Element Type="SqlForeignKeyConstraint" Name="[dbo].[FK_hlcmdatamodelassociationsearch_associationid]">
+            foreach (var xForeignKey in xModel.Elements().Where(e => e.Attributes().Any(t => t.Name == "Type" && t.Value == "SqlForeignKeyConstraint")))
+            {
+                XAttribute xForeignKeyName = xForeignKey.Attributes().Where(x => x.Name == "Name").First();
 
+                StoreLakeForeignKeyRegistration fk_reg = new StoreLakeForeignKeyRegistration();
+
+                string[] name_tokens = xForeignKeyName.Value.Split('.');
+                fk_reg.ForeignKeyName = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                fk_reg.ForeignKeySchema = (name_tokens.Length == 3) ? name_tokens[0] : "dbo";
+
+                SqlObjectName foreign_table = CollectElementRelationShipTable(xForeignKey, "ForeignTable");
+                fk_reg.ForeignTableName = foreign_table.ObjectName;
+                fk_reg.ForeignTableSchema = foreign_table.SchemaName;
+
+                SqlObjectName defining_table = CollectElementRelationShipTable(xForeignKey, "DefiningTable");
+                fk_reg.DefiningTableName = defining_table.ObjectName;
+                fk_reg.DefiningTableSchema = defining_table.SchemaName;
+
+                CollectRelationReferencesColumns(xForeignKey, "Columns", (columnName) =>
+                {
+                    fk_reg.DefiningColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
+                });
+                CollectRelationReferencesColumns(xForeignKey, "ForeignColumns", (columnName) =>
+                {
+                    fk_reg.ForeignColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
+                });
+
+                DatabaseRegistration.RegisterForeignKey(ds, fk_reg);
+            }
+        }
+
+        private static SqlObjectName CollectElementRelationShipTable(XElement xForeignKey, string relationshipItemName)
+        {
+            var xDefiningTable = xForeignKey.Elements().Single(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == relationshipItemName));
+            var xDefiningTable_Entry = xDefiningTable.Elements().Single(e => e.Name.LocalName == "Entry");
+            var xDefiningTable_Entry_References = xDefiningTable_Entry.Elements().Single(e => e.Name.LocalName == "References");
+            var xDefiningTable_Entry_References_Name = xDefiningTable_Entry_References.Attributes().Single(a => a.Name.LocalName == "Name");
+            string[] name_tokens = xDefiningTable_Entry_References_Name.Value.Split('.');
+            return new SqlObjectName()
+            {
+                ObjectName = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", ""),
+                SchemaName = (name_tokens.Length == 2) ? name_tokens[0] : "dbo"
+            };
+        }
+
+        class SqlObjectName
+        {
+            public string SchemaName;
+            public string ObjectName;
+        }
         private static void AddDefaultConstraints(DataSet ds, XElement xModel)
         {
             //     <Element Type="SqlDefaultConstraint" Name="[dbo].[DF_hlsysagent_active]">
@@ -236,13 +289,10 @@ namespace StoreLake.Sdk.CodeGeneration
                 name_tokens = xForColumn_Entry_References_Name.Value.Split('.');
                 df_reg.ColumnName = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
 
-                var xDefiningTable = xDefaultConstraint.Elements().Single(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "DefiningTable"));
-                var xDefiningTable_Entry = xDefiningTable.Elements().Single(e => e.Name.LocalName == "Entry");
-                var xDefiningTable_Entry_References = xDefiningTable_Entry.Elements().Single(e => e.Name.LocalName == "References");
-                var xDefiningTable_Entry_References_Name = xDefiningTable_Entry_References.Attributes().Single(a => a.Name.LocalName == "Name");
-                name_tokens = xDefiningTable_Entry_References_Name.Value.Split('.');
-                df_reg.TableName = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
-                df_reg.TableSchema = (name_tokens.Length == 2) ? name_tokens[0] : "dbo";
+                SqlObjectName defining_table = CollectElementRelationShipTable(xDefaultConstraint, "DefiningTable");
+                df_reg.TableName = defining_table.ObjectName;
+                df_reg.TableSchema = defining_table.SchemaName;
+
 
                 // (180 /* Open */)
                 var xDefaultExpressionScript = xDefaultConstraint.Elements().Single(e => e.Name.LocalName == "Property" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "DefaultExpressionScript"));
@@ -295,7 +345,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     df_reg.IsScalarValue = true;
                     df_reg.ValueDateTime = Parse_DATETIMEFROMPARTS(defaultExpressionScript_Value);
                 }
-                else if(string.Equals(defaultExpressionScript_Value, "CAST(N'' AS VARBINARY(MAX))", StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(defaultExpressionScript_Value, "CAST(N'' AS VARBINARY(MAX))", StringComparison.OrdinalIgnoreCase))
                 {
                     // empty byte array
                     df_reg.IsScalarValue = true;
@@ -575,6 +625,21 @@ namespace StoreLake.Sdk.CodeGeneration
                     ctx.registered_tables.Add(treg.TableName, dacpac);
                     dacpac.registered_tables.Add(treg.TableName, true);
                     DatabaseRegistration.RegisterTable(ctx.ds, treg);
+                }
+            }
+        }
+
+        private static void CollectRelationReferencesColumns(XElement xRelationship, string collectionName, Action<string> collector)
+        {
+            var xRelationship_Columns = xRelationship.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == collectionName)).First();
+            foreach (var xRelationship_Columns_Entry in xRelationship_Columns.Elements())
+            {
+                var xElement_References = xRelationship_Columns_Entry.Elements().Single(e => e.Name.LocalName == "References");
+                {
+                    var xColumnName = xElement_References.Attributes().Single(a => a.Name.LocalName == "Name");
+                    string[] name_tokens = xColumnName.Value.Split('.');
+                    string column_name = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                    collector(column_name);
                 }
             }
         }
