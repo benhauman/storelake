@@ -135,6 +135,8 @@ namespace StoreLake.Sdk.CodeGeneration
 
         public static void Run(ToolArguments targs)
         {
+            //TSqlFragment
+            //Microsoft.SqlServer.Server.SqlUserDefinedTypeAttribute
             if (targs == null)
             {
                 throw new StoreLakeSdkException("Null argument specified:" + nameof(targs));

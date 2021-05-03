@@ -31,6 +31,7 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly IDictionary<string, DacPacRegistration> referenced_dacpacs = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
         internal readonly IDictionary<string, bool> registered_tables = new SortedDictionary<string, bool>(); // < ;
         internal readonly IDictionary<string, string> referenced_assemblies = new SortedDictionary<string, string>(); // assemblyname/assemblylocation;
+        internal readonly IDictionary<string, StoreLakeCheckConstraintRegistration> registered_CheckConstraints = new SortedDictionary<string, StoreLakeCheckConstraintRegistration>();
     }
 
 
@@ -189,6 +190,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                 AddUniqueIndexes(ctx.ds, xModel);
                                 AddDefaultConstraints(ctx.ds, xModel);
                                 AddForeignKeys(ctx.ds, xModel);
+                                AddCheckConstraints(ctx.ds, dacpac, xModel);
 
                                 ctx.registered_dacpacs.Add(dacpac.UniqueKey, dacpac);
                             }
@@ -212,7 +214,36 @@ namespace StoreLake.Sdk.CodeGeneration
 
             return level;
         }
+        private static void AddCheckConstraints(DataSet ds, DacPacRegistration dacpac, XElement xModel)
+        {
+            //     <Element Type="SqlCheckConstraint" Name="[dbo].[CK_hlcmdocumentstorage_formmgmt]">
+            foreach (var xCheckConstraint in xModel.Elements().Where(e => e.Attributes().Any(t => t.Name == "Type" && t.Value == "SqlCheckConstraint")))
+            {
+                XAttribute xCheckConstraintName = xCheckConstraint.Attributes().Where(x => x.Name == "Name").First();
 
+                StoreLakeCheckConstraintRegistration ck_reg = new StoreLakeCheckConstraintRegistration();
+
+                string[] name_tokens = xCheckConstraintName.Value.Split('.');
+                ck_reg.CheckConstraintName = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                ck_reg.CheckConstraintSchema = (name_tokens.Length == 3) ? name_tokens[0] : "dbo";
+
+                SqlObjectName defining_table = CollectElementRelationShipTable(xCheckConstraint, "DefiningTable");
+                ck_reg.DefiningTableName = defining_table.ObjectName;
+                ck_reg.DefiningTableSchema = defining_table.SchemaName;
+
+                CollectRelationReferencesColumns(xCheckConstraint, "CheckExpressionDependencies", (columnName) =>
+                {
+                    ck_reg.DefiningColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
+                });
+
+                var xCheckExpressionScript = xCheckConstraint.Elements().Single(e => e.Name.LocalName == "Property" && e.Attributes().Any(t => t.Name.LocalName == "Name" && t.Value == "CheckExpressionScript"));
+                var xCheckExpressionScript_Value = xCheckExpressionScript.Elements().Single(e => e.Name.LocalName == "Value");
+                ck_reg.CheckExpressionScript = xCheckExpressionScript_Value.Value;
+
+                dacpac.registered_CheckConstraints.Add(xCheckConstraintName.Value, ck_reg);
+                //DatabaseRegistration.RegisterCheckConstraint(ds, ck_reg);
+            }
+        }
         private static void AddForeignKeys(DataSet ds, XElement xModel)
         {
             //     <Element Type="SqlForeignKeyConstraint" Name="[dbo].[FK_hlcmdatamodelassociationsearch_associationid]">

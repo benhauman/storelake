@@ -863,7 +863,8 @@ namespace StoreLake.Sdk.CodeGeneration
 
             if (isTableClassDeclaration)
             {
-                AddTableMethods(rr, dacpac, type_decl_table, type_decl);
+                AddTableMethod_DeleteRowByPrimaryKey(rr, dacpac, type_decl_table, type_decl);
+                AddTableMethod_ValidateCheckConstraints(rr, dacpac, type_decl_table, type_decl);
             }
 
             foreach (var memberToRemove in membersToRemove)
@@ -884,7 +885,71 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
-        private static void AddTableMethods(RegistrationResult rr, DacPacRegistration dacpac, DataTable table, CodeTypeDeclaration type_decl)
+        private static void AddTableMethod_ValidateCheckConstraints(RegistrationResult rr, DacPacRegistration dacpac, DataTable type_decl_table, CodeTypeDeclaration type_decl)
+        {
+            CodeMemberMethod method_decl_OnColumnChanging = new CodeMemberMethod() { Name = "OnColumnChanging" };
+            method_decl_OnColumnChanging.Attributes = MemberAttributes.Override | MemberAttributes.Family;
+            method_decl_OnColumnChanging.ReturnType = new CodeTypeReference(typeof(void));
+            method_decl_OnColumnChanging.Parameters.Add(new CodeParameterDeclarationExpression(new CodeTypeReference(typeof(DataColumnChangeEventArgs)), "e"));
+
+            var cks = dacpac.registered_CheckConstraints.Values.Where(x => x.DefiningTableName == type_decl_table.TableName).ToArray();
+            if (cks.Length == 0)
+            {
+                method_decl_OnColumnChanging.Statements.Add(new CodeCommentStatement("No check contraints defined."));
+                type_decl.Members.Add(method_decl_OnColumnChanging);
+            }
+            else
+            {
+                foreach (var ck in cks)
+                {
+                    AddTableValidateCheckConstraints(method_decl_OnColumnChanging, ck);
+                }
+
+                type_decl.Members.Add(method_decl_OnColumnChanging);
+            }
+        }
+
+        private static void AddTableValidateCheckConstraints(CodeMemberMethod method_decl_OnColumnChanging, StoreLakeCheckConstraintRegistration ck)
+        {
+            method_decl_OnColumnChanging.Statements.Add(new CodeCommentStatement(ck.CheckConstraintName + "  " + ck.CheckExpressionScript));
+
+            var e_Column = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("e"), "Columns");
+            var e_Column_ColumnName = new CodePropertyReferenceExpression(e_Column, "ColumnName");
+
+            List<CodeBinaryOperatorExpression> conditions = new List<CodeBinaryOperatorExpression>();
+            foreach (var col in ck.DefiningColumns)
+            {
+                //method_decl_OnColumnChanging.Statements.Add(new CodeCommentStatement(" + " + col.ColumnName));
+
+                var colref = new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "column" + col.ColumnName);
+                var conditionExpr = new CodeBinaryOperatorExpression(
+                        e_Column,
+                        CodeBinaryOperatorType.ValueEquality,
+                        colref);
+                conditions.Add(conditionExpr);
+            }
+            if (conditions.Count == 1)
+            {
+                //CodeConditionStatement if_Columns = new CodeConditionStatement();
+                // throw ConstraintException
+                //throw new NotImplementedException(ck.CheckConstraintName + " : " + ck.CheckExpressionScript);
+            }
+            else
+            {
+                //throw new NotImplementedException(ck.CheckConstraintName + " : " + ck.CheckExpressionScript);
+            }
+        }
+
+        class MyDT : DataTable
+        {
+            protected override void OnColumnChanging(DataColumnChangeEventArgs e)
+            {
+                base.OnColumnChanging(e);
+            }
+        }
+
+
+        private static void AddTableMethod_DeleteRowByPrimaryKey(RegistrationResult rr, DacPacRegistration dacpac, DataTable table, CodeTypeDeclaration type_decl)
         {
             CodeMemberMethod member_FindRowByPrimaryKey = TryGetMemberMethodByName(type_decl, "FindRowByPrimaryKey");
             if (member_FindRowByPrimaryKey == null)
