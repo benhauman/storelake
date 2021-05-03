@@ -129,9 +129,9 @@ namespace StoreLake.Sdk.CodeGeneration
                     string asm_location = assemblyResolver.ResolveLocationByName(new AssemblyName(ref_asm));
                     collector(asm_location);
                 }
-                if (!string.IsNullOrEmpty(ref_pac.DacPacTestStoreAssemblyFileName))
+                if (!string.IsNullOrEmpty(ref_pac.TestStoreAssemblyFullFileName))
                 {
-                    collector(ref_pac.DacPacTestStoreAssemblyFileName);
+                    collector(ref_pac.TestStoreAssemblyFullFileName);
                 }
 
                 CollectIndirectAssemblies(assemblyResolver, ref_pac, collector);

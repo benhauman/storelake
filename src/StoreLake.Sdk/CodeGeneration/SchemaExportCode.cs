@@ -98,6 +98,7 @@ namespace StoreLake.Sdk.CodeGeneration
         private static void ImportSchemasAsDataSets(KnownDibixTypes dbx, AssemblyResolver assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir, string libdir)
         {
             string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
+            InitializeStoreNamespaceName(dacpac, storeSuffix);
 
             bool doGenerate;
             if (dacpac.IsReferencedPackage && File.Exists(fullFileName_dll) && !rr.ForceReferencePackageRegeneration)
@@ -136,10 +137,10 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 assemblyResolver.ResolveAssembyByName(typeof(System.Data.DataTable).Assembly.GetName());
                 assemblyResolver.ResolveAssembyByName(typeof(System.Data.TypedTableBase<>).Assembly.GetName());
-                AddReferencedAssembly(assemblyResolver, comparam, typeof(System.ComponentModel.MarshalByValueComponent));
-                AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.DataTable));
-                AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.TypedTableBase<>));
-                AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Xml.Serialization.IXmlSerializable));
+                AddReferencedAssembly(assemblyResolver, comparam, typeof(System.ComponentModel.MarshalByValueComponent).Assembly);
+                AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.DataTable).Assembly);
+                AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.TypedTableBase<>).Assembly);
+                AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Xml.Serialization.IXmlSerializable).Assembly);
 
                 AddAssemblyAttributes(ccu);
 
@@ -153,8 +154,9 @@ namespace StoreLake.Sdk.CodeGeneration
                 //}
                 //=================================================================================
 
-                Adjust_CCU(rr, dacpac, ccu, storeSuffix);
+                Adjust_CCU(assemblyResolver, comparam, rr, dacpac, ccu, storeSuffix);
             }
+            //dacpac.TestStoreAssemblyNamespace
 
             StoreAccessorCodeGenerator.GenerateAccessors(dbx, assemblyResolver, dacpac, doGenerate, comparam, ccu, inputdir);
 
@@ -212,22 +214,22 @@ namespace StoreLake.Sdk.CodeGeneration
                 CompileCode(dacpac, comparam, ccu, libdir, outputdir, fileName, fullFileName_dll, tempDirInfo, codeFileName);
             }
             assemblyResolver.ResolveAssembyByLocation(fullFileName_dll);
-            dacpac.DacPacTestStoreAssemblyFileName = fullFileName_dll;
+            dacpac.TestStoreAssemblyFullFileName = fullFileName_dll;
 
             s_tracer.TraceEvent(TraceEventType.Information, 0, fullFileName_dll);
         }
 
-        private static void AddReferencedAssembly(AssemblyResolver assemblyResolver, CompilerParameters comparam, Type asm_type)
+        private static void AddReferencedAssembly(AssemblyResolver assemblyResolver, CompilerParameters comparam, Assembly asm)
         {
-            if (comparam.ReferencedAssemblies.Contains(asm_type.Assembly.Location))
+            if (comparam.ReferencedAssemblies.Contains(asm.Location))
             {
                 // already referenced
             }
             else
             {
-                assemblyResolver.ResolveAssembyByName(asm_type.Assembly.GetName());
-                assemblyResolver.VerifyAssemblyLocation(asm_type.Assembly.Location);
-                comparam.ReferencedAssemblies.Add(asm_type.Assembly.Location);
+                assemblyResolver.ResolveAssembyByName(asm.GetName());
+                assemblyResolver.VerifyAssemblyLocation(asm.Location);
+                comparam.ReferencedAssemblies.Add(asm.Location);
             }
         }
 
@@ -262,39 +264,24 @@ namespace StoreLake.Sdk.CodeGeneration
             internal CodeTypeDeclaration Member;
         }
 
-        private static void Adjust_CCU(RegistrationResult rr, DacPacRegistration dacpac, CodeCompileUnit ccu, string storeSuffix)
+        private static void Adjust_CCU(AssemblyResolver assemblyResolver, CompilerParameters comparam, RegistrationResult rr, DacPacRegistration dacpac, CodeCompileUnit ccu, string storeSuffix)
         {
             if (ccu.Namespaces.Count > 1)
             {
                 throw new StoreLakeSdkException("Multiple namespaces");
             }
-            string dacpacName = Path.GetFileNameWithoutExtension(dacpac.DacPacAssemblyLogicalName);
-            string dacpacSetName = dacpacName;
+
+            //InitializeStoreNamespaceName(dacpac, storeSuffix);
+
             CodeTypeDeclaration extensions_type_decl = null;
             CodeNamespace ns_old = ccu.Namespaces[0];
             ccu.Namespaces.Clear();
             CodeNamespace ns = new CodeNamespace();
             ccu.Namespaces.Add(ns);
-            if (dacpacName.StartsWith("Helpline"))
-            {
-                dacpacName = dacpacName.Remove(0, 8);
-                if (dacpacName.StartsWith("."))
-                {
-                    dacpacName = dacpacName.Remove(0, 1);
-                }
-            }
-            if (dacpacName == "")
-            {
-                ns.Name = "Helpline" + "." + storeSuffix; // .TestStore
-            }
-            else
-            {
-                ns.Name = "Helpline" + "." + dacpacName + "." + storeSuffix; // .TestStore
-            }
-            string setName = dacpacSetName.Replace(".", "").Replace("-", ""); // type_decl.Name;
+            ns.Name = dacpac.TestStoreAssemblyNamespace;
 
             {
-                extensions_type_decl = CreateStaticClass(setName + "Extensions");
+                extensions_type_decl = CreateStaticClass(dacpac.TestStoreExtensionSetName + "Extensions");
 
                 // Create 'GetTable'
                 CodeMemberMethod method_gettable = new CodeMemberMethod() { Name = "GetTable", Attributes = MemberAttributes.Private | MemberAttributes.Static };
@@ -387,7 +374,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 foreach (string table_name in dacpac.registered_tables.Keys)
                 {
-                    AddTableForeignKeys(rr, extensions_type_decl, extensions_method_InitDataSet, table_name);
+                    AddTableForeignKeys(assemblyResolver, comparam, rr, dacpac, extensions_type_decl, extensions_method_InitDataSet, table_name);
                 }
 
                 // MoveNestedTypesToNamespace
@@ -400,7 +387,34 @@ namespace StoreLake.Sdk.CodeGeneration
 
         }
 
-        private static void AddTableForeignKeys(RegistrationResult rr, CodeTypeDeclaration extensions_type_decl, CodeMemberMethod extensions_method_InitDataSet, string tableName)
+        private static void InitializeStoreNamespaceName(DacPacRegistration dacpac, string storeSuffix)
+        {
+            string dacpacName = Path.GetFileNameWithoutExtension(dacpac.DacPacAssemblyLogicalName);
+            string dacpacSetName = dacpacName;
+
+            if (dacpacName.StartsWith("Helpline"))
+            {
+                dacpacName = dacpacName.Remove(0, 8);
+                if (dacpacName.StartsWith("."))
+                {
+                    dacpacName = dacpacName.Remove(0, 1);
+                }
+            }
+
+            string setName = dacpacSetName.Replace(".", "").Replace("-", ""); // type_decl.Name;
+            dacpac.TestStoreExtensionSetName = setName;
+
+            if (dacpacName == "")
+            {
+                dacpac.TestStoreAssemblyNamespace = "Helpline" + "." + storeSuffix; // .TestStore
+            }
+            else
+            {
+                dacpac.TestStoreAssemblyNamespace = "Helpline" + "." + dacpacName + "." + storeSuffix; // .TestStore
+            }
+        }
+
+        private static void AddTableForeignKeys(AssemblyResolver assemblyResolver, CompilerParameters comparam, RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeMemberMethod extensions_method_InitDataSet, string tableName)
         {
             DataTable type_decl_table = rr.ds.Tables[tableName];
             if (type_decl_table == null)
@@ -414,12 +428,12 @@ namespace StoreLake.Sdk.CodeGeneration
                 ForeignKeyConstraint fk = type_decl_table.Constraints[i] as ForeignKeyConstraint;
                 if (fk != null)
                 {
-                    AddTableForeignKey(rr, extensions_type_decl, extensions_method_InitDataSet, type_decl_table, fk);
+                    AddTableForeignKey(assemblyResolver, comparam, rr, dacpac, extensions_type_decl, extensions_method_InitDataSet, type_decl_table, fk);
                 }
             }
         }
 
-        private static void AddTableForeignKey(RegistrationResult rr, CodeTypeDeclaration extensions_type_decl, CodeMemberMethod extensions_method_InitDataSet, DataTable type_decl_table, ForeignKeyConstraint fk)
+        private static void AddTableForeignKey(AssemblyResolver assemblyResolver, CompilerParameters comparam, RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeMemberMethod extensions_method_InitDataSet, DataTable type_decl_table, ForeignKeyConstraint fk)
         {
             //if (string.Equals(fk.Table.TableName, fk.RelatedTable.TableName))
             //{
@@ -427,11 +441,34 @@ namespace StoreLake.Sdk.CodeGeneration
             //    return;
             //}
 
+            string foreignTable_Namespace;
+            if (!IsTableOwnedByDacPac(rr, dacpac, fk.RelatedTable.TableName))
+            {
+                if (rr.registered_tables.TryGetValue(fk.RelatedTable.TableName, out DacPacRegistration foreign_dacpac))
+                {
+                    Assembly foreign_asm = TryReferencedTestStoreAssembly(foreign_dacpac);
+                    AddReferencedAssembly(assemblyResolver, comparam, foreign_asm);
+
+                    foreignTable_Namespace = foreign_dacpac.TestStoreAssemblyNamespace + ".";
+                }
+                else
+                {
+                    throw new NotSupportedException("" + fk.RelatedTable.TableName);
+                }
+            }
+            else
+            {
+                // same as defining
+                foreignTable_Namespace = "";
+            }
+
+            CodeTypeReference typeref_ForeignTable = new CodeTypeReference(foreignTable_Namespace + fk.RelatedTable.TableName + "DataTable");
+
 
             var method_GetTable_defining = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(extensions_type_decl.Name),
                              "GetTable", new CodeTypeReference[] { new CodeTypeReference(fk.Table.TableName + "DataTable") });
             var method_GetTable_foreign = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(extensions_type_decl.Name),
-                            "GetTable", new CodeTypeReference[] { new CodeTypeReference(fk.RelatedTable.TableName + "DataTable") });
+                            "GetTable", new CodeTypeReference[] { typeref_ForeignTable });
 
             var invoke_GetTable_defining = new CodeMethodInvokeExpression(method_GetTable_defining, new CodeExpression[] {
                 new CodeVariableReferenceExpression("ds")
@@ -443,12 +480,22 @@ namespace StoreLake.Sdk.CodeGeneration
                 , new CodePrimitiveExpression(fk.RelatedTable.TableName)
             });
 
+            var prop_If_Constraints = new CodePropertyReferenceExpression(invoke_GetTable_defining, "Constraints");
+            var invoke_IndexOf = new CodeMethodInvokeExpression(prop_If_Constraints, "IndexOf", new CodeExpression[] { new CodePrimitiveExpression(fk.ConstraintName) });
 
-            var decl_table_parent = new CodeVariableDeclarationStatement(new CodeTypeReference(fk.RelatedTable.TableName + "DataTable"), "table_parent");
+            var ifTableExists = new CodeBinaryOperatorExpression(invoke_IndexOf, CodeBinaryOperatorType.LessThan, new_CodePrimitiveExpression(0));
+            CodeConditionStatement if_not_Exists_Add = new CodeConditionStatement(ifTableExists);
+
+            var decl_table_parent = new CodeVariableDeclarationStatement(typeref_ForeignTable, "table_parent");
             decl_table_parent.InitExpression = invoke_GetTable_foreign;
+            if_not_Exists_Add.TrueStatements.Add(decl_table_parent);
+
+            var ref_table_parent = new CodeVariableReferenceExpression(decl_table_parent.Name);
+            var ref_table_parent_Columns = new CodePropertyReferenceExpression(ref_table_parent, "Columns");
 
             var decl_table_child = new CodeVariableDeclarationStatement(new CodeTypeReference(fk.Table.TableName + "DataTable"), "table_child");
             decl_table_child.InitExpression = invoke_GetTable_defining;
+            if_not_Exists_Add.TrueStatements.Add(decl_table_child);
 
             List<CodeExpression> defining_columns = new List<CodeExpression>();
             List<CodeExpression> foreign_columns = new List<CodeExpression>();
@@ -458,21 +505,20 @@ namespace StoreLake.Sdk.CodeGeneration
                 var foreign_column = fk.RelatedColumns[ix];
 
                 defining_columns.Add(new CodePropertyReferenceExpression(new CodeVariableReferenceExpression(decl_table_child.Name), defining_column.ColumnName + "Column"));
-                foreign_columns.Add(new CodePropertyReferenceExpression(new CodeVariableReferenceExpression(decl_table_parent.Name), foreign_column.ColumnName + "Column"));
+                //foreign_columns.Add(new CodePropertyReferenceExpression(new CodeVariableReferenceExpression(decl_table_parent.Name), foreign_column.ColumnName + "Column"));
+
+                var ref_table_parent_Columns_col = new CodeIndexerExpression(ref_table_parent_Columns, new CodeExpression[] { new CodePrimitiveExpression(foreign_column.ColumnName) });
+
+                //var foreign_columnd_decl = new CodeVariableDeclarationStatement(typeof(DataColumn), "table_parent_" + foreign_column.ColumnName + "Column");
+                //foreign_columnd_decl.InitExpression = ref_table_parent_Columns_col;
+                //if_not_Exists_Add.TrueStatements.Add(foreign_columnd_decl);
+
+                foreign_columns.Add(ref_table_parent_Columns_col);
             }
 
             CodeArrayCreateExpression definint_arr = new CodeArrayCreateExpression(typeof(DataColumn), defining_columns.ToArray());
             CodeArrayCreateExpression foreign_arr = new CodeArrayCreateExpression(typeof(DataColumn), foreign_columns.ToArray());
             var decl_fk = new CodeVariableDeclarationStatement(new CodeTypeReference(typeof(ForeignKeyConstraint)), "fk");
-            //decl_fk.InitExpression = new CodeObjectCreateExpression(decl_fk.Type, new CodeExpression[] {
-            //        new CodePrimitiveExpression(fk.ConstraintName),
-            //        new CodePrimitiveExpression(fk.RelatedTable.TableName),
-            //        foreign_arr,
-            //        definint_arr
-            //        , new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(AcceptRejectRule)), "None") // AcceptRejectRule.None
-            //        , new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(Rule)), "None") // Rule.None
-            //        , new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(Rule)), "None") // Rule.None
-            //});
 
             decl_fk.InitExpression = new CodeObjectCreateExpression(decl_fk.Type, new CodeExpression[] {
                     new CodePrimitiveExpression(fk.ConstraintName),
@@ -480,20 +526,28 @@ namespace StoreLake.Sdk.CodeGeneration
                     definint_arr
             });
 
+            if_not_Exists_Add.TrueStatements.Add(decl_fk);
 
-            var prop_If_Constraints = new CodePropertyReferenceExpression(invoke_GetTable_defining, "Constraints");
-            var invoke_IndexOf = new CodeMethodInvokeExpression(prop_If_Constraints, "IndexOf", new CodeExpression[] { new CodePrimitiveExpression(fk.ConstraintName) });
 
             var prop_Constraints = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression(decl_table_child.Name), "Constraints");
 
             var invoke_Add = new CodeMethodInvokeExpression(prop_Constraints, "Add", new CodeExpression[] { new CodeVariableReferenceExpression(decl_fk.Name) });
 
-            var ifTableExists = new CodeBinaryOperatorExpression(invoke_IndexOf, CodeBinaryOperatorType.LessThan, new_CodePrimitiveExpression(0));
 
-            CodeConditionStatement if_not_Exists_Add = new CodeConditionStatement(ifTableExists, decl_table_child, decl_table_parent, decl_fk);
             if_not_Exists_Add.TrueStatements.Add(invoke_Add);
 
             extensions_method_InitDataSet.Statements.Add(if_not_Exists_Add);
+        }
+
+        private static Assembly TryReferencedTestStoreAssembly(DacPacRegistration foreign_dacpac)
+        {
+            if (string.IsNullOrWhiteSpace(foreign_dacpac.TestStoreAssemblyFullFileName))
+            {
+                throw new StoreLakeSdkException("Invalid file name for generated store of package : " + foreign_dacpac.DacPacAssemblyLogicalName);
+            }
+
+            AssemblyName asmName = AssemblyName.GetAssemblyName(foreign_dacpac.TestStoreAssemblyFullFileName);
+            return Assembly.Load(asmName);
         }
 
         private static CodeExpression new_CodePrimitiveExpression(object value)

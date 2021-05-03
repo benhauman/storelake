@@ -26,7 +26,9 @@ namespace StoreLake.Sdk.CodeGeneration
         internal string DacPacAssemblyLogicalName { get; set; }
         public string UniqueKey { get; internal set; }
         public int DacPacDependencyLevel { get; internal set; }
-        public string DacPacTestStoreAssemblyFileName { get; internal set; }
+        public string TestStoreAssemblyFullFileName { get; internal set; }
+        public string TestStoreAssemblyNamespace { get; internal set; }
+        public string TestStoreExtensionSetName { get; internal set; }
 
         internal readonly IDictionary<string, DacPacRegistration> referenced_dacpacs = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
         internal readonly IDictionary<string, bool> registered_tables = new SortedDictionary<string, bool>(); // < ;
