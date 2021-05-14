@@ -84,7 +84,8 @@
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.pdb" TargetPath="StoreLake.pdb" />  
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.dll" TargetPath="StoreLake.Sdk.dll" />  
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.pdb" TargetPath="StoreLake.Sdk.pdb" />
-  
-    </ItemGroup>
+		<BuildOutputInPackage Include="$(ProjectDir)..\ThirdParty\Microsoft.SqlServer.TransactSql.ScriptDom.dll" TargetPath="Microsoft.SqlServer.TransactSql.ScriptDom.dll" />
+
+	</ItemGroup>
   </Target>
 </Project>

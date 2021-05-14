@@ -1,6 +1,9 @@
-﻿using System;
+﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 
 namespace StoreLake.Sdk.CodeGeneration
 {
@@ -135,7 +138,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
         public static void Run(ToolArguments targs)
         {
-            //TSqlFragment
+            EnsureScriptDom();
             //Microsoft.SqlServer.Server.SqlUserDefinedTypeAttribute
             if (targs == null)
             {
@@ -204,6 +207,24 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
+        private static void EnsureScriptDom()
+        {
+            string check_definition = "([ismultiple]=(1))";
+            string sql_statement = "SELECT colx = IIF((" + check_definition + "), 1, 0)";
+            TSqlParser parser = new TSql140Parser(true);
+            using (var reader = new StringReader(sql_statement))
+            {
+                TSqlFragment fragment = parser.Parse(reader, out IList<ParseError> errors);
+                if (errors.Any())
+                    throw new InvalidOperationException($@"Error parsing SQL statement
+{String.Join(Environment.NewLine, errors.Select(x => $"{x.Message} at {x.Line},{x.Column}"))}");
+
+                Console.WriteLine("SQL Fragment generated!");
+                SqlScriptGenerator generator = new Sql140ScriptGenerator();
+                generator.GenerateScript(fragment, out string output_sql);
+                Console.WriteLine(output_sql);
+            }
+        }
     }
 }
 
