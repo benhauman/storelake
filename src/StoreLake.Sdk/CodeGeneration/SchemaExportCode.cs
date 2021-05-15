@@ -915,6 +915,11 @@ namespace StoreLake.Sdk.CodeGeneration
 
             }
 
+            if (isRowClassDeclaration)
+            {
+                AddRowMethod_ValidateCheckConstraints(rr, dacpac, type_decl_table, type_decl);
+            }
+
             if (isTableClassDeclaration)
             {
                 AddTableMethod_DeleteRowByPrimaryKey(rr, dacpac, type_decl_table, type_decl);
@@ -938,32 +943,72 @@ namespace StoreLake.Sdk.CodeGeneration
                 type_decl.Members.Add(memberToInsert);
             }
         }
-
-        private static void AddTableMethod_ValidateCheckConstraints(RegistrationResult rr, DacPacRegistration dacpac, DataTable type_decl_table, CodeTypeDeclaration type_decl)
+        private static void AddRowMethod_ValidateCheckConstraints(RegistrationResult rr, DacPacRegistration dacpac, DataTable type_decl_table, CodeTypeDeclaration row_type_decl)
         {
-            CodeMemberMethod method_decl_OnColumnChanging = new CodeMemberMethod() { Name = "OnColumnChanging" };
-            method_decl_OnColumnChanging.Attributes = MemberAttributes.Override | MemberAttributes.Family;
-            method_decl_OnColumnChanging.ReturnType = new CodeTypeReference(typeof(void));
+            CodeMemberMethod method_validate_row = new CodeMemberMethod()
+            {
+                Name = row_type_method_ValidateRow_Name,
+                Attributes = MemberAttributes.Assembly | MemberAttributes.Final
+            };
+            row_type_decl.Members.Add(method_validate_row);
+
+            var cks = dacpac.registered_CheckConstraints.Values.Where(x => x.DefiningTableName == type_decl_table.TableName).ToArray();
+            if (cks.Length == 0)
+            {
+            }
+            else
+            {
+
+            }
+        }
+
+        private const string row_type_method_ValidateRow_Name = "ValidateRow";
+        private static void AddTableMethod_ValidateCheckConstraints(RegistrationResult rr, DacPacRegistration dacpac, DataTable type_decl_table, CodeTypeDeclaration table_type_decl)
+        {
+            CodeMemberMethod method_decl_OnColumnChanging = new CodeMemberMethod()
+            {
+                Name = "OnColumnChanging",
+                Attributes = MemberAttributes.Override | MemberAttributes.Family,
+                ReturnType = new CodeTypeReference(typeof(void))
+            };
             method_decl_OnColumnChanging.Parameters.Add(new CodeParameterDeclarationExpression(new CodeTypeReference(typeof(DataColumnChangeEventArgs)), "e"));
+
+            CodeMemberMethod method_decl_OnRowChanging = new CodeMemberMethod()
+            {
+                Name = "OnRowChanging",
+                Attributes = MemberAttributes.Override | MemberAttributes.Family,
+                ReturnType = new CodeTypeReference(typeof(void))
+            };
+            method_decl_OnRowChanging.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataRowChangeEventArgs), "e"));
+
+            string row_type_decl_Name = type_decl_table.TableName + "Row";
+            
+
+            var e_RowBase = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("e"), "Row");
+            CodeCastExpression e_RowT = new CodeCastExpression(new CodeTypeReference(row_type_decl_Name), e_RowBase);
+            var invoke_row_validate = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(e_RowT, row_type_method_ValidateRow_Name));
+            method_decl_OnRowChanging.Statements.Add(invoke_row_validate);
+
 
             var cks = dacpac.registered_CheckConstraints.Values.Where(x => x.DefiningTableName == type_decl_table.TableName).ToArray();
             if (cks.Length == 0)
             {
                 method_decl_OnColumnChanging.Statements.Add(new CodeCommentStatement("No check contraints defined."));
-                type_decl.Members.Add(method_decl_OnColumnChanging);
+                table_type_decl.Members.Add(method_decl_OnColumnChanging);
             }
             else
             {
                 foreach (var ck in cks)
                 {
-                    AddTableValidateCheckConstraints(method_decl_OnColumnChanging, ck);
+                    //AddTableValidateCheckConstraints(method_decl_OnColumnChanging, ck);
                 }
 
-                type_decl.Members.Add(method_decl_OnColumnChanging);
+                //type_decl.Members.Add(method_decl_OnColumnChanging);
+                table_type_decl.Members.Add(method_decl_OnRowChanging);
             }
         }
 
-        private static void AddTableValidateCheckConstraints(CodeMemberMethod method_decl_OnColumnChanging, StoreLakeCheckConstraintRegistration ck)
+        /*private static void AddTableValidateCheckConstraints(CodeMemberMethod method_decl_OnColumnChanging, StoreLakeCheckConstraintRegistration ck)
         {
             method_decl_OnColumnChanging.Statements.Add(new CodeCommentStatement(ck.CheckConstraintName + "  " + ck.CheckExpressionScript));
 
@@ -992,7 +1037,7 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 //throw new NotImplementedException(ck.CheckConstraintName + " : " + ck.CheckExpressionScript);
             }
-        }
+        }*/
 
         class MyDT : DataTable
         {

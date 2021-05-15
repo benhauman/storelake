@@ -285,31 +285,6 @@ namespace StoreLake.Sdk.CodeGeneration
 
             table.Constraints.Add(new UniqueConstraint(uqKey.KeyName, pkColumns.ToArray(), false));
         }
-
-        /*internal static void RegisterCheckConstraint(DataSet ds, StoreLakeCheckConstraintRegistration checkContraint)
-        {
-            DataTable definining_table = ds.Tables[checkContraint.DefiningTableName, checkContraint.DefiningTableSchema];
-            if (definining_table == null)
-            {
-                throw new StoreLakeSdkException("Check constraint 'Defining' table not found. Table [" + checkContraint.DefiningTableSchema + "] : [" + checkContraint.CheckConstraintName + "]");
-            }
-
-            if (checkContraint.DefiningColumns == null || checkContraint.DefiningColumns.Count == 0)
-            {
-                throw new StoreLakeSdkException("Check constraint 'Defining' columns not specified. Table [" + checkContraint.DefiningTableSchema + "] : [" + checkContraint.CheckConstraintName + "]");
-            }
-
-            List<DataColumn> defining_columns = new List<DataColumn>();
-            for (int ix = 0; ix < checkContraint.DefiningColumns.Count; ix++)
-            {
-                string defining_column_name = checkContraint.DefiningColumns[ix].ColumnName;
-                DataColumn defining_column = definining_table.Columns[defining_column_name];
-
-                defining_columns.Add(defining_column);
-            }
-
-            //throw new NotImplementedException(checkContraint.CheckConstraintName);
-        }*/
     }
 
 }
