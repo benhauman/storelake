@@ -958,8 +958,25 @@ namespace StoreLake.Sdk.CodeGeneration
             }
             else
             {
-
+                foreach (var ck in cks)
+                {
+                    RegisterRowCheckConstraint(row_type_decl, method_validate_row, ck);
+                }
             }
+        }
+
+        private static void RegisterRowCheckConstraint(CodeTypeDeclaration row_type_decl, CodeMemberMethod method_validate_row, StoreLakeCheckConstraintRegistration ck)
+        {
+            var ck_method = AddRowMethodValidateCheckConstraint(ck);
+            row_type_decl.Members.Add(ck_method);
+
+            CodeMethodInvokeExpression invoke_ck = new CodeMethodInvokeExpression();
+            invoke_ck.Method = new CodeMethodReferenceExpression() { MethodName = ck_method.Name, TargetObject = new CodeThisReferenceExpression() };
+
+            CodeConditionStatement if_ck = new CodeConditionStatement(new CodeBinaryOperatorExpression(new CodePrimitiveExpression(false), CodeBinaryOperatorType.ValueEquality, invoke_ck));
+            if_ck.TrueStatements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(ConstraintException), new CodePrimitiveExpression(ck.CheckConstraintName))));
+
+            method_validate_row.Statements.Add(if_ck);
         }
 
         private const string row_type_method_ValidateRow_Name = "ValidateRow";
@@ -982,7 +999,7 @@ namespace StoreLake.Sdk.CodeGeneration
             method_decl_OnRowChanging.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataRowChangeEventArgs), "e"));
 
             string row_type_decl_Name = type_decl_table.TableName + "Row";
-            
+
 
             var e_RowBase = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("e"), "Row");
             CodeCastExpression e_RowT = new CodeCastExpression(new CodeTypeReference(row_type_decl_Name), e_RowBase);
@@ -1006,6 +1023,21 @@ namespace StoreLake.Sdk.CodeGeneration
                 //type_decl.Members.Add(method_decl_OnColumnChanging);
                 table_type_decl.Members.Add(method_decl_OnRowChanging);
             }
+        }
+
+        private static CodeMemberMethod AddRowMethodValidateCheckConstraint(StoreLakeCheckConstraintRegistration ck)
+        {
+            CodeExpression codeExpr = new CodePrimitiveExpression(true);
+
+            CodeMemberMethod ck_method = new CodeMemberMethod()
+            {
+                Name = ck.CheckConstraintName,
+                Attributes = MemberAttributes.Private,
+                ReturnType = new CodeTypeReference(typeof(bool))
+            };
+            ck_method.Statements.Add(new CodeMethodReturnStatement(codeExpr));
+            
+            return ck_method;
         }
 
         /*private static void AddTableValidateCheckConstraints(CodeMemberMethod method_decl_OnColumnChanging, StoreLakeCheckConstraintRegistration ck)
