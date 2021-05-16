@@ -177,10 +177,26 @@ namespace StoreLake.Sdk.SqlDom
 
         public override void ExplicitVisit(FunctionCall node)
         {
-            if (!string.Equals(node.FunctionName.Value, "ISNULL", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(node.FunctionName.Value, "ISNULL", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_ISNULL(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "DATEPART", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_DATEPART(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "LEN", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_LEN(node);
+            }
+            else
             {
                 throw new NotImplementedException(node.AsText());
             }
+        }
+
+        private void ExplicitVisit_FunctionCall_ISNULL(FunctionCall node)
+        {
             if (node.Parameters.Count != 2)
             {
                 throw new NotSupportedException(node.AsText());
@@ -200,6 +216,44 @@ namespace StoreLake.Sdk.SqlDom
             lastExpression = invoke_ISNULL;
         }
 
+        private void ExplicitVisit_FunctionCall_DATEPART(FunctionCall node)
+        {
+            if (node.Parameters.Count != 2)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "DATEPART",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_interval = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[0]);
+            var prm_datetimeoffset = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[1]);
+            invoke_ISNULL.Parameters.Add(prm_interval);
+            invoke_ISNULL.Parameters.Add(prm_datetimeoffset);
+
+            lastExpression = invoke_ISNULL;
+        }
+        private void ExplicitVisit_FunctionCall_LEN(FunctionCall node)
+        {
+            if (node.Parameters.Count != 1)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "LEN",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_expression = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[0]);
+            invoke_ISNULL.Parameters.Add(prm_expression);
+
+            lastExpression = invoke_ISNULL;
+        }
         public override void ExplicitVisit(BinaryLiteral node)
         {
             if (node.Value.StartsWith("0x") && node.Value.Length <= 10)
