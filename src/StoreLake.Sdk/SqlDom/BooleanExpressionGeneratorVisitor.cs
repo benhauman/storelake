@@ -189,6 +189,14 @@ namespace StoreLake.Sdk.SqlDom
             {
                 ExplicitVisit_FunctionCall_LEN(node);
             }
+            else if (string.Equals(node.FunctionName.Value, "REPLACE", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_REPLACE(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "RTRIM", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_RTRIM(node);
+            }
             else
             {
                 throw new NotImplementedException(node.AsText());
@@ -237,6 +245,48 @@ namespace StoreLake.Sdk.SqlDom
             lastExpression = invoke_ISNULL;
         }
         private void ExplicitVisit_FunctionCall_LEN(FunctionCall node)
+        {
+            if (node.Parameters.Count != 1)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "LEN",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_expression = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[0]);
+            invoke_ISNULL.Parameters.Add(prm_expression);
+
+            lastExpression = invoke_ISNULL;
+        }
+
+        private void ExplicitVisit_FunctionCall_REPLACE(FunctionCall node)
+        {
+            if (node.Parameters.Count != 3)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "LEN",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_1 = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[0]);
+            var prm_2 = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[1]);
+            var prm_3 = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[2]);
+            invoke_ISNULL.Parameters.Add(prm_1);
+            invoke_ISNULL.Parameters.Add(prm_2);
+            invoke_ISNULL.Parameters.Add(prm_3);
+
+            lastExpression = invoke_ISNULL;
+        }
+
+        private void ExplicitVisit_FunctionCall_RTRIM(FunctionCall node)
         {
             if (node.Parameters.Count != 1)
             {

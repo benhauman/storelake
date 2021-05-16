@@ -22,7 +22,7 @@ namespace StoreLake.Sdk.SqlDom
 
             if (iif_visitor != null)
             {
-                //return null; // comment out if it needed
+                return null; // comment out if it needed
             }
 
             Console.WriteLine("");
