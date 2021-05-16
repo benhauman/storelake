@@ -1027,7 +1027,8 @@ namespace StoreLake.Sdk.CodeGeneration
 
         private static CodeMemberMethod AddRowMethodValidateCheckConstraint(StoreLakeCheckConstraintRegistration ck)
         {
-            CodeExpression codeExpr = new CodePrimitiveExpression(true);
+            CodeExpression codeExpr = SqlDom.BooleanExpressionGenerator.BuildFromCheckConstraintDefinition(ck.CheckConstraintName, ck.CheckExpressionScript);
+            codeExpr = new CodePrimitiveExpression(true);
 
             CodeMemberMethod ck_method = new CodeMemberMethod()
             {
@@ -1036,7 +1037,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 ReturnType = new CodeTypeReference(typeof(bool))
             };
             ck_method.Statements.Add(new CodeMethodReturnStatement(codeExpr));
-            
+
             return ck_method;
         }
 
