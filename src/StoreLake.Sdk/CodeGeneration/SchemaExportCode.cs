@@ -960,14 +960,14 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 foreach (var ck in cks)
                 {
-                    RegisterRowCheckConstraint(row_type_decl, method_validate_row, ck);
+                    RegisterRowCheckConstraint(type_decl_table.DataSet.Namespace, type_decl_table, row_type_decl, method_validate_row, ck);
                 }
             }
         }
 
-        private static void RegisterRowCheckConstraint(CodeTypeDeclaration row_type_decl, CodeMemberMethod method_validate_row, StoreLakeCheckConstraintRegistration ck)
+        private static void RegisterRowCheckConstraint(string schemaName, DataTable table, CodeTypeDeclaration row_type_decl, CodeMemberMethod method_validate_row, StoreLakeCheckConstraintRegistration ck)
         {
-            var ck_method = AddRowMethodValidateCheckConstraint(ck);
+            var ck_method = AddRowMethodValidateCheckConstraint(schemaName, table, ck);
             row_type_decl.Members.Add(ck_method);
 
             CodeMethodInvokeExpression invoke_ck = new CodeMethodInvokeExpression();
@@ -1025,10 +1025,33 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
-        private static CodeMemberMethod AddRowMethodValidateCheckConstraint(StoreLakeCheckConstraintRegistration ck)
+        private static CodeMemberMethod AddRowMethodValidateCheckConstraint(string schemaName, DataTable table, StoreLakeCheckConstraintRegistration ck)
         {
-            CodeExpression codeExpr = SqlDom.BooleanExpressionGenerator.BuildFromCheckConstraintDefinition(ck.CheckConstraintName, ck.CheckExpressionScript);
-            codeExpr = new CodePrimitiveExpression(true);
+            CodeExpression codeExpr = null;
+            try
+            {
+
+                codeExpr = SqlDom.BooleanExpressionGenerator.BuildFromCheckConstraintDefinition(schemaName, table, ck.CheckConstraintName, ck.CheckExpressionScript, out bool hasError, out string errorText);
+                if (hasError)
+                {
+                    //s_tracer.TraceEvent(TraceEventType.Warning, 0, "CHECK CONSTRAINT [" + ck.CheckConstraintName + "] generation failed." + errorText);
+                    //Console.WriteLine("DEFINITION: " + ck.CheckExpressionScript);
+                    codeExpr = new CodePrimitiveExpression(true);
+                }
+                //if (codeExpr == null)
+                {
+                    codeExpr = new CodePrimitiveExpression(true);
+                }
+            }
+            catch (Exception ex)
+            {
+                s_tracer.TraceEvent(TraceEventType.Warning, 0, "CHECK CONSTRAINT ["+ ck.CheckConstraintName + "] generation failed." + ex);
+                Console.WriteLine("DEFINITION: " + ck.CheckExpressionScript);
+                codeExpr = new CodePrimitiveExpression(true);
+            }
+
+
+            //codeExpr = new CodePrimitiveExpression(true);
 
             CodeMemberMethod ck_method = new CodeMemberMethod()
             {

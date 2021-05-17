@@ -17,3 +17,5 @@
 /src/StoreLake.ClientApp/.vs/StoreLake.ClientApp
 /src/StoreLake.ClientApp/bin/Debug/net48
 /src/StoreLake.ClientApp/obj
+/src/StoreLake.Test/bin/Debug/net45
+/src/StoreLake.Test/obj

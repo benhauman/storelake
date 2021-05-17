@@ -1,15 +1,15 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.CodeDom;
-
+using System.Data;
 
 namespace StoreLake.Sdk.SqlDom
 {
-    internal static class BooleanExpressionGenerator
+    public static class BooleanExpressionGenerator
     {
-        internal static CodeExpression BuildFromCheckConstraintDefinition(string check_name, string check_definition)
+        public static CodeExpression BuildFromCheckConstraintDefinition(string schemaName, DataTable table, string check_name, string check_definition, out bool hasError, out string errorText)
         {
-            string select_statement = "SELECT colx = IIF((" + check_definition + "), 1, 0)";
+            string select_statement = "SELECT colx = IIF((" + check_definition + "), 1, 0) FROM " + schemaName + ".[" + table.TableName + "] WHERE " + check_definition;
             TSqlFragment sqlF = ScriptDomFacade.Parse(select_statement);
             IIFVisitor iif_visitor = new IIFVisitor();
             sqlF.Accept(iif_visitor);
@@ -22,16 +22,19 @@ namespace StoreLake.Sdk.SqlDom
 
             if (iif_visitor != null)
             {
-                return null; // comment out if it needed
+                //return null; // comment out if it needed
             }
 
-            Console.WriteLine("");
-            Console.WriteLine("==== " + check_name + " ============");
-            Console.WriteLine(ScriptDomFacade.GenerateScript(iif_predicate));
-            Console.WriteLine("-------------------------------------------");
-            Console.WriteLine("");
+            //Console.WriteLine("");
+            //Console.WriteLine("==== " + check_name + " ============");
+            //Console.WriteLine(ScriptDomFacade.GenerateScript(iif_predicate));
+            //Console.WriteLine("-------------------------------------------");
+            //Console.WriteLine("");
 
-            return BooleanExpressionGeneratorVisitor.BuildFromNode(iif_predicate);
+            var databaseMetadata = new DatabaseMetadataOnTable(table);
+            hasError = false;
+            errorText = null;
+            return BooleanExpressionGeneratorVisitor.TryBuildFromFragment(databaseMetadata, iif_predicate, ref hasError, ref errorText);
         }
         private sealed class IIFVisitor : TSqlFragmentVisitor
         {
@@ -39,6 +42,15 @@ namespace StoreLake.Sdk.SqlDom
             public override void ExplicitVisit(IIfCall node)
             {
                 result = node;
+            }
+        }
+
+        class DatabaseMetadataOnTable : IDatabaseMetadataProvider
+        {
+            private readonly DataTable table;
+            public DatabaseMetadataOnTable(DataTable table)
+            {
+                this.table = table;
             }
         }
     }

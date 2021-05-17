@@ -6,14 +6,21 @@ namespace StoreLake.Sdk.SqlDom
 {
     internal sealed class BooleanExpressionGeneratorVisitor : TSqlFragmentVisitor
     {
+        private readonly IDatabaseMetadataProvider databaseMetadata;
         private readonly TSqlFragment source;
         private cs.CodeExpression lastExpression;
-        string prefix;
+        private string lastError;
+        private bool lastHasError;
 
-        public BooleanExpressionGeneratorVisitor(TSqlFragment source, string prefix = "")
+        public BooleanExpressionGeneratorVisitor(IDatabaseMetadataProvider databaseMetadata, TSqlFragment source)
         {
+            this.databaseMetadata = databaseMetadata;
             this.source = source;
-            this.prefix = prefix;
+        }
+
+        internal bool HasError()
+        {
+            return lastExpression == null;
         }
 
         private cs.CodeExpression BuildResult()
@@ -25,31 +32,23 @@ namespace StoreLake.Sdk.SqlDom
             return lastExpression;
         }
 
-        private IDisposable new_PrefixScope()
+        internal cs.CodeExpression TryBuildFromNode(TSqlFragment node, ref bool hasError, ref string error)
         {
-            return new PrefixScope(this);
+            return TryBuildFromFragment(databaseMetadata, node, ref hasError, ref error);
         }
-
-        class PrefixScope : IDisposable
+        internal static cs.CodeExpression TryBuildFromFragment(IDatabaseMetadataProvider databaseMetadata, TSqlFragment node, ref bool hasError, ref string error)
         {
-            private string old;
-            BooleanExpressionGeneratorVisitor visitor;
-            public PrefixScope(BooleanExpressionGeneratorVisitor visitor)
-            {
-                this.visitor = visitor;
-                old = visitor.prefix;
-                visitor.prefix = visitor.prefix + "  ";
-            }
-
-            public void Dispose()
-            {
-                visitor.prefix = old;
-            }
-        }
-        internal static cs.CodeExpression BuildFromNode(TSqlFragment node)
-        {
-            var vstor = new BooleanExpressionGeneratorVisitor(node);
+            var vstor = new BooleanExpressionGeneratorVisitor(databaseMetadata, node);
             node.Accept(vstor);
+            if (vstor.HasError())
+            {
+                //Console.WriteLine(vstor.lastError);
+                hasError = true;
+                error = vstor.lastError;
+                return null;
+            }
+            //hasError = false;
+            //error = null;
             return vstor.BuildResult();
         }
 
@@ -75,7 +74,8 @@ namespace StoreLake.Sdk.SqlDom
                 return cs.CodeBinaryOperatorType.LessThan;
             if (comparisonType == BooleanComparisonType.LessThanOrEqualTo)
                 return cs.CodeBinaryOperatorType.LessThanOrEqual;
-
+            if (comparisonType == BooleanComparisonType.NotEqualToExclamation)
+                return cs.CodeBinaryOperatorType.IdentityInequality;
             throw new NotImplementedException("" + comparisonType);
         }
 
@@ -83,23 +83,37 @@ namespace StoreLake.Sdk.SqlDom
         public override void ExplicitVisit(BooleanBinaryExpression node)
         {
             // BinaryExpressionType + First + Second
-
             cs.CodeBinaryOperatorExpression binary = new cs.CodeBinaryOperatorExpression();
             binary.Operator = ConvertToBinaryOperatorType(node.BinaryExpressionType);
-            binary.Left = BuildFromNode(node.FirstExpression);
-            binary.Right = BuildFromNode(node.SecondExpression);
+            binary.Left = TryBuildFromNode(node.FirstExpression, ref lastHasError, ref lastError);
+            binary.Right = TryBuildFromNode(node.SecondExpression, ref lastHasError, ref lastError);
 
-            this.lastExpression = binary;
+            if (lastHasError)
+            {
+
+            }
+            else
+            {
+                this.lastExpression = binary;
+            }
         }
 
         public override void ExplicitVisit(BooleanComparisonExpression node)
         {
             // ComparisonType + First + Second
-
             cs.CodeBinaryOperatorExpression binary = new cs.CodeBinaryOperatorExpression();
             binary.Operator = ConvertToBinaryOperatorType(node.ComparisonType);
-            binary.Left = BuildFromNode(node.FirstExpression);
-            binary.Right = BuildFromNode(node.SecondExpression);
+            binary.Left = TryBuildFromNode(node.FirstExpression, ref lastHasError, ref lastError);
+            binary.Right = TryBuildFromNode(node.SecondExpression, ref lastHasError, ref lastError);
+
+            if (lastHasError)
+            {
+                return;
+            }
+
+            // adjust left or right : boolean column - compare to int : true==1 
+            // try get left type
+            // try  get right type
 
             this.lastExpression = binary;
         }
@@ -109,22 +123,22 @@ namespace StoreLake.Sdk.SqlDom
             binary.Operator = node.IsNot
                 ? cs.CodeBinaryOperatorType.IdentityInequality
                 : cs.CodeBinaryOperatorType.ValueEquality;
-            binary.Left = BuildFromNode(node.Expression);
+            binary.Left = TryBuildFromNode(node.Expression, ref lastHasError, ref lastError);
             binary.Right = new cs.CodePrimitiveExpression(null);
 
-            this.lastExpression = binary;
+            if (lastHasError) { }
+            else
+            {
+
+                this.lastExpression = binary;
+            }
         }
 
         public override void ExplicitVisit(BooleanParenthesisExpression node)
         {
-            Console.WriteLine(prefix + "(");
 
-            using (new_PrefixScope())
-            {
-                node.Expression.Accept(this);
-            }
+            node.Expression.Accept(this);
 
-            Console.WriteLine(prefix + ")");
         }
 
         public override void ExplicitVisit(ParenthesisExpression node)
@@ -144,7 +158,7 @@ namespace StoreLake.Sdk.SqlDom
             //
             //Console.WriteLine(prefix + ")");
 
-            this.lastExpression = BuildFromNode(node.Expression);
+            this.lastExpression = TryBuildFromNode(node.Expression, ref lastHasError, ref lastError);
         }
 
         public override void ExplicitVisit(ColumnReferenceExpression node)
@@ -177,7 +191,7 @@ namespace StoreLake.Sdk.SqlDom
 
         public override void ExplicitVisit(FunctionCall node)
         {
-            if (string.Equals(node.FunctionName.Value, "ISNULL", StringComparison.OrdinalIgnoreCase))
+            /*if (string.Equals(node.FunctionName.Value, "ISNULL", StringComparison.OrdinalIgnoreCase))
             {
                 ExplicitVisit_FunctionCall_ISNULL(node);
             }
@@ -197,9 +211,59 @@ namespace StoreLake.Sdk.SqlDom
             {
                 ExplicitVisit_FunctionCall_RTRIM(node);
             }
-            else
+            else if (string.Equals(node.FunctionName.Value, "SUBSTRING", StringComparison.OrdinalIgnoreCase))
             {
-                throw new NotImplementedException(node.AsText());
+                ExplicitVisit_FunctionCall_SUBSTRING(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "PARSENAME", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_PARSENAME(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "CONVERT", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_CONVERT(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "REPLICATE", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_REPLICATE(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "DATALENGTH", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_DATALENGTH(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "EOMONTH", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_EOMONTH(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "DATEDIFF", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_DATEDIFF(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "CHARINDEX", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_CHARINDEX(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "COL_NAME", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_COL_NAME(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "OBJECT_NAME", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_OBJECT_NAME(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "CONCAT", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_CONCAT(node);
+            }
+            else if (string.Equals(node.FunctionName.Value, "DATEFROMPARTS", StringComparison.OrdinalIgnoreCase))
+            {
+                ExplicitVisit_FunctionCall_DATEFROMPARTS(node);
+            }
+            else*/
+            {
+                lastExpression = null;
+                lastError = "FunctionCall:" + node.FunctionName.Value;
+                //throw new NotImplementedException(node.AsText());
             }
         }
 
@@ -216,12 +280,15 @@ namespace StoreLake.Sdk.SqlDom
                 TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
             });
 
-            var prm_expression = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[0]);
-            var prm_replacement_value = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[1]);
-            invoke_ISNULL.Parameters.Add(prm_expression);
-            invoke_ISNULL.Parameters.Add(prm_replacement_value);
+            var prm_expression = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_expression);
+            var prm_replacement_value = TryBuildFromNode(node.Parameters[1], ref lastHasError, ref lastError);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_replacement_value);
 
-            lastExpression = invoke_ISNULL;
+            if (!lastHasError)
+                lastExpression = invoke_ISNULL;
         }
 
         private void ExplicitVisit_FunctionCall_DATEPART(FunctionCall node)
@@ -237,12 +304,21 @@ namespace StoreLake.Sdk.SqlDom
                 TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
             });
 
-            var prm_interval = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[0]);
-            var prm_datetimeoffset = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[1]);
-            invoke_ISNULL.Parameters.Add(prm_interval);
-            invoke_ISNULL.Parameters.Add(prm_datetimeoffset);
+            var prm_interval = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_interval);
+            var prm_datetimeoffset = TryBuildFromNode(node.Parameters[1], ref lastHasError, ref lastError);
 
-            lastExpression = invoke_ISNULL;
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_datetimeoffset);
+
+            if (lastHasError)
+            {
+            }
+            else
+            {
+                lastExpression = invoke_ISNULL;
+            }
         }
         private void ExplicitVisit_FunctionCall_LEN(FunctionCall node)
         {
@@ -257,10 +333,33 @@ namespace StoreLake.Sdk.SqlDom
                 TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
             });
 
-            var prm_expression = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[0]);
-            invoke_ISNULL.Parameters.Add(prm_expression);
+            var prm_expression = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_expression);
 
-            lastExpression = invoke_ISNULL;
+            if (!lastHasError)
+                lastExpression = invoke_ISNULL;
+        }
+
+        private void ExplicitVisit_FunctionCall_DATALENGTH(FunctionCall node)
+        {
+            if (node.Parameters.Count != 1)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "DATALENGTH",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_expression = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_expression);
+
+            if (!lastHasError)
+                lastExpression = invoke_ISNULL;
         }
 
         private void ExplicitVisit_FunctionCall_REPLACE(FunctionCall node)
@@ -272,16 +371,19 @@ namespace StoreLake.Sdk.SqlDom
 
             var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
             {
-                MethodName = "LEN",
+                MethodName = "REPLACE",
                 TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
             });
 
-            var prm_1 = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[0]);
-            var prm_2 = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[1]);
-            var prm_3 = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[2]);
-            invoke_ISNULL.Parameters.Add(prm_1);
-            invoke_ISNULL.Parameters.Add(prm_2);
-            invoke_ISNULL.Parameters.Add(prm_3);
+            var prm_1 = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            var prm_2 = TryBuildFromNode(node.Parameters[1], ref lastHasError, ref lastError);
+            var prm_3 = TryBuildFromNode(node.Parameters[2], ref lastHasError, ref lastError);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_1);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_2);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_3);
 
             lastExpression = invoke_ISNULL;
         }
@@ -299,10 +401,288 @@ namespace StoreLake.Sdk.SqlDom
                 TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
             });
 
-            var prm_expression = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Parameters[0]);
-            invoke_ISNULL.Parameters.Add(prm_expression);
+            var prm_expression = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            if (!lastHasError)
+            {
+
+                invoke_ISNULL.Parameters.Add(prm_expression);
+
+                lastExpression = invoke_ISNULL;
+            }
+        }
+
+        private void ExplicitVisit_FunctionCall_SUBSTRING(FunctionCall node)
+        {
+            if (node.Parameters.Count != 3)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "SUBSTRING",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_expression = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            var prm_starting_position = TryBuildFromNode(node.Parameters[1], ref lastHasError, ref lastError);
+            var prm_length = TryBuildFromNode(node.Parameters[2], ref lastHasError, ref lastError);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_expression);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_starting_position);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_length);
 
             lastExpression = invoke_ISNULL;
+        }
+
+        private void ExplicitVisit_FunctionCall_PARSENAME(FunctionCall node)
+        {
+            if (node.Parameters.Count != 2)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "PARSENAME",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_object_name = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            var prm_object_part = TryBuildFromNode(node.Parameters[1], ref lastHasError, ref lastError);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_object_name);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_object_part);
+            if (!lastHasError)
+                lastExpression = invoke_ISNULL;
+        }
+
+        private void ExplicitVisit_FunctionCall_CONVERT(FunctionCall node)
+        {
+            if (node.Parameters.Count != 2)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "CONVERT",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_object_name = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            var prm_object_part = TryBuildFromNode(node.Parameters[1], ref lastHasError, ref lastError);
+            if (!lastHasError)
+            {
+                invoke_ISNULL.Parameters.Add(prm_object_name);
+                invoke_ISNULL.Parameters.Add(prm_object_part);
+
+                lastExpression = invoke_ISNULL;
+            }
+        }
+
+        private void ExplicitVisit_FunctionCall_REPLICATE(FunctionCall node)
+        {
+            if (node.Parameters.Count != 2)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "REPLICATE",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_string_expression = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            var prm_int_expression = TryBuildFromNode(node.Parameters[1], ref lastHasError, ref lastError);
+            if (!lastHasError)
+            {
+                invoke_ISNULL.Parameters.Add(prm_string_expression);
+                invoke_ISNULL.Parameters.Add(prm_int_expression);
+
+                lastExpression = invoke_ISNULL;
+            }
+        }
+
+        private void ExplicitVisit_FunctionCall_EOMONTH(FunctionCall node)
+        {
+            if (node.Parameters.Count != 1)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "EOMONTH",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_1 = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            if (!lastHasError)
+            {
+
+                invoke_ISNULL.Parameters.Add(prm_1);
+
+                lastExpression = invoke_ISNULL;
+            }
+        }
+
+        private void ExplicitVisit_FunctionCall_DATEDIFF(FunctionCall node)
+        {
+            if (node.Parameters.Count != 3)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "DATEDIFF",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_string_expression = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            var prm_int_expression = TryBuildFromNode(node.Parameters[1], ref lastHasError, ref lastError);
+            var prm_3 = TryBuildFromNode(node.Parameters[2], ref lastHasError, ref lastError);
+            if (!lastHasError)
+            {
+
+                invoke_ISNULL.Parameters.Add(prm_string_expression);
+                invoke_ISNULL.Parameters.Add(prm_int_expression);
+                invoke_ISNULL.Parameters.Add(prm_3);
+
+                lastExpression = invoke_ISNULL;
+            }
+        }
+
+        private void ExplicitVisit_FunctionCall_CHARINDEX(FunctionCall node)
+        {
+            if (node.Parameters.Count != 2)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "CHARINDEX",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_string_expression = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            var prm_int_expression = TryBuildFromNode(node.Parameters[1], ref lastHasError, ref lastError);
+            if (!lastHasError)
+            {
+
+                invoke_ISNULL.Parameters.Add(prm_string_expression);
+                invoke_ISNULL.Parameters.Add(prm_int_expression);
+
+                lastExpression = invoke_ISNULL;
+            }
+
+        }
+
+        private void ExplicitVisit_FunctionCall_COL_NAME(FunctionCall node)
+        {
+            if (node.Parameters.Count != 2)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "COL_NAME",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_string_expression = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            var prm_int_expression = TryBuildFromNode(node.Parameters[1], ref lastHasError, ref lastError);
+            if (!lastHasError)
+            {
+
+                invoke_ISNULL.Parameters.Add(prm_string_expression);
+                invoke_ISNULL.Parameters.Add(prm_int_expression);
+
+                lastExpression = invoke_ISNULL;
+            }
+        }
+
+        private void ExplicitVisit_FunctionCall_OBJECT_NAME(FunctionCall node)
+        {
+            if (node.Parameters.Count != 1)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "OBJECT_NAME",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_string_expression = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            if (!lastHasError)
+                invoke_ISNULL.Parameters.Add(prm_string_expression);
+
+            if (!lastHasError)
+                lastExpression = invoke_ISNULL;
+        }
+
+        private void ExplicitVisit_FunctionCall_CONCAT(FunctionCall node)
+        {
+            //if (node.Parameters.Count != 1)
+            //{
+            //    throw new NotSupportedException(node.AsText());
+            //}
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "CONCAT",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            for (int idx = 0; idx < node.Parameters.Count; idx++)
+            {
+                var prm = TryBuildFromNode(node.Parameters[idx], ref lastHasError, ref lastError);
+                if (!lastHasError)
+                {
+                    invoke_ISNULL.Parameters.Add(prm);
+                }
+            }
+            if (!lastHasError)
+            {
+                lastExpression = invoke_ISNULL;
+            }
+        }
+
+
+        private void ExplicitVisit_FunctionCall_DATEFROMPARTS(FunctionCall node)
+        {
+            if (node.Parameters.Count != 3)
+            {
+                throw new NotSupportedException(node.AsText());
+            }
+
+            var invoke_ISNULL = new cs.CodeMethodInvokeExpression(new cs.CodeMethodReferenceExpression()
+            {
+                MethodName = "DATEFROMPARTS",
+                TargetObject = new cs.CodeTypeReferenceExpression(new cs.CodeTypeReference("KnownSqlFunction"))
+            });
+
+            var prm_1 = TryBuildFromNode(node.Parameters[0], ref lastHasError, ref lastError);
+            var prm_2 = TryBuildFromNode(node.Parameters[1], ref lastHasError, ref lastError);
+            var prm_3 = TryBuildFromNode(node.Parameters[2], ref lastHasError, ref lastError);
+            if (!lastHasError)
+            {
+
+                invoke_ISNULL.Parameters.Add(prm_1);
+                invoke_ISNULL.Parameters.Add(prm_2);
+                invoke_ISNULL.Parameters.Add(prm_3);
+
+                lastExpression = invoke_ISNULL;
+            }
         }
         public override void ExplicitVisit(BinaryLiteral node)
         {
@@ -319,12 +699,14 @@ namespace StoreLake.Sdk.SqlDom
 
         public override void ExplicitVisit(BooleanNotExpression node)
         {
-            lastExpression = new cs.CodeBinaryOperatorExpression()
+            var binaryOp = new cs.CodeBinaryOperatorExpression()
             {
                 Operator = cs.CodeBinaryOperatorType.IdentityInequality,
-                Left = BooleanExpressionGeneratorVisitor.BuildFromNode(node.Expression),
+                Left = TryBuildFromNode(node.Expression, ref lastHasError, ref lastError),
                 Right = new cs.CodePrimitiveExpression(true)
             };
+            if (!lastHasError)
+                lastExpression = binaryOp;
         }
     }
 }
