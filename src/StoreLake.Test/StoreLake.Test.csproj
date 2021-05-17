@@ -17,4 +17,10 @@
     <ProjectReference Include="..\StoreLake.Sdk\StoreLake.Sdk.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="Microsoft.SqlServer.TransactSql.ScriptDom">
+      <HintPath>..\ThirdParty\Microsoft.SqlServer.TransactSql.ScriptDom.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

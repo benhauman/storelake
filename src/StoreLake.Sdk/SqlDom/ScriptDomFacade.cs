@@ -6,9 +6,9 @@ using System.Linq;
 
 namespace StoreLake.Sdk.SqlDom
 {
-    internal static class ScriptDomFacade
+    public static class ScriptDomFacade
     {
-        internal static TSqlFragment Parse(string script)
+        public static TSqlFragment Parse(string script)
         {
             return Load(new StringReader(script));
         }
