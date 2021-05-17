@@ -6,7 +6,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 
-namespace ConsoleApp4
+namespace StoreLake.Test.ConsoleApp
 {
     internal class DemoHandler1
     {

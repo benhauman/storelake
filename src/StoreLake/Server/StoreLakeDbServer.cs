@@ -1,8 +1,10 @@
 ﻿using StoreLake.TestStore;
+using StoreLake.TestStore.Database;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
 using System.Linq.Expressions;
 
 namespace StoreLake.TestStore.Server
@@ -96,6 +98,7 @@ namespace StoreLake.TestStore.Server
             throw new NotImplementedException("SQL (" + cmd.Parameters.Count + "):" + cmd.CommandText);
         }
 
+
         private DataSet GetDatabaseForConnectionCore(DbConnection connection)
         {
             string databaseName = connection.Database;
@@ -111,6 +114,11 @@ namespace StoreLake.TestStore.Server
         private DbDataReader HandleExecuteDbDataReader(CommandBehavior cb, DbCommand cmd)
         {
             string databaseName = cmd.Connection.Database;
+            if (string.IsNullOrEmpty(databaseName) && _dbs.Count == 1)
+            {
+                databaseName = _dbs.Keys.ElementAt(0);
+            }
+
             if (!_dbs.TryGetValue(databaseName.ToUpperInvariant(), out DataSet db))
             //if (!string.Equals(_db.DataSetName, databaseName, StringComparison.OrdinalIgnoreCase))
             {
@@ -144,6 +152,59 @@ namespace StoreLake.TestStore.Server
             throw new NotImplementedException("SQL (" + cmd.Parameters.Count + "):" + cmd.CommandText);
         }
 
+        //public void RegisterAddedCommandHandlerContracts(DataSet db)
+        //{
+        //    Type[] contracts = DatabaseCommandExecuteHandlerExtensionZ.CollectRegisteredCommandHandlerContracts(db).ToArray();
+        //    foreach (Type contractType in contracts)
+        //    {
+        //        Type implementationType = db.GetCommandExecuteHandlerTypeForContract(contractType);
+        //        RegisterAddedCommandHandlerContract(db, contractType, implementationType);
+        //    }
+        //}
+        //public void RegisterAddedCommandHandlerContract<T>(DataSet db) where T : class, new()
+        //{
+        //    RegisterAddedCommandHandlerContract(db, typeof(T), typeof(T));
+        //}
+        public void RegisterAddedCommandHandlerContract<T>(DataSet db, T procedures) where T : class, new()
+        {
+            RegisterAddedCommandHandlerContract(db, procedures.GetType(), procedures.GetType());
+        }
+        public void RegisterAddedCommandHandlerContract(DataSet db, Type contractType, Type implementationType)
+        {
+            //foreach (Type contractType in contracts)
+            {
+                //Type implementationType = db.GetCommandExecuteHandlerTypeForContract(contractType);
+                if (!contractType.IsAssignableFrom(implementationType))
+                {
+                    throw new InvalidOperationException("Handler type does not match registered contract type. Expected:" + contractType.AssemblyQualifiedName + ", Actual:" + implementationType.AssemblyQualifiedName);
+                }
+
+                //string schemaName = db.GetCommandExecuteHandlerSchemaForContract(contractType);
+                string schemaName = string.IsNullOrEmpty(db.Namespace) ? "dbo" : db.Namespace;
+
+                Type methodOwner = contractType;
+
+                foreach (var mi in implementationType.GetMethods())
+                {
+                    if (mi.DeclaringType == typeof(object))
+                    {
+                        // skip
+                    }
+                    else
+                    {
+                        IComparable handlerCommandText = StoreLakeDao.TryGetCommandText(methodOwner, mi.Name);
+                        if (handlerCommandText == null)
+                        {
+                            handlerCommandText = schemaName + "." + mi.Name; // procedure name
+                        }
+                        var handler = new TypedMethodHandler(mi, handlerCommandText);
+                        handler.ValidateReadMethod(mi);
+                        this.handlers.Add(handler);
+                    }
+                }
+            }
+        }
+
         public StoreLakeDbServer RegisterCommandHandlerFacade<THandler>(Type accessorType) where THandler : class, new()
         {
             return RegisterCommandHandlerMethods(accessorType, typeof(THandler));
@@ -152,10 +213,10 @@ namespace StoreLake.TestStore.Server
         public StoreLakeDbServer RegisterCommandHandlerMethods(Type accessorType, Type handlerType)
         {
             var mis = handlerType.GetMethods(
-                //System.Reflection.BindingFlags.Public 
-                //        | System.Reflection.BindingFlags.Instance
-                //        | System.Reflection.BindingFlags.Static
-                //        | System.Reflection.BindingFlags.FlattenHierarchy
+                        //System.Reflection.BindingFlags.Public 
+                        //        | System.Reflection.BindingFlags.Instance
+                        //        | System.Reflection.BindingFlags.Static
+                        //        | System.Reflection.BindingFlags.FlattenHierarchy
                         );
             foreach (var mi in mis)
             {
@@ -209,7 +270,7 @@ namespace StoreLake.TestStore.Server
 
 
 
-            var handler = new TypedMethodHandler(methodOwner, mi, handlerCommandText);
+            var handler = new TypedMethodHandler(mi, handlerCommandText);
             handler.ValidateReadMethod(accessor_method);
             return handler;
         }

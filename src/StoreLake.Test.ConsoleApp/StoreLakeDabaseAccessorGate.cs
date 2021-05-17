@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace ConsoleApp4
+namespace StoreLake.Test.ConsoleApp
 {
 
     class StoreLakeDao2

@@ -8,13 +8,16 @@ using System;
 using StoreLake.TestStore.Database;
 using Helpline.SubProcess.DomainModel;
 
-namespace ConsoleApp4
+namespace StoreLake.Test.ConsoleApp
 {
+
     //[System.ComponentModel.Description("")]
-    internal sealed class DemoHandler2 : Helpline.Data.HelplineDataCommandHandlerFacade
+    internal sealed class DemoHandler2 : Helpline.Data.HelplineDataCommandHandlerFacade // uses 'HelplineDataCommandExecuteHandler'
     {
         public override bool CanExecute(DataSet db, int agentid, int globalid) // HL_ACCESS_EXECUTE: 0x0010
         {
+            return db.HelplineDataProcedures().hlsyssec_canexecuteglobal(db, agentid, globalid).SingleOrDefault();
+            /*
             // INNER JOIN
             // for LEFT OUTER JOIN : https://stackoverflow.com/questions/267488/linq-to-sql-multiple-left-outer-joins
 
@@ -28,7 +31,7 @@ namespace ConsoleApp4
             {
                 return true;
             }
-
+            */
             /*
             var q = from ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid)
                     join gacl in db.hlsysglobalacl().AsEnumerable() on ag.groupid equals gacl.groupid
@@ -66,7 +69,7 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
     }
 }
 */
-            return false;
+            //return false;
         }
 
         public override void AdministrationRefreshRelationModels(DataSet db)
@@ -75,9 +78,9 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
         }
         public override int AddToWatchList(DataSet db, int agentid, IEnumerable<IntThreeSetRow> ids)
         {
-            foreach(var id in ids)
+            foreach (var id in ids) // <a:seq,b:def,c:objectid>
             {
-                db.hlsyswatchlist().AddRowWithValues(agentid, id.vb, id.vc, db.GetUtcDate());
+                db.hlsyswatchlist().AddRowWithValues(agentid: agentid, objid: id.vc, defid: id.vb, createdtime: db.GetUtcDate());
             }
 
             return db.hlsyswatchlist().Count;
@@ -106,7 +109,8 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
 
         public override IEnumerable<AttributesOfCmdbFlows> GetAttributesOfCmdbFlows(DataSet db)
         {
-            var flow2 = new AttributesOfCmdbFlows {
+            var flow2 = new AttributesOfCmdbFlows
+            {
                 AttributeDefId = 19,
             };
             flow2.CmdbFlowLabel.Add("L1");

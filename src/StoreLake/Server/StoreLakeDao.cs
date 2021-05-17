@@ -245,11 +245,13 @@ namespace StoreLake.TestStore.Server
         private readonly Type _instanceType;
         private readonly MethodInfo _mi;
         private readonly IComparable _commandText;
+        
         Func<DataSet, DbCommand, DbDataReader> _compiledMethod_Read;
         Func<DataSet, DbCommand, int> _compiledMethod_Exec;
-        public TypedMethodHandler(Type instanceType, MethodInfo mi, IComparable commandText)
+
+        public TypedMethodHandler(MethodInfo mi, IComparable commandText)
         {
-            _instanceType = instanceType;
+            _instanceType = mi.DeclaringType;
             _mi = mi;
             _commandText = commandText;
         }
@@ -407,7 +409,7 @@ namespace StoreLake.TestStore.Server
 
                 if (_compiledMethod_Exec == null)
                 {
-                    _compiledMethod_Exec = CommandExecutionHandlerImpl.CompileKnownMethodSignatureExec(_mi.IsStatic, _mi, _instanceType);
+                    _compiledMethod_Exec = CommandExecutionHandlerImpl.CollectCommandHandlerMethod_NonQuery(_mi, _instanceType);
                 }
 
                 if (_mi.IsStatic)
@@ -469,18 +471,17 @@ namespace StoreLake.TestStore.Server
 
                 if (_compiledMethod_Read == null)
                 {
-                    _compiledMethod_Read = CommandExecutionHandlerImpl.CompileKnownMethodSignatureRead(_mi.IsStatic, _mi, _instanceType);
+                    _compiledMethod_Read = CommandExecutionHandlerImpl.CollectCommandHandlerMethod_Query(_mi, _instanceType);
                 }
 
                 if (_mi.IsStatic)
                 {
-
-
                     return _compiledMethod_Read(db, cmd);
                 }
                 else
                 {
-                    throw new NotImplementedException("public DbDataReader " + _mi.Name + "(DataSet db, DbCommand cmd) of '" + _instanceType.Name + "'");
+                    return _compiledMethod_Read(db, cmd);
+                    //throw new NotImplementedException("public DbDataReader " + _mi.Name + "(DataSet db, DbCommand cmd) of '" + _instanceType.Name + "'");
 
                 }
             }
@@ -837,7 +838,6 @@ namespace StoreLake.TestStore.Server
         internal readonly Type HandlerMethodOwner;
         private readonly string _handlerMethodName;
         internal readonly System.Linq.Expressions.MethodCallExpression MethodCallExpr;
-        internal readonly bool HandlerIsStatic;
         public CommandExecutionHandlerImpl(Type commandTextOwner, System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
         {
             System.Linq.Expressions.MethodCallExpression methodCallExpr = (System.Linq.Expressions.MethodCallExpression)handlerExpr.Body;
@@ -846,7 +846,6 @@ namespace StoreLake.TestStore.Server
             HandlerMethodOwner = methodCallExpr.Method.DeclaringType;
             _handlerMethodName = handlerMethodName;
             MethodCallExpr = (System.Linq.Expressions.MethodCallExpression)handlerExpr.Body;
-            HandlerIsStatic = methodCallExpr.Method.IsStatic;
             CommandTextOwner = commandTextOwner ?? HandlerMethodOwner;
         }
 
@@ -862,16 +861,16 @@ namespace StoreLake.TestStore.Server
 
         internal override Func<DataSet, DbCommand, DbDataReader> CompiledReadMethod()
         {
-            return CompileKnownMethodSignatureRead(HandlerIsStatic, MethodCallExpr.Method, HandlerMethodOwner);
+            return CollectCommandHandlerMethod_Query(MethodCallExpr.Method, HandlerMethodOwner);
         }
 
-        internal static Func<DataSet, DbCommand, DbDataReader> CompileKnownMethodSignatureRead(bool HandlerIsStatic, MethodInfo mi, Type methodOwner)
+        internal static Func<DataSet, DbCommand, DbDataReader> CollectCommandHandlerMethod_Query(MethodInfo mi, Type methodOwner)
         {
             // !!!! **** lubo: get rid of the cmd argument inside of the 'methodCallExpr' - just dont use if for compilation***!!!
             var parameter_db = Expression.Parameter(typeof(DataSet), "db");
             var parameter_cmd = Expression.Parameter(typeof(DbCommand), "cmd");
             MethodCallExpression call;
-            if (HandlerIsStatic)
+            if (mi.IsStatic)
             {
                 call = Expression.Call(mi, parameter_db, parameter_cmd);// methodCallExpr.Arguments
             }
@@ -885,13 +884,13 @@ namespace StoreLake.TestStore.Server
             return handlerMethod;
         }
 
-        internal static Func<DataSet, DbCommand, int> CompileKnownMethodSignatureExec(bool HandlerIsStatic, MethodInfo mi, Type methodOwner)
+        internal static Func<DataSet, DbCommand, int> CollectCommandHandlerMethod_NonQuery(MethodInfo mi, Type methodOwner)
         {
             // !!!! **** lubo: get rid of the cmd argument inside of the 'methodCallExpr' - just dont use if for compilation***!!!
             var parameter_db = Expression.Parameter(typeof(DataSet), "db");
             var parameter_cmd = Expression.Parameter(typeof(DbCommand), "cmd");
             MethodCallExpression call;
-            if (HandlerIsStatic)
+            if (mi.IsStatic)
             {
                 call = Expression.Call(mi, parameter_db, parameter_cmd);// methodCallExpr.Arguments
             }

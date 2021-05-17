@@ -9,7 +9,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 
-namespace ConsoleApp4
+namespace StoreLake.Test.ConsoleApp
 {
     class Program
     {
@@ -30,17 +30,23 @@ namespace ConsoleApp4
             var db = StoreLakeDatabaseServer.CreateDatabase("MyDB")
                 .Use(DatabaseGetUtcDateExtension.Register)
                 .Use(HelplineDataExtensions.RegisterDataSetModel) // using 'Helpline.Data.TestStore.HelplineDataExtensions'
+                .Use(HelplineDataExtensions_X.RegisterDataSetModel)
                 .Use(SLMDatabaseDataExtensions.RegisterDataSetModel) // using Helpline.SLM.Database.Data.TestStore.SLMDatabaseDataExtensions
                 .Use(DatabaseGetUtcDateExtension.Register)
-                .Build();
+                .Use(TweetExtension.Register)
+                .Build()
+                .SetHandlerForHelplineDataProcedures<DemoHandler4>()
+                ;
 
             Console.WriteLine("timenow:" + db.GetUtcDate());
 
+            // [SomeComplicatedMultipleResultSetProc]
+
             var hlsysagent = db.hlsysagent();
-            var agent1 = db.hlsysagent().AddRowWithValues(agentid: 710, name: "InternetAgent", fullname: null, description: null, active: 1); //  see 'DF_hlsysagent_active'
+            var agent710 = db.hlsysagent().AddRowWithValues(agentid: 710, name: "InternetAgent", fullname: null, description: null, active: 1); //  see 'DF_hlsysagent_active'
 
             //agent1.agentid = 710;
-            agent1.description = agent1.name + ":" + agent1.agentid;
+            agent710.description = agent710.name + ":" + agent710.agentid;
 
             // NULL defaults?
             // DEFAULT values?
@@ -49,14 +55,23 @@ namespace ConsoleApp4
             // ReadOnlyPK
             var agent2 = db.hlsysagent().AddRowWithValues(712, "InternetAgent2", null, null, 1); //e.active = 1; see 'DF_hlsysagent_active'
             db.hlsysagentroutingblacklist().AddRowWithValues(712);
-            
 
-            db.hlsysagenttogroup().AddRowWithValues(710, 700);
+            var group700 = db.hlsysgroup().AddRowWithValues(700, "Administrators");
+
+            var global_123 = db.hlsysglobalpolicy().AddRowWithValues(123, "g:123", 11223);
+
+            db.hlsysagenttogroup().AddRowWithValues(agent710.agentid, 700);
             db.hlsysglobalacl().AddRowWithValues(123, 700, 0x0010);
 
             Console.WriteLine("db.hlsysagent.Count:" + db.hlsysagent().Count);
 
             StoreLakeDbServer dbServer = new StoreLakeDbServer(db);
+
+            //dbServer.RegisterAddedCommandHandlerContracts(db);
+            //dbServer.RegisterAddedCommandHandlerContract<DemoHandler4>(db);
+            dbServer.RegisterAddedCommandHandlerContract(db, db.HelplineDataProcedures());
+
+            AdoClient.SomeComplicatedMultipleResultSetProc(dbServer.CreateDbProviderFactoryInstance());
             //dbServer.RegisterHandlerReadWithCommandText((d, c) => DemoHandler1.GetAgentNameById(d, c)); // any / text-static
             //dbServer.RegisterHandlerReadForCommandText(typeof(TestDML), (d, c) => DemoHandler1.GetAgentInfoById(d, c)); // static-text / static
             dbServer.RegisterCommandHandlerFacade<DemoHandler2Repository>(typeof(Helpline.Repository.Data.HelplineData));
@@ -66,7 +81,7 @@ namespace ConsoleApp4
 
             StoreLakeDabaseAccessorGate accessorGate = new StoreLakeDabaseAccessorGate();
             //accessorGate.RegisterRead(typeof(Helpline.Data.HelplineData), (_) => new DemoHandler3().CanExecute(db, 0, 0));
-            accessorGate.RegisterAccessHandlerFacade<DemoHandler3>(typeof(Helpline.Data.HelplineData));
+            //accessorGate.RegisterAccessHandlerFacade<DemoHandler3>(typeof(Helpline.Data.HelplineData));
 
             DbProviderFactory dbClient = dbServer.CreateDbProviderFactoryInstance();
 
@@ -76,20 +91,31 @@ namespace ConsoleApp4
             var test12 = Helpline.Data.HelplineData.GetAttributesOfCmdbFlows(databaseAccessorFactory);
             */
 
-            var test11 = Helpline.Repository.Data.HelplineData.GetUserInfo(databaseAccessorFactory, 710);
+            var test11 = Helpline.Repository.Data.HelplineData.GetUserInfo(databaseAccessorFactory, agent710.agentid);
             Console.WriteLine("Test11:  UserInfo.Agents : Count = " + test11.Agents.Count);
             foreach (var agent in test11.Agents)
             {
                 Console.WriteLine("    " + agent.Id + ", " + agent.Name + ", HideForRouting=" + agent.HideForRouting);
             }
 
-            var test10_udt = Helpline.Data.IntThreeSet.From(new int[] { 3, 2, 1 }, (udt, item) => udt.Add(item, (100 * item) + item, (100 * item)));
-            var test10 = Helpline.Data.HelplineData.AddToWatchList(databaseAccessorFactory, 710, test10_udt);
+            db.hlsysobjectbasetype().AddRowWithValues(2, "p");
+            var object_def_A = db.hlsysobjectdef().AddRowWithValues(101, "OD_A", 2);
+            var object_def_B = db.hlsysobjectdef().AddRowWithValues(102, "OD_B", 2);
+            var object_def_C = db.hlsysobjectdef().AddRowWithValues(103, "OD_C", 2);
+            var case_def_A = db.hlsyscasedef().AddRowWithValues(object_def_A.objectdefid);
+            var case_def_B = db.hlsyscasedef().AddRowWithValues(object_def_B.objectdefid);
+            var case_def_C = db.hlsyscasedef().AddRowWithValues(object_def_C.objectdefid);
+
+            var test10_udt = new Helpline.Data.IntThreeSet();//.From(new int[] { 3, 2, 1 }, (udt, item) => udt.Add(item, (100 * item) + item, (100 * item)));
+            test10_udt.Add(1, object_def_A.objectdefid, 3000); // seq, def, objectid
+            test10_udt.Add(2, object_def_B.objectdefid, 2000);
+            test10_udt.Add(3, object_def_C.objectdefid, 1000);
+            var test10 = Helpline.Data.HelplineData.AddToWatchList(databaseAccessorFactory, agent710.agentid, test10_udt);
             Console.WriteLine("test10: " + test10);
 
             Helpline.Data.HelplineData.AdministrationRefreshRelationModels(databaseAccessorFactory);
 
-            var test8 = Helpline.Data.HelplineData.CanExecute(databaseAccessorFactory, 710, 123);
+            var test8 = Helpline.Data.HelplineData.CanExecute(databaseAccessorFactory, agent710.agentid, 123);
             Console.WriteLine("test8: " + test8);
 
             var test7 = TestDML.GetAllAgentIdentities(databaseAccessorFactory);
@@ -123,6 +149,28 @@ namespace ConsoleApp4
         public int Id;
         public string Name;
         public bool IsActive;
+    }
+    public static class AdoClient
+    {
+        public static void SomeComplicatedMultipleResultSetProc(DbProviderFactory dbClient)
+        {
+            using (var connection = dbClient.CreateConnection())
+            {
+                using (var cmd = connection.CreateCommand())
+                {
+                    cmd.CommandText = "dbo.SomeComplicatedMultipleResultSetProc";
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    using (var reader = cmd.ExecuteReader())
+                    { 
+                        while(reader.Read())
+                        {
+
+                        }
+                    }
+                }
+            }
+
+        }
     }
     public static class TestDML
     {

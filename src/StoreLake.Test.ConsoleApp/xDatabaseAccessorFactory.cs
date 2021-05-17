@@ -7,7 +7,7 @@ using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ConsoleApp4
+namespace StoreLake.Test.ConsoleApp
 {
     public class xDatabaseAccessorFactory : Dibix.IDatabaseAccessorFactory
     {
