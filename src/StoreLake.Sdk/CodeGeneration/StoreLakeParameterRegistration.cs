@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Data;
+using System.Diagnostics;
 
 namespace StoreLake.Sdk.CodeGeneration
 {
@@ -7,5 +8,7 @@ namespace StoreLake.Sdk.CodeGeneration
     {
         public string ParameterName { get; set; }
         public string ParameterTypeName { get; set; }
+
+        public SqlDbType ParameterDbType { get; set; }
     }
 }

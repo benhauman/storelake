@@ -222,7 +222,7 @@ namespace StoreLake.Sdk.CodeGeneration
             return level;
         }
 
-        private static void CollectRelationParameters(XElement xRelationshipParent, string collectionName, Action<string, string> collector)
+        private static void CollectRelationParameters(string objectName, XElement xRelationshipParent, string collectionName, Action<string, string> collector)
         {
             var xRelationship = xRelationshipParent.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == collectionName)).SingleOrDefault();
             if (xRelationship == null)
@@ -253,10 +253,16 @@ namespace StoreLake.Sdk.CodeGeneration
                         }
 
                         var Type_SqlTypeSpecifier = ReadParameterRelationshipTypeElement(xRelationship_Entry_Element, "Type");
+                        string vtName = ReadTypeSpecifierRelationshipReferencesName(Type_SqlTypeSpecifier, "Type");
 
-                        var type_name = ReadTypeSpecifierRelationshipReferencesName(Type_SqlTypeSpecifier, "Type");
+                        var ColumnDbType = ParseKnownDbType(objectName, parameter_name, vtName);
+                        //if (!ColumnDbType.HasValue)
+                        //{
+                        //    ColumnDbType = SqlDbType.Structured;
+                        //    //Console.WriteLine("    " + parameter_name + "  " + vtName);
+                        //}
 
-                        collector(parameter_name, type_name);
+                        collector(parameter_name, vtName);
                     }
                 }
             }
@@ -282,14 +288,16 @@ namespace StoreLake.Sdk.CodeGeneration
                 var xRelationship_Entry_Element = xRelationship_Entry.Elements().Single(e => e.Name.LocalName == "References" && e.Attributes().Any(t => t.Name.LocalName == "Name"));
                 {
                     var xaReferences_Name = xRelationship_Entry_Element.Attributes().Single(t => t.Name.LocalName == "Name");
-
-                    string[] name_tokens = xaReferences_Name.Value.Split('.');
-                    string references_name = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
-
-                    return references_name;
+                    return xaReferences_Name.Value;
                 }
             }
         }
+
+        //class ValueTypeName
+        //{
+        //    public string TypeName;
+        //    public string SchemaName;
+        //}
 
         private static void AddProcedures(DataSet ds, DacPacRegistration dacpac, XElement xModel)
         {
@@ -303,12 +311,17 @@ namespace StoreLake.Sdk.CodeGeneration
                 if (name_tokens.Length > 1)
                     schema_name = name_tokens[0].Replace("[", "").Replace("]", "");
 
+                // <Property Name="BodyScript">
+                var xProperty_BodyScript = xProcedure.Elements().Single(e => e.Name.LocalName == "Property" && e.Attributes().Any(t => t.Name.LocalName == "Name" && t.Value == "BodyScript"));
+                var xProperty_BodyScript_Value = xProperty_BodyScript.Elements().Single(e => e.Name.LocalName == "Value");
+                XCData xcdata = (XCData)xProperty_BodyScript_Value.FirstNode;
                 StoreLakeProcedureRegistration procedure_reg = new StoreLakeProcedureRegistration();
                 procedure_reg.ProcedureSchemaName = schema_name;
                 procedure_reg.ProcedureName = procedure_name;
-                // BodyScript
+                procedure_reg.ProcedureBodyScript = xcdata.Value.Trim(); //xProperty_BodyScript_Value == null ? null : xProperty_BodyScript.Value;
+
                 // <Relationship Name="Parameters">
-                CollectRelationParameters(xProcedure, "Parameters", (parameter_name, type_name) =>
+                CollectRelationParameters(xProcedureName.Value, xProcedure, "Parameters", (parameter_name, type_name) =>
                 {
                     //ck_reg.DefiningColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
                     procedure_reg.Parameters.Add(new StoreLakeParameterRegistration()
@@ -886,98 +899,115 @@ namespace StoreLake.Sdk.CodeGeneration
                         var xTypeSpecifier_Entry_Element_Relationship_Entry = xTypeSpecifier_Entry_Element_Relationship.Elements().Single(x => x.Name.LocalName == "Entry");
                         var xTypeSpecifier_Entry_Element_Relationship_Entry_References = xTypeSpecifier_Entry_Element_Relationship_Entry.Elements().Single(x => x.Name.LocalName == "References");
                         var xColumnTypeName = xTypeSpecifier_Entry_Element_Relationship_Entry_References.Attributes().Single(a => a.Name.LocalName == "Name");
-                        if (string.Equals(xColumnTypeName.Value, "[int]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.Int;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[bigint]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.BigInt;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[nvarchar]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.NVarChar;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[nchar]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.NChar;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[sys].[sysname]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.NVarChar;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[smallint]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.SmallInt;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[tinyint]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.TinyInt;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[bit]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.Bit;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[datetime]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.DateTime;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[date]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.Date;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[time]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.Time;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[xml]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.Xml;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[uniqueidentifier]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.UniqueIdentifier;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[decimal]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.Decimal;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[float]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.Float;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[varbinary]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.VarBinary;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[binary]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.Binary;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[image]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.Image;
-                        }
-                        else if (string.Equals(xColumnTypeName.Value, "[rowversion]", StringComparison.Ordinal))
-                        {
-                            creg.ColumnDbType = System.Data.SqlDbType.Timestamp;
-                        }
-                        else
-                        {
-                            throw new StoreLakeSdkException("Column type table [" + treg.TableName + "] column [" + creg.ColumnName + "] type (" + xColumnTypeName.Value + ")");
-                        }
-                        //foreach (var e in xElement_Column.Elements())
-                        //{
-                        //    Console.WriteLine("<" + e.Name.LocalName);
-                        //    foreach (var a in e.Attributes())
-                        //    {
-                        //        Console.WriteLine("   " + a.Name.LocalName + "=" + a.Value);
-                        //    }
-                        //}
+                        creg.ColumnDbType = ParseKnownDbType(treg.TableName, creg.ColumnName, xColumnTypeName.Value);
                     }
 
                     treg.Columns.Add(creg);
                 }// not a computedcolumn
+            }
+        }
+
+        private static System.Data.SqlDbType ParseKnownDbType(string objectName, string itemName, string typeName)
+        {
+            if (string.Equals(typeName, "[int]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.Int;
+            }
+            else if (string.Equals(typeName, "[bigint]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.BigInt;
+            }
+            else if (string.Equals(typeName, "[nvarchar]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.NVarChar;
+            }
+            else if (string.Equals(typeName, "[nchar]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.NChar;
+            }
+            else if (string.Equals(typeName, "[sys].[sysname]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.NVarChar;
+            }
+            else if (string.Equals(typeName, "[smallint]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.SmallInt;
+            }
+            else if (string.Equals(typeName, "[tinyint]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.TinyInt;
+            }
+            else if (string.Equals(typeName, "[bit]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.Bit;
+            }
+            else if (string.Equals(typeName, "[datetime]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.DateTime;
+            }
+            else if (string.Equals(typeName, "[date]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.Date;
+            }
+            else if (string.Equals(typeName, "[time]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.Time;
+            }
+            else if (string.Equals(typeName, "[xml]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.Xml;
+            }
+            else if (string.Equals(typeName, "[uniqueidentifier]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.UniqueIdentifier;
+            }
+            else if (string.Equals(typeName, "[decimal]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.Decimal;
+            }
+            else if (string.Equals(typeName, "[float]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.Float;
+            }
+            else if (string.Equals(typeName, "[varbinary]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.VarBinary;
+            }
+            else if (string.Equals(typeName, "[binary]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.Binary;
+            }
+            else if (string.Equals(typeName, "[image]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.Image;
+            }
+            else if (string.Equals(typeName, "[rowversion]", StringComparison.Ordinal))
+            {
+                return System.Data.SqlDbType.Timestamp;
+            }
+            else
+            {
+                string[] name_tokens = typeName.Split('.');
+                if (name_tokens.Length == 2)
+                {
+                    return SqlDbType.Structured; // Schema/Name
+                }
+                //string references_name = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                //
+                //string schemaName = name_tokens.Length < 2 ? null : name_tokens[0].Replace("[", "").Replace("]", "");
+                //return new ValueTypeName() { TypeName = references_name, SchemaName = schemaName };
+
+
+                //if (typeName[0] == '[')
+                //    typeName = typeName.Substring(1, typeName.Length - 2);
+                //else
+                //    typeName = typeName;
+
+                //if (throwOnError)
+                {
+                    throw new StoreLakeSdkException("Cannot resolve database type (" + typeName + ") for [" + objectName + "] [" + itemName + "].");
+                }
+                //return null;
             }
         }
     }

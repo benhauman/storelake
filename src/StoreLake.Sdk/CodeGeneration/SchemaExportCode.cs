@@ -385,6 +385,47 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
             }
 
+            CodeTypeDeclaration procedures_type_decl = new CodeTypeDeclaration(dacpac.TestStoreExtensionSetName + "Procedures")
+            {
+                Attributes = MemberAttributes.Public
+            };
+            ns.Types.Add(procedures_type_decl);
+
+            RegisterStoreProcedures(rr, dacpac, extensions_type_decl, procedures_type_decl);
+
+        }
+
+        private static void RegisterStoreProcedures(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeTypeDeclaration procedures_type_decl)
+        {
+            foreach (var procedure in dacpac.registered_Procedures.Values)
+            {
+                Console.WriteLine("" + procedure.ProcedureSchemaName + "." + procedure.ProcedureName);
+
+                bool? isQueryProcedure;
+                try
+                {
+                    isQueryProcedure = SqlDom.ProcedureGenerator.IsQueryProcedure(procedure.ProcedureName, procedure.ProcedureBodyScript);
+                }
+                catch (Exception ex)
+                {
+                    s_tracer.TraceEvent(TraceEventType.Warning, 0, "Procedure  [" + procedure.ProcedureName + "] generation failed." + ex.Message);
+                    isQueryProcedure = null;
+                }
+                if (isQueryProcedure.HasValue)
+                {
+                    if (isQueryProcedure.Value)
+                    {
+                        // return DbDataReader
+                    }
+                    else
+                    {
+                        // return int;
+                    }
+                }
+                foreach (StoreLakeParameterRegistration parameter in procedure.Parameters)
+                {
+                }
+            }
         }
 
         private static void InitializeStoreNamespaceName(DacPacRegistration dacpac, string storeSuffix)
@@ -1045,7 +1086,7 @@ namespace StoreLake.Sdk.CodeGeneration
             }
             catch (Exception ex)
             {
-                s_tracer.TraceEvent(TraceEventType.Warning, 0, "CHECK CONSTRAINT ["+ ck.CheckConstraintName + "] generation failed." + ex);
+                s_tracer.TraceEvent(TraceEventType.Warning, 0, "CHECK CONSTRAINT [" + ck.CheckConstraintName + "] generation failed." + ex);
                 Console.WriteLine("DEFINITION: " + ck.CheckExpressionScript);
                 codeExpr = new CodePrimitiveExpression(true);
             }
