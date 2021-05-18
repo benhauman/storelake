@@ -219,10 +219,11 @@ namespace StoreLake.Sdk.CodeGeneration
                     throw new InvalidOperationException($@"Error parsing SQL statement
 {String.Join(Environment.NewLine, errors.Select(x => $"{x.Message} at {x.Line},{x.Column}"))}");
 
-                Console.WriteLine("SQL Fragment generated!");
+                //Console.WriteLine("SQL Fragment generated!");
                 SqlScriptGenerator generator = new Sql140ScriptGenerator();
                 generator.GenerateScript(fragment, out string output_sql);
-                Console.WriteLine(output_sql);
+                //Console.WriteLine(output_sql);
+                //Console.WriteLine("SQL Parser prepared.");
             }
         }
     }

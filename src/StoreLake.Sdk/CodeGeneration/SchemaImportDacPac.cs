@@ -34,6 +34,7 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly IDictionary<string, bool> registered_tables = new SortedDictionary<string, bool>(); // < ;
         internal readonly IDictionary<string, string> referenced_assemblies = new SortedDictionary<string, string>(); // assemblyname/assemblylocation;
         internal readonly IDictionary<string, StoreLakeCheckConstraintRegistration> registered_CheckConstraints = new SortedDictionary<string, StoreLakeCheckConstraintRegistration>();
+        internal readonly IDictionary<string, StoreLakeProcedureRegistration> registered_Procedures = new SortedDictionary<string, StoreLakeProcedureRegistration>();
     }
 
 
@@ -193,6 +194,10 @@ namespace StoreLake.Sdk.CodeGeneration
                                 AddDefaultConstraints(ctx.ds, xModel);
                                 AddForeignKeys(ctx.ds, xModel);
                                 AddCheckConstraints(ctx.ds, dacpac, xModel);
+                                AddProcedures(ctx.ds, dacpac, xModel);
+                                AddInlineTableValuedFunctions(ctx.ds, dacpac, xModel);
+                                // <Element Type="SqlMultiStatementTableValuedFunction" Name="[dbo].[hlsyssec_query_agentsystemacl]">
+                                // <Element Type="SqlScalarFunction" Name="[dbo].[hlsystablecfgdeskfield_validate_attribute]">
 
                                 ctx.registered_dacpacs.Add(dacpac.UniqueKey, dacpac);
                             }
@@ -216,6 +221,116 @@ namespace StoreLake.Sdk.CodeGeneration
 
             return level;
         }
+
+        private static void CollectRelationParameters(XElement xRelationshipParent, string collectionName, Action<string, string> collector)
+        {
+            var xRelationship = xRelationshipParent.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == collectionName)).SingleOrDefault();
+            if (xRelationship == null)
+            {
+                // no parameters
+            }
+            else
+            {
+                foreach (var xRelationship_Entry in xRelationship.Elements())
+                {
+                    foreach (var xRelationship_Entry_Element in xRelationship_Entry.Elements().Where(e => e.Name.LocalName == "Element" && e.Attributes().Any(t => t.Name.LocalName == "Type" && t.Value == "SqlSubroutineParameter")))
+                    {
+                        var xRelationship_Entry_Element_Name = xRelationship_Entry_Element.Attributes().Single(a => a.Name.LocalName == "Name");
+                        string[] name_tokens = xRelationship_Entry_Element_Name.Value.Split('.');
+                        string parameter_name = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+
+                        // <Property Name="IsReadOnly" Value="True" />
+                        var xProperty_IsReadOnly = xRelationship_Entry_Element.Elements().FirstOrDefault(e => e.Name.LocalName == "Property" && e.Attributes().Any(t => t.Name.LocalName == "Name" && t.Value == "IsReadOnly"));
+                        bool? isReadOnly;
+                        if (xProperty_IsReadOnly != null)
+                        {
+                            var xProperty_IsReadOnly_Value = xProperty_IsReadOnly.Attributes().Single(a => a.Name.LocalName == "Value");
+                            isReadOnly = bool.Parse(xProperty_IsReadOnly_Value.Value);
+                        }
+                        else
+                        {
+                            isReadOnly = null;
+                        }
+
+                        var Type_SqlTypeSpecifier = ReadParameterRelationshipTypeElement(xRelationship_Entry_Element, "Type");
+
+                        var type_name = ReadTypeSpecifierRelationshipReferencesName(Type_SqlTypeSpecifier, "Type");
+
+                        collector(parameter_name, type_name);
+                    }
+                }
+            }
+        }
+
+        private static XElement ReadParameterRelationshipTypeElement(XElement xRelationshipParent, string collectionName)
+        {
+            var xRelationship = xRelationshipParent.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == collectionName)).Single();
+            var xRelationship_Entry = xRelationship.Elements().Single();
+            {
+                var xRelationship_Entry_Element = xRelationship_Entry.Elements().Single(e => e.Name.LocalName == "Element" && e.Attributes().Any(t => t.Name.LocalName == "Type" && (t.Value == "SqlTypeSpecifier" || t.Value == "SqlXmlTypeSpecifier")));
+                {
+                    return xRelationship_Entry_Element;
+                }
+            }
+        }
+
+        private static string ReadTypeSpecifierRelationshipReferencesName(XElement xRelationshipParent, string collectionName)
+        {
+            var xRelationship = xRelationshipParent.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == collectionName)).Single();
+            var xRelationship_Entry = xRelationship.Elements().Single();
+            {
+                var xRelationship_Entry_Element = xRelationship_Entry.Elements().Single(e => e.Name.LocalName == "References" && e.Attributes().Any(t => t.Name.LocalName == "Name"));
+                {
+                    var xaReferences_Name = xRelationship_Entry_Element.Attributes().Single(t => t.Name.LocalName == "Name");
+
+                    string[] name_tokens = xaReferences_Name.Value.Split('.');
+                    string references_name = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+
+                    return references_name;
+                }
+            }
+        }
+
+        private static void AddProcedures(DataSet ds, DacPacRegistration dacpac, XElement xModel)
+        {
+            // <Element Type="SqlProcedure" Name="[dbo].[hlbpm_query_cmdbflowattributes]">
+            foreach (var xProcedure in xModel.Elements().Where(e => e.Attributes().Any(t => t.Name == "Type" && t.Value == "SqlProcedure")))
+            {
+                XAttribute xProcedureName = xProcedure.Attributes().Where(x => x.Name == "Name").First();
+                string[] name_tokens = xProcedureName.Value.Split('.');
+                string procedure_name = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                string schema_name = null;
+                if (name_tokens.Length > 1)
+                    schema_name = name_tokens[0].Replace("[", "").Replace("]", "");
+
+                StoreLakeProcedureRegistration procedure_reg = new StoreLakeProcedureRegistration();
+                procedure_reg.ProcedureSchemaName = schema_name;
+                procedure_reg.ProcedureName = procedure_name;
+                // BodyScript
+                // <Relationship Name="Parameters">
+                CollectRelationParameters(xProcedure, "Parameters", (parameter_name, type_name) =>
+                {
+                    //ck_reg.DefiningColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
+                    procedure_reg.Parameters.Add(new StoreLakeParameterRegistration()
+                    {
+                        ParameterName = parameter_name,
+                        ParameterTypeName = type_name
+                    });
+                });
+
+                dacpac.registered_Procedures.Add(xProcedureName.Value, procedure_reg);
+            }
+        }
+
+        private static void AddInlineTableValuedFunctions(DataSet ds, DacPacRegistration dacpac, XElement xModel)
+        {
+            // <Element Type="SqlInlineTableValuedFunction" Name="[dbo].[hlsyssec_query_agentobjectmsk]">
+            foreach (var xFunction in xModel.Elements().Where(e => e.Attributes().Any(t => t.Name == "Type" && t.Value == "SqlInlineTableValuedFunction")))
+            {
+                XAttribute xFunctionName = xFunction.Attributes().Where(x => x.Name == "Name").First();
+            }
+        }
+
         private static void AddCheckConstraints(DataSet ds, DacPacRegistration dacpac, XElement xModel)
         {
             //     <Element Type="SqlCheckConstraint" Name="[dbo].[CK_hlcmdocumentstorage_formmgmt]">
@@ -229,7 +344,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 ck_reg.CheckConstraintName = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
                 ck_reg.CheckConstraintSchema = (name_tokens.Length == 3) ? name_tokens[0] : "dbo";
 
-                SqlObjectName defining_table = CollectElementRelationShipTable(xCheckConstraint, "DefiningTable");
+                SqlObjectName defining_table = CollectElementRelationshipTable(xCheckConstraint, "DefiningTable");
                 ck_reg.DefiningTableName = defining_table.ObjectName;
                 ck_reg.DefiningTableSchema = defining_table.SchemaName;
 
@@ -259,11 +374,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 fk_reg.ForeignKeyName = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
                 fk_reg.ForeignKeySchema = (name_tokens.Length == 3) ? name_tokens[0] : "dbo";
 
-                SqlObjectName foreign_table = CollectElementRelationShipTable(xForeignKey, "ForeignTable");
+                SqlObjectName foreign_table = CollectElementRelationshipTable(xForeignKey, "ForeignTable");
                 fk_reg.ForeignTableName = foreign_table.ObjectName;
                 fk_reg.ForeignTableSchema = foreign_table.SchemaName;
 
-                SqlObjectName defining_table = CollectElementRelationShipTable(xForeignKey, "DefiningTable");
+                SqlObjectName defining_table = CollectElementRelationshipTable(xForeignKey, "DefiningTable");
                 fk_reg.DefiningTableName = defining_table.ObjectName;
                 fk_reg.DefiningTableSchema = defining_table.SchemaName;
 
@@ -280,7 +395,7 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
-        private static SqlObjectName CollectElementRelationShipTable(XElement xForeignKey, string relationshipItemName)
+        private static SqlObjectName CollectElementRelationshipTable(XElement xForeignKey, string relationshipItemName)
         {
             var xDefiningTable = xForeignKey.Elements().Single(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == relationshipItemName));
             var xDefiningTable_Entry = xDefiningTable.Elements().Single(e => e.Name.LocalName == "Entry");
@@ -322,7 +437,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 name_tokens = xForColumn_Entry_References_Name.Value.Split('.');
                 df_reg.ColumnName = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
 
-                SqlObjectName defining_table = CollectElementRelationShipTable(xDefaultConstraint, "DefiningTable");
+                SqlObjectName defining_table = CollectElementRelationshipTable(xDefaultConstraint, "DefiningTable");
                 df_reg.TableName = defining_table.ObjectName;
                 df_reg.TableSchema = defining_table.SchemaName;
 
