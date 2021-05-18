@@ -14,7 +14,7 @@ namespace StoreLake.Sdk.SqlDom
         {
             TSqlFragment sqlF = ScriptDomFacade.Parse(procedure_body);
             bool? res = SelectVisitor.AnalyzeHasOutputResultSet(sqlF);
-            return res;
+            return res.GetValueOrDefault();
         }
 
 

@@ -397,9 +397,10 @@ namespace StoreLake.Sdk.CodeGeneration
 
         private static void RegisterStoreProcedures(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeTypeDeclaration procedures_type_decl)
         {
+            Console.WriteLine("Procedures found:" + dacpac.registered_Procedures.Values.Count);
             foreach (var procedure in dacpac.registered_Procedures.Values)
             {
-                Console.WriteLine("" + procedure.ProcedureSchemaName + "." + procedure.ProcedureName);
+                //Console.WriteLine("" + procedure.ProcedureSchemaName + "." + procedure.ProcedureName);
 
                 bool? isQueryProcedure;
                 try
@@ -413,19 +414,33 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
                 if (isQueryProcedure.HasValue)
                 {
-                    if (isQueryProcedure.Value)
-                    {
-                        // return DbDataReader
-                    }
-                    else
-                    {
-                        // return int;
-                    }
+                    GenerateProcedureDeclaration(procedures_type_decl, procedure, isQueryProcedure.Value);
                 }
-                foreach (StoreLakeParameterRegistration parameter in procedure.Parameters)
+                else
                 {
+                    s_tracer.TraceEvent(TraceEventType.Warning, 0, "SKIP procedure  [" + procedure.ProcedureName + "] generation failed.");
                 }
             }
+        }
+
+        private static void GenerateProcedureDeclaration(CodeTypeDeclaration procedures_type_decl, StoreLakeProcedureRegistration procedure, bool isQueryProcedure)
+        {
+            CodeMemberMethod procedure_method = new CodeMemberMethod() { Name = procedure.ProcedureName, Attributes = MemberAttributes.Public };
+            procedures_type_decl.Members.Add(procedure_method);
+            procedure_method.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "db"));
+            procedure_method.Parameters.Add(new CodeParameterDeclarationExpression(typeof(System.Data.Common.DbCommand), "cmd"));
+
+            procedure_method.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
+
+            Type returnType = isQueryProcedure
+                ? typeof(System.Data.Common.DbDataReader)
+                : typeof(int);
+
+            foreach (StoreLakeParameterRegistration parameter in procedure.Parameters)
+            {
+            }
+
+            procedure_method.ReturnType = new CodeTypeReference(returnType);
         }
 
         private static void InitializeStoreNamespaceName(DacPacRegistration dacpac, string storeSuffix)
