@@ -273,7 +273,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
             //InitializeStoreNamespaceName(dacpac, storeSuffix);
 
-            CodeTypeDeclaration extensions_type_decl = null;
+            ExtensionsClass exttype = new ExtensionsClass();
             CodeNamespace ns_old = ccu.Namespaces[0];
             ccu.Namespaces.Clear();
             CodeNamespace ns = new CodeNamespace();
@@ -281,18 +281,18 @@ namespace StoreLake.Sdk.CodeGeneration
             ns.Name = dacpac.TestStoreAssemblyNamespace;
 
             {
-                extensions_type_decl = CreateStaticClass(dacpac.TestStoreExtensionSetName + "Extensions");
+                exttype.extensions_type_decl = CreateStaticClass(dacpac.TestStoreExtensionSetName + "Extensions");
 
                 // Create 'GetTable'
-                CodeMemberMethod method_gettable = new CodeMemberMethod() { Name = "GetTable", Attributes = MemberAttributes.Private | MemberAttributes.Static };
+                exttype.extensions_method_GetTable = new CodeMemberMethod() { Name = "GetTable", Attributes = MemberAttributes.Private | MemberAttributes.Static };
                 CodeTypeParameter ctp_Table = new CodeTypeParameter("TTable");
                 ctp_Table.Constraints.Add(new CodeTypeReference(typeof(DataTable)));
-                method_gettable.TypeParameters.Add(ctp_Table);
-                method_gettable.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "ds"));
-                method_gettable.Parameters.Add(new CodeParameterDeclarationExpression(typeof(string), "tableName"));
-                method_gettable.ReturnType = new CodeTypeReference("TTable");
+                exttype.extensions_method_GetTable.TypeParameters.Add(ctp_Table);
+                exttype.extensions_method_GetTable.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "ds"));
+                exttype.extensions_method_GetTable.Parameters.Add(new CodeParameterDeclarationExpression(typeof(string), "tableName"));
+                exttype.extensions_method_GetTable.ReturnType = new CodeTypeReference("TTable");
                 var var_decl_table = new CodeVariableDeclarationStatement("TTable", "table");
-                method_gettable.Statements.Add(var_decl_table);
+                exttype.extensions_method_GetTable.Statements.Add(var_decl_table);
                 var var_ref_table = new CodeVariableReferenceExpression("table");
 
                 CodePropertyReferenceExpression ds_Tables = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("ds"), "Tables");
@@ -302,13 +302,13 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 var ifTableNull = new CodeBinaryOperatorExpression(var_ref_table, CodeBinaryOperatorType.ValueEquality, new_CodePrimitiveExpression(null));
                 var throwExpr = new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(ArgumentException), new CodeSnippetExpression("\"Table [\" + tableName + \"] could not be found.\""), new_CodePrimitiveExpression("tableName")));
-                method_gettable.Statements.Add(new CodeConditionStatement(ifTableNull, throwExpr));
+                exttype.extensions_method_GetTable.Statements.Add(new CodeConditionStatement(ifTableNull, throwExpr));
 
                 //method_gettable.Statements.Add(new CodeAssignStatement(var_ref_table, cast_expr));
 
-                method_gettable.Statements.Add(new CodeMethodReturnStatement(var_ref_table));
-                extensions_type_decl.Members.Add(method_gettable);
-                ns.Types.Add(extensions_type_decl);
+                exttype.extensions_method_GetTable.Statements.Add(new CodeMethodReturnStatement(var_ref_table));
+                exttype.extensions_type_decl.Members.Add(exttype.extensions_method_GetTable);
+                ns.Types.Add(exttype.extensions_type_decl);
             }
 
             {
@@ -344,7 +344,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     }
                     else
                     {
-                        Adjust_TypeDecl(rr, dacpac, extensions_type_decl, ns.Name, type_decl);
+                        Adjust_TypeDecl(rr, dacpac, exttype, ns.Name, type_decl);
                         if (isSetClassDeclaration)
                         {
                             // skip it : 'NewDataSet'
@@ -366,15 +366,15 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
 
                 // add foreign keys between tables
-                CodeMemberMethod extensions_method_InitDataSet = TryGetMemberMethodByName(extensions_type_decl, "InitDataSetClass");
-                if (extensions_method_InitDataSet == null)
+                exttype.extensions_method_InitDataSet = TryGetMemberMethodByName(exttype.extensions_type_decl, "InitDataSetClass");
+                if (exttype.extensions_method_InitDataSet == null)
                 {
                     throw new InvalidOperationException("Method 'InitDataSet' on DataSet extensions type could not be found.");
                 }
 
                 foreach (string table_name in dacpac.registered_tables.Keys)
                 {
-                    AddTableForeignKeys(assemblyResolver, comparam, rr, dacpac, extensions_type_decl, extensions_method_InitDataSet, table_name);
+                    AddTableForeignKeys(assemblyResolver, comparam, rr, dacpac, exttype, exttype.extensions_method_InitDataSet, table_name);
                 }
 
                 // MoveNestedTypesToNamespace
@@ -385,17 +385,126 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
             }
 
-            CodeTypeDeclaration procedures_type_decl = new CodeTypeDeclaration(dacpac.TestStoreExtensionSetName + "Procedures")
+            string extMethodAccess_CommandExecuteHandler = dacpac.TestStoreExtensionSetName + "Procedures";
+            CodeTypeDeclaration procedures_type_decl = new CodeTypeDeclaration(dacpac.TestStoreExtensionSetName + "Procedures" + "CommandExecuteHandler")
             {
                 Attributes = MemberAttributes.Public
             };
             ns.Types.Add(procedures_type_decl);
 
-            RegisterStoreProcedures(rr, dacpac, extensions_type_decl, procedures_type_decl);
-
+            BuildStoreProceduresType(rr, dacpac, exttype.extensions_type_decl, procedures_type_decl);
+            BuildStoreProceduresProvider(rr, dacpac, ns, exttype, procedures_type_decl, extMethodAccess_CommandExecuteHandler);
         }
 
-        private static void RegisterStoreProcedures(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeTypeDeclaration procedures_type_decl)
+        class ExtensionsClass
+        {
+            internal CodeTypeDeclaration extensions_type_decl;
+            internal CodeMemberMethod extensions_method_GetTable;
+            internal CodeMemberMethod extensions_method_InitDataSet;
+        }
+
+        private static void BuildStoreProceduresProvider(RegistrationResult rr, DacPacRegistration dacpac, CodeNamespace ns, ExtensionsClass exttype, CodeTypeDeclaration procedures_type_decl, string extensionsMethod)
+        {
+            // 1.DataTable
+            // 2.extension method Get
+            // 3.extension method Set
+
+            CodeTypeDeclaration procedure_provider_DataTable_Type_decl = new CodeTypeDeclaration()
+            {
+                Name = procedures_type_decl.Name + "DataTable", // ProceduresDataTable
+            };
+            procedure_provider_DataTable_Type_decl.TypeAttributes = (procedure_provider_DataTable_Type_decl.TypeAttributes & ~TypeAttributes.VisibilityMask) | TypeAttributes.NestedPrivate;
+            procedure_provider_DataTable_Type_decl.BaseTypes.Add(typeof(DataTable));
+            CodeMemberField Table_TableName = new CodeMemberField()
+            {
+                Name = procedure_provider_DataTable_Type_decl.Name + "TableName",
+                Type = new CodeTypeReference(typeof(string)),
+                Attributes = MemberAttributes.Assembly | MemberAttributes.Static,
+                InitExpression = new CodePrimitiveExpression("__" + procedures_type_decl.Name + "__")
+            };
+
+            procedure_provider_DataTable_Type_decl.Members.Add(Table_TableName);
+
+            CodeConstructor table_ctor = new CodeConstructor() { Attributes = MemberAttributes.Public };
+            table_ctor.Statements.Add(new CodeAssignStatement()
+            {
+                Left = new CodePropertyReferenceExpression(new CodeThisReferenceExpression(), "TableName"),
+                Right = new CodeFieldReferenceExpression(new CodeTypeReferenceExpression(procedure_provider_DataTable_Type_decl.Name), Table_TableName.Name)
+            }); ;
+            procedure_provider_DataTable_Type_decl.Members.Add(table_ctor);
+
+            CodeMemberField field_handlerInstanceCommandExecute = new CodeMemberField()
+            {
+                Name = "handlerInstanceCommandExecute",
+                Type = new CodeTypeReference(procedures_type_decl.Name),
+                Attributes = MemberAttributes.Assembly,
+                InitExpression = new CodeObjectCreateExpression(new CodeTypeReference(procedures_type_decl.Name))
+            };
+            //CodeMemberField field_handlerInstanceCommandFacade = new CodeMemberField() { Name = "handlerInstanceCommandFacade", Type = new CodeTypeReference(procedures_type_decl.Name), Attributes = MemberAttributes.Assembly };
+
+            procedure_provider_DataTable_Type_decl.Members.Add(field_handlerInstanceCommandExecute);
+
+
+            exttype.extensions_type_decl.Members
+                .Add(procedure_provider_DataTable_Type_decl);
+
+
+            CodeMemberMethod extensions_method_GetProcedures = new CodeMemberMethod()
+            {
+                Name = extensionsMethod,
+                Attributes = MemberAttributes.Public | MemberAttributes.Static,
+                ReturnType = new CodeTypeReference(procedures_type_decl.Name)
+            };
+            CodeTypeParameter ctp = new CodeTypeParameter("TDataSet");
+            ctp.Constraints.Add(new CodeTypeReference(typeof(DataSet)));
+            extensions_method_GetProcedures.TypeParameters.Add(ctp);
+
+
+            var param_decl_ds = new CodeParameterDeclarationExpression("this TDataSet", "ds");
+            extensions_method_GetProcedures.Parameters.Add(param_decl_ds);
+
+            var method_GetTable_Handlers = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(exttype.extensions_type_decl.Name),
+                            exttype.extensions_method_GetTable.Name, new CodeTypeReference[] {
+                            new CodeTypeReference( procedure_provider_DataTable_Type_decl.Name)
+                            });
+
+            var invoke_GetTable_Handlers = new CodeMethodInvokeExpression(method_GetTable_Handlers, new CodeExpression[] {
+                new CodeVariableReferenceExpression("ds")
+                , new CodeFieldReferenceExpression(new CodeTypeReferenceExpression(procedure_provider_DataTable_Type_decl.Name), Table_TableName.Name)
+            });
+
+            var field_ref_handlerInstanceCommandExecute = new CodeFieldReferenceExpression(invoke_GetTable_Handlers, field_handlerInstanceCommandExecute.Name);
+            extensions_method_GetProcedures.Statements.Add(new CodeMethodReturnStatement(field_ref_handlerInstanceCommandExecute));
+
+
+            exttype.extensions_type_decl.Members.Add(extensions_method_GetProcedures);
+
+            CodeMemberMethod extensions_method_SetProcedures = new CodeMemberMethod()
+            {
+                Name = "SetCommandExecuteHandlerInstanceFor" + extensionsMethod,
+                Attributes = MemberAttributes.Public | MemberAttributes.Static,
+                ReturnType = new CodeTypeReference("TDataSet")
+            };
+            CodeTypeParameter ctp_set_ds = new CodeTypeParameter("TDataSet");
+            ctp_set_ds.Constraints.Add(new CodeTypeReference(typeof(DataSet)));
+            extensions_method_SetProcedures.TypeParameters.Add(ctp_set_ds);
+            CodeTypeParameter ctp_set_hi = new CodeTypeParameter("THandler") { HasConstructorConstraint = true };
+            ctp_set_hi.Constraints.Add(new CodeTypeReference(procedures_type_decl.Name));
+            extensions_method_SetProcedures.TypeParameters.Add(ctp_set_hi);
+
+            extensions_method_SetProcedures.Parameters.Add(param_decl_ds);
+
+            var assign_handler = new CodeAssignStatement(field_ref_handlerInstanceCommandExecute, new CodeObjectCreateExpression("THandler"));
+
+            extensions_method_SetProcedures.Statements.Add(assign_handler);
+            extensions_method_SetProcedures.Statements.Add(new CodeMethodReturnStatement(new CodeVariableReferenceExpression("ds")));
+
+            
+
+            exttype.extensions_type_decl.Members.Add(extensions_method_SetProcedures);
+        }
+
+        private static void BuildStoreProceduresType(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeTypeDeclaration procedures_type_decl)
         {
             Console.WriteLine("Procedures found:" + dacpac.registered_Procedures.Values.Count);
             foreach (var procedure in dacpac.registered_Procedures.Values)
@@ -482,7 +591,7 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
-        private static void AddTableForeignKeys(AssemblyResolver assemblyResolver, CompilerParameters comparam, RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeMemberMethod extensions_method_InitDataSet, string tableName)
+        private static void AddTableForeignKeys(AssemblyResolver assemblyResolver, CompilerParameters comparam, RegistrationResult rr, DacPacRegistration dacpac, ExtensionsClass exttype, CodeMemberMethod extensions_method_InitDataSet, string tableName)
         {
             DataTable type_decl_table = rr.ds.Tables[tableName];
             if (type_decl_table == null)
@@ -496,12 +605,12 @@ namespace StoreLake.Sdk.CodeGeneration
                 ForeignKeyConstraint fk = type_decl_table.Constraints[i] as ForeignKeyConstraint;
                 if (fk != null)
                 {
-                    AddTableForeignKey(assemblyResolver, comparam, rr, dacpac, extensions_type_decl, extensions_method_InitDataSet, type_decl_table, fk);
+                    AddTableForeignKey(assemblyResolver, comparam, rr, dacpac, exttype, extensions_method_InitDataSet, type_decl_table, fk);
                 }
             }
         }
 
-        private static void AddTableForeignKey(AssemblyResolver assemblyResolver, CompilerParameters comparam, RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeMemberMethod extensions_method_InitDataSet, DataTable type_decl_table, ForeignKeyConstraint fk)
+        private static void AddTableForeignKey(AssemblyResolver assemblyResolver, CompilerParameters comparam, RegistrationResult rr, DacPacRegistration dacpac, ExtensionsClass exttype, CodeMemberMethod extensions_method_InitDataSet, DataTable type_decl_table, ForeignKeyConstraint fk)
         {
             //if (string.Equals(fk.Table.TableName, fk.RelatedTable.TableName))
             //{
@@ -533,10 +642,10 @@ namespace StoreLake.Sdk.CodeGeneration
             CodeTypeReference typeref_ForeignTable = new CodeTypeReference(foreignTable_Namespace + fk.RelatedTable.TableName + "DataTable");
 
 
-            var method_GetTable_defining = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(extensions_type_decl.Name),
-                             "GetTable", new CodeTypeReference[] { new CodeTypeReference(fk.Table.TableName + "DataTable") });
-            var method_GetTable_foreign = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(extensions_type_decl.Name),
-                            "GetTable", new CodeTypeReference[] { typeref_ForeignTable });
+            var method_GetTable_defining = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(exttype.extensions_type_decl.Name),
+                             exttype.extensions_method_GetTable.Name, new CodeTypeReference[] { new CodeTypeReference(fk.Table.TableName + "DataTable") });
+            var method_GetTable_foreign = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(exttype.extensions_type_decl.Name),
+                            exttype.extensions_method_GetTable.Name, new CodeTypeReference[] { typeref_ForeignTable });
 
             var invoke_GetTable_defining = new CodeMethodInvokeExpression(method_GetTable_defining, new CodeExpression[] {
                 new CodeVariableReferenceExpression("ds")
@@ -638,7 +747,7 @@ namespace StoreLake.Sdk.CodeGeneration
             return false;
         }
 
-        private static void Adjust_TypeDecl(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extension_decl, string fullNamespaceOrOwnerTypeName, CodeTypeDeclaration type_decl)
+        private static void Adjust_TypeDecl(RegistrationResult rr, DacPacRegistration dacpac, ExtensionsClass exttype, string fullNamespaceOrOwnerTypeName, CodeTypeDeclaration type_decl)
         {
             string fullClassName = fullNamespaceOrOwnerTypeName + "." + type_decl.Name;
             //Console.WriteLine("class " + fullClassName);
@@ -743,7 +852,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         else
                         {
 
-                            Adjust_TypeDecl(rr, dacpac, extension_decl, fullClassName, member_type);
+                            Adjust_TypeDecl(rr, dacpac, exttype, fullClassName, member_type);
                         }
                     }
                 }
@@ -757,10 +866,10 @@ namespace StoreLake.Sdk.CodeGeneration
                     if (isSetClassDeclaration && member_ctor.Parameters.Count == 0)
                     {
                         // default ctor => static method on 'DataSet ds'
-                        CodeTypeMember member_decl_x = Adjust_DataSet_Constructor(extension_decl.Name, member_ctor);
+                        CodeTypeMember member_decl_x = Adjust_DataSet_Constructor(exttype.extensions_type_decl.Name, member_ctor);
                         if (member_decl_x != null)
                         {
-                            extension_decl.Members.Add(member_decl_x);
+                            exttype.extensions_type_decl.Members.Add(member_decl_x);
                             //membersToInsert.Add(member_decl_x);
                             membersToRemove.Add(member_decl);
                         }
@@ -894,7 +1003,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     if (isSetClassDeclaration && member_method.Name == "InitClass")
                     {
                         Adjust_DataSet_InitClass(rr, dacpac, member_method);
-                        extension_decl.Members.Add(member_method);
+                        exttype.extensions_type_decl.Members.Add(member_method);
                         membersToRemove.Add(member_method);
                     }
                 }
@@ -936,10 +1045,10 @@ namespace StoreLake.Sdk.CodeGeneration
                         }
                         else
                         {
-                            CodeMemberMethod member_method_x = Adjust_DataSet_TableAccessor(extension_decl, member_property);
+                            CodeMemberMethod member_method_x = Adjust_DataSet_TableAccessor(exttype, member_property);
                             //if (member_method_x != null)
                             {
-                                extension_decl.Members.Add(member_method_x);
+                                exttype.extensions_type_decl.Members.Add(member_method_x);
                                 membersToRemove.Add(member_property);
                             }
                         }
@@ -1303,7 +1412,7 @@ namespace StoreLake.Sdk.CodeGeneration
             if (column.AllowDBNull)
             {
                 if (column.DataType == typeof(byte[]))
-                { 
+                {
                 }
                 if (column.DataType.IsValueType || column.DataType == typeof(string) || column.DataType == typeof(byte[]))
                 {
@@ -1719,9 +1828,9 @@ namespace StoreLake.Sdk.CodeGeneration
         private static void Adjust_DataSet_InitClass(RegistrationResult rr, DacPacRegistration dacpac, CodeMemberMethod member_method)
         {
             /*
-	tablehlspdefinition = new hlspdefinitionDataTable();
-	base.Tables.Add(tablehlspdefinition);
-            
+    tablehlspdefinition = new hlspdefinitionDataTable();
+    base.Tables.Add(tablehlspdefinition);
+
             => 
             base.Tables.Add(new hlspdefinitionDataTable());
              */
@@ -1766,10 +1875,10 @@ namespace StoreLake.Sdk.CodeGeneration
                         // use it?
                         /*
     base.DataSetName = "DemoTestData";
-	base.Prefix = "";
-	base.Namespace = "[dbo]";
-	base.EnforceConstraints = true;
-	SchemaSerializationMode = SchemaSerializationMode.IncludeSchema;                         
+    base.Prefix = "";
+    base.Namespace = "[dbo]";
+    base.EnforceConstraints = true;
+    SchemaSerializationMode = SchemaSerializationMode.IncludeSchema;                         
                          */
 
                         ///skip_old = true;
@@ -1838,7 +1947,7 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
-        private static CodeMemberMethod Adjust_DataSet_TableAccessor(CodeTypeDeclaration extension_decl, CodeMemberProperty member_property)
+        private static CodeMemberMethod Adjust_DataSet_TableAccessor(ExtensionsClass exttype, CodeMemberProperty member_property)
         {
             CodeMemberMethod member_method = new CodeMemberMethod();
             CodeTypeParameter ctp = new CodeTypeParameter("TDataSet");
@@ -1859,8 +1968,8 @@ namespace StoreLake.Sdk.CodeGeneration
             member_method.Statements.Add(new CodeMethodReturnStatement(
                              new CodeMethodInvokeExpression(
                                   new CodeMethodReferenceExpression(
-                                     new CodeTypeReferenceExpression(extension_decl.Name),
-                                     "GetTable",
+                                     new CodeTypeReferenceExpression(exttype.extensions_type_decl.Name),
+                                     exttype.extensions_method_GetTable.Name,
                                              new CodeTypeReference[] { member_property.Type }),
                                               new CodeVariableReferenceExpression("ds"),
                                                        new_CodePrimitiveExpression(member_property.Name))));
