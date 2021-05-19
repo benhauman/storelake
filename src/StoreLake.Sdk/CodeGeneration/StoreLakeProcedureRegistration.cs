@@ -12,6 +12,7 @@ namespace StoreLake.Sdk.CodeGeneration
         public string ProcedureBodyScript { get; set; }
 
         public List<StoreLakeParameterRegistration> Parameters = new List<StoreLakeParameterRegistration>();
+        public List<StoreLakeAnnotationRegistration> Annotations = new List<StoreLakeAnnotationRegistration>();
 
     }
 }

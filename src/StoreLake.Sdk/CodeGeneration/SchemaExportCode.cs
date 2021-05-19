@@ -402,19 +402,31 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 //Console.WriteLine("" + procedure.ProcedureSchemaName + "." + procedure.ProcedureName);
 
-                bool? isQueryProcedure;
+                int? countOfResultSets;
+                string procedureMethodName;
                 try
                 {
-                    isQueryProcedure = SqlDom.ProcedureGenerator.IsQueryProcedure(procedure.ProcedureName, procedure.ProcedureBodyScript);
+                    bool? isQueryProcedure = SqlDom.ProcedureGenerator.IsQueryProcedure(procedure.ProcedureName, procedure.ProcedureBodyScript);
+                    countOfResultSets = procedure.Annotations.Count(x => x.AnnotationKey == "Return");
+                    var annotation_Name = procedure.Annotations.SingleOrDefault(x => x.AnnotationKey == "Name");
+                    if (annotation_Name != null)
+                    {
+                        procedureMethodName = annotation_Name.AnnotationValue;
+                    }
+                    else
+                    {
+                        procedureMethodName = procedure.ProcedureName;
+                    }
                 }
                 catch (Exception ex)
                 {
                     s_tracer.TraceEvent(TraceEventType.Warning, 0, "Procedure  [" + procedure.ProcedureName + "] generation failed." + ex.Message);
-                    isQueryProcedure = null;
+                    countOfResultSets = null;
+                    procedureMethodName = procedure.ProcedureName;
                 }
-                if (isQueryProcedure.HasValue)
+                if (countOfResultSets.HasValue)
                 {
-                    GenerateProcedureDeclaration(procedures_type_decl, procedure, isQueryProcedure.Value);
+                    GenerateProcedureDeclaration(procedures_type_decl, procedure, countOfResultSets.Value, procedureMethodName);
                 }
                 else
                 {
@@ -423,16 +435,16 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
-        private static void GenerateProcedureDeclaration(CodeTypeDeclaration procedures_type_decl, StoreLakeProcedureRegistration procedure, bool isQueryProcedure)
+        private static void GenerateProcedureDeclaration(CodeTypeDeclaration procedures_type_decl, StoreLakeProcedureRegistration procedure, int countOfResultSets, string procedureMethodName)
         {
-            CodeMemberMethod procedure_method = new CodeMemberMethod() { Name = procedure.ProcedureName, Attributes = MemberAttributes.Public };
+            CodeMemberMethod procedure_method = new CodeMemberMethod() { Name = procedureMethodName, Attributes = MemberAttributes.Public };
             procedures_type_decl.Members.Add(procedure_method);
             procedure_method.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "db"));
             procedure_method.Parameters.Add(new CodeParameterDeclarationExpression(typeof(System.Data.Common.DbCommand), "cmd"));
 
             procedure_method.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
 
-            Type returnType = isQueryProcedure
+            Type returnType = countOfResultSets > 0
                 ? typeof(System.Data.Common.DbDataReader)
                 : typeof(int);
 

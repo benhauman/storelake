@@ -79,7 +79,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 {
                     if (type.IsDefined(databaseAccessorAttributeType))
                     {
-                        GenerateCommandHandlerFacade(dbx, ccu, type);
+                        GenerateDatabaseAccessHandlerFacade(dbx, ccu, type);
                     }
                     else if (type.IsDefined(dbx.Dibix_StructuredTypeAttribute))
                     {
@@ -139,11 +139,11 @@ namespace StoreLake.Sdk.CodeGeneration
 
         }
 
-        private static void GenerateCommandHandlerFacade(KnownDibixTypes dbx, CodeCompileUnit ccu, Type databaseAccessorType)
+        private static void GenerateDatabaseAccessHandlerFacade(KnownDibixTypes dbx, CodeCompileUnit ccu, Type databaseAccessorType)
         {
             //Console.WriteLine("" + databaseAccessorType.FullName);
             CodeNamespace ns = EnsureNamespace(ccu, databaseAccessorType);
-            CodeTypeDeclaration typedecl = BuildCommandHandlerFacadeType(dbx, databaseAccessorType);
+            CodeTypeDeclaration typedecl = BuildDatabaseAccessHandlerFacadeType(dbx, databaseAccessorType);
             ns.Types.Add(typedecl);
         }
 
@@ -237,9 +237,9 @@ namespace StoreLake.Sdk.CodeGeneration
             }
             return new CodePrimitiveExpression(value);
         }
-        private static CodeTypeDeclaration BuildCommandHandlerFacadeType(KnownDibixTypes dbx, Type databaseAccessorType)
+        private static CodeTypeDeclaration BuildDatabaseAccessHandlerFacadeType(KnownDibixTypes dbx, Type databaseAccessorType)
         {
-            string typeName = databaseAccessorType.Name + "CommandHandlerFacade";
+            string typeName = databaseAccessorType.Name + "DatabaseAccessHandlerFacade"; // CommandHandlerFacade
             CodeTypeDeclaration typedecl = new CodeTypeDeclaration() { Name = typeName, IsClass = true, Attributes = MemberAttributes.Public };
 
             //typedecl.Comments.Add(new CodeCommentStatement("Generated (at:" + DateTime.UtcNow + ")", true));

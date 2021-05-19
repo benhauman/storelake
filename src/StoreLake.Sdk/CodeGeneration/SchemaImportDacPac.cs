@@ -320,6 +320,24 @@ namespace StoreLake.Sdk.CodeGeneration
                 procedure_reg.ProcedureName = procedure_name;
                 procedure_reg.ProcedureBodyScript = xcdata.Value.Trim(); //xProperty_BodyScript_Value == null ? null : xProperty_BodyScript.Value;
 
+                var xSysCommentsObjectAnnotation = xProcedure.Elements().Single(e => e.Name.LocalName == "Annotation" && e.Attributes().Any(t => t.Name.LocalName == "Type" && t.Value == "SysCommentsObjectAnnotation"));
+                if (xSysCommentsObjectAnnotation != null)
+                {
+
+                    var xSysCommentsObjectAnnotation_Property_HeaderContents = xSysCommentsObjectAnnotation.Elements().Single(e => e.Name.LocalName == "Property" && e.Attributes().Any(t => t.Name.LocalName == "Name" && t.Value == "HeaderContents"));
+                    if (xSysCommentsObjectAnnotation_Property_HeaderContents != null)
+                    {
+                        var xaSysCommentsObjectAnnotation_Property_HeaderContents_Value = xSysCommentsObjectAnnotation_Property_HeaderContents.Attributes().Single(x => x.Name.LocalName == "Value");
+                        string comments = xaSysCommentsObjectAnnotation_Property_HeaderContents_Value.Value;
+                        CollectProcedureAnnotations(comments, (string key, string value) =>
+                        {
+                            procedure_reg.Annotations.Add(new StoreLakeAnnotationRegistration() { AnnotationKey = key, AnnotationValue = value });
+
+                        });
+                    }
+                }
+
+
                 // <Relationship Name="Parameters">
                 CollectRelationParameters(xProcedureName.Value, xProcedure, "Parameters", (parameter_name, type_name) =>
                 {
@@ -332,6 +350,36 @@ namespace StoreLake.Sdk.CodeGeneration
                 });
 
                 dacpac.registered_Procedures.Add(xProcedureName.Value, procedure_reg);
+            }
+        }
+
+        private static void CollectProcedureAnnotations(string comments, Action<string, string> collector)
+        {
+            string[] lines = comments.Split(new string[] { System.Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+            for (int ix = 0; ix < lines.Length; ix++)
+            {
+                string line = lines[ix].Trim();
+                if (line.StartsWith("--")) // ?
+                {
+                    // comment line
+                    int indexof = line.IndexOf("@Name ");
+                    if (indexof >= 0)
+                    {
+                        string item_key = "Name";
+                        string item_value = line.Substring(indexof + "@Name".Length).Trim();
+                        collector(item_key, item_value);
+                    }
+                    else
+                    {
+                        indexof = line.IndexOf("@Return ");
+                        if (indexof >= 0)
+                        {
+                            string item_key = "Return";
+                            string item_value = line.Substring(indexof + "@Return ".Length).Trim();
+                            collector(item_key, item_value);
+                        }
+                    }
+                }
             }
         }
 
