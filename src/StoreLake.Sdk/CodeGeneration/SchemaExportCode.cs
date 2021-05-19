@@ -1261,6 +1261,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         { typeof(float).FullName, "float?" }, // Single
                         { typeof(byte).FullName, "byte?" },
                         { typeof(string).FullName, "string" },
+                        //{ typeof(byte[]).FullName, "byte[]" },
                     };
         private static void Adjust_Row_Column_Accessor(DataTable table, CodeMemberProperty member_property)
         {
@@ -1289,27 +1290,43 @@ namespace StoreLake.Sdk.CodeGeneration
 
             if (column.AllowDBNull)
             {
-                if (column.DataType.IsValueType || column.DataType == typeof(string))
+                if (column.DataType == typeof(byte[]))
+                { 
+                }
+                if (column.DataType.IsValueType || column.DataType == typeof(string) || column.DataType == typeof(byte[]))
                 {
-
-                    string nullableTypeName;
-                    if (notnull_nullable_map.TryGetValue(column.DataType.FullName, out nullableTypeName))
-                    {
-                        Adjust_Row_Column_Accessor_Nullable_Get(table.TableName, nullableTypeName, member_property);
-                    }
-                    else
-                    {
-                        throw new StoreLakeSdkException("NotImplemented:" + "Row property type for nullable column  [" + table.TableName + "] '" + column.ColumnName + "' (" + column.DataType.Name + ")=[" + member_property.Type.BaseType + "]");
-                    }
-
+                    Adjust_Row_Column_Accessor_Nullable_Get(table.TableName, column, member_property);
                 } // IsValueType
+                else
+                {
+                    throw new NotImplementedException(column.DataType.Name);
+                }
             }// AllowDBNull
         }
 
-        private static void Adjust_Row_Column_Accessor_Nullable_Get(string tableName, string newPropType, CodeMemberProperty member_property)
+        private static void Adjust_Row_Column_Accessor_Nullable_Get(string tableName, DataColumn column, CodeMemberProperty member_property)
         {
-            var old_prop_type = member_property.Type.BaseType;
-            member_property.Type = new CodeTypeReference(newPropType != "string" ? newPropType : typeof(string).FullName);
+            CodeTypeReference value_type;
+            if (column.DataType == typeof(byte[]) || column.DataType == typeof(string))
+            {
+                //old_prop_type = column.DataType;
+                value_type = new CodeTypeReference(column.DataType);
+            }
+            else
+            {
+                if (notnull_nullable_map.TryGetValue(column.DataType.FullName, out string nullableType))
+                {
+                    //Adjust_Row_Column_Accessor_Nullable_Get(table.TableName, column.DataType, nullableTypeName, member_property);
+                }
+                else
+                {
+                    throw new StoreLakeSdkException("NotImplemented:" + "Row property type for nullable column  [" + tableName + "] '" + column.ColumnName + "' (" + column.DataType.Name + ")=[" + member_property.Type.BaseType + "]");
+                }
+
+                member_property.Type = new CodeTypeReference(nullableType);
+
+                value_type = new CodeTypeReference(member_property.Type.BaseType);
+            }
 
             CodeFieldReferenceExpression field_table_ref = new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "table" + tableName);
             CodePropertyReferenceExpression table_col_ref = new CodePropertyReferenceExpression(field_table_ref, member_property.Name + "Column");
@@ -1328,12 +1345,12 @@ namespace StoreLake.Sdk.CodeGeneration
             ///        new_CodePrimitiveExpression("null));
             ///
 
-            CodeConditionStatement ifNull = new CodeConditionStatement(conditionExpr, new CodeMethodReturnStatement(new_CodePrimitiveExpression(null)));
+            CodeConditionStatement ifNull_return_Null = new CodeConditionStatement(conditionExpr, new CodeMethodReturnStatement(new_CodePrimitiveExpression(null)));
             member_property.GetStatements.Clear();
 
             member_property.GetStatements.Add(var_value_decl);
-            member_property.GetStatements.Add(ifNull);
-            member_property.GetStatements.Add(new CodeMethodReturnStatement(new CodeCastExpression(old_prop_type, var_value_ref)));
+            member_property.GetStatements.Add(ifNull_return_Null);
+            member_property.GetStatements.Add(new CodeMethodReturnStatement(new CodeCastExpression(value_type, var_value_ref)));
         }
 
         private static void Adjust_Table_AddRowWithValues(RegistrationResult rr, DacPacRegistration dacpac, DataTable table, CodeMemberMethod member_method)
