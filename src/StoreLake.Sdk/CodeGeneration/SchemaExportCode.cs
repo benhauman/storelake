@@ -1,4 +1,5 @@
-﻿using StoreLake.Sdk.SqlDom;
+﻿using Microsoft.CSharp;
+using StoreLake.Sdk.SqlDom;
 using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
@@ -132,7 +133,10 @@ namespace StoreLake.Sdk.CodeGeneration
 
             Microsoft.CSharp.CSharpCodeProvider codeProvider = new Microsoft.CSharp.CSharpCodeProvider();// //CodeDomProvider.CreateProvider(language);
 
-            CodeCompileUnit ccu = new CodeCompileUnit();
+            CodeCompileUnit ccu_main = new CodeCompileUnit();
+            CodeCompileUnit ccu_tables = new CodeCompileUnit();
+            CodeCompileUnit ccu_procedures = new CodeCompileUnit();
+            CodeCompileUnit ccu_accessors = new CodeCompileUnit();
 
             CompilerParameters comparam = new CompilerParameters(new string[] { });
             if (doGenerate)
@@ -145,9 +149,9 @@ namespace StoreLake.Sdk.CodeGeneration
                 AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.TypedTableBase<>).Assembly);
                 AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Xml.Serialization.IXmlSerializable).Assembly);
 
-                AddAssemblyAttributes(ccu);
+                AddAssemblyAttributes(ccu_main);
 
-                GenerateDataSetClasses(ccu, schemaContent, namespaceName, codeProvider);
+                GenerateDataSetClasses(ccu_tables, schemaContent, namespaceName, codeProvider);
 
                 //=================================================================================
                 //string codeFileName = Path.Combine(tempDirInfo.FullName, fileName + ".RawMSCode.cs");
@@ -157,11 +161,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 //}
                 //=================================================================================
 
-                Adjust_CCU(assemblyResolver, comparam, rr, dacpac, ccu, storeSuffix);
+                Adjust_CCU(assemblyResolver, comparam, rr, dacpac, ccu_tables, ccu_procedures, storeSuffix);
             }
             //dacpac.TestStoreAssemblyNamespace
 
-            StoreAccessorCodeGenerator.GenerateAccessors(dbx, assemblyResolver, dacpac, doGenerate, comparam, ccu, inputdir);
+            StoreAccessorCodeGenerator.GenerateAccessors(dbx, assemblyResolver, dacpac, doGenerate, comparam, ccu_accessors, inputdir);
 
             if (!doGenerate)
             {
@@ -205,21 +209,32 @@ namespace StoreLake.Sdk.CodeGeneration
                     Directory.CreateDirectory(tempDirInfo.FullName);
                 }
 
-
-                string codeFileName = Path.Combine(tempDirInfo.FullName, fileName + ".cs");
-                using (TextWriter textWriter = new StreamWriter(codeFileName, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
-                //using (TextWriter textWriter = CreateOutputWriter(Path.Combine(outputdir, path), fileName, "cs"))
+                List<string> codeFileNames = new List<string>();
                 {
-                    codeProvider.GenerateCodeFromCompileUnit(ccu, textWriter, null);
+                    GenerateCodeFile(tempDirInfo, codeProvider, codeFileNames, fileName, ccu_main, "Main");
+                    GenerateCodeFile(tempDirInfo, codeProvider, codeFileNames, fileName, ccu_tables, "Tables");
+                    GenerateCodeFile(tempDirInfo, codeProvider, codeFileNames, fileName, ccu_procedures, "Procedures");
+                    GenerateCodeFile(tempDirInfo, codeProvider, codeFileNames, fileName, ccu_accessors, "Accessors");
                 }
-                s_tracer.TraceEvent(TraceEventType.Verbose, 0, "codeFileName:" + codeFileName);
 
-                CompileCode(dacpac, comparam, ccu, libdir, outputdir, fileName, fullFileName_dll, tempDirInfo, codeFileName);
+                CompileCode(dacpac, comparam, libdir, outputdir, fileName, fullFileName_dll, tempDirInfo, codeFileNames.ToArray());
             }
             assemblyResolver.ResolveAssembyByLocation(fullFileName_dll);
             dacpac.TestStoreAssemblyFullFileName = fullFileName_dll;
 
             s_tracer.TraceEvent(TraceEventType.Information, 0, fullFileName_dll);
+        }
+
+        private static void GenerateCodeFile(DirectoryInfo tempDirInfo, CSharpCodeProvider codeProvider, List<string> codeFileNames, string fileName, CodeCompileUnit ccu, string area)
+        {
+            string codeFileName = Path.Combine(tempDirInfo.FullName, fileName + "." + area + ".cs");
+            using (TextWriter textWriter = new StreamWriter(codeFileName, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
+            //using (TextWriter textWriter = CreateOutputWriter(Path.Combine(outputdir, path), fileName, "cs"))
+            {
+                codeProvider.GenerateCodeFromCompileUnit(ccu, textWriter, null);
+            }
+            s_tracer.TraceEvent(TraceEventType.Verbose, 0, "codeFileName:" + codeFileName);
+            codeFileNames.Add(codeFileName);
         }
 
         private static void AddReferencedAssembly(AssemblyResolver assemblyResolver, CompilerParameters comparam, Assembly asm)
@@ -267,9 +282,12 @@ namespace StoreLake.Sdk.CodeGeneration
             internal CodeTypeDeclaration Member;
         }
 
-        private static void Adjust_CCU(AssemblyResolver assemblyResolver, CompilerParameters comparam, RegistrationResult rr, DacPacRegistration dacpac, CodeCompileUnit ccu, string storeSuffix)
+        private static void Adjust_CCU(AssemblyResolver assemblyResolver, CompilerParameters comparam, RegistrationResult rr, DacPacRegistration dacpac
+            , CodeCompileUnit ccu_tables
+            , CodeCompileUnit ccu_procedures
+            , string storeSuffix)
         {
-            if (ccu.Namespaces.Count > 1)
+            if (ccu_tables.Namespaces.Count > 1)
             {
                 throw new StoreLakeSdkException("Multiple namespaces");
             }
@@ -277,11 +295,13 @@ namespace StoreLake.Sdk.CodeGeneration
             //InitializeStoreNamespaceName(dacpac, storeSuffix);
 
             ExtensionsClass exttype = new ExtensionsClass();
-            CodeNamespace ns_old = ccu.Namespaces[0];
-            ccu.Namespaces.Clear();
-            CodeNamespace ns = new CodeNamespace();
-            ccu.Namespaces.Add(ns);
-            ns.Name = dacpac.TestStoreAssemblyNamespace;
+            CodeNamespace ns_old = ccu_tables.Namespaces[0];
+            ccu_tables.Namespaces.Clear();
+            CodeNamespace ns_tables = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
+            ccu_tables.Namespaces.Add(ns_tables);
+
+            CodeNamespace ns_procedures = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
+            ccu_procedures.Namespaces.Add(ns_procedures);
 
             {
                 exttype.extensions_type_decl = CreateStaticClass(dacpac.TestStoreExtensionSetName + "Extensions");
@@ -311,7 +331,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 exttype.extensions_method_GetTable.Statements.Add(new CodeMethodReturnStatement(var_ref_table));
                 exttype.extensions_type_decl.Members.Add(exttype.extensions_method_GetTable);
-                ns.Types.Add(exttype.extensions_type_decl);
+                ns_tables.Types.Add(exttype.extensions_type_decl);
             }
 
             {
@@ -347,14 +367,14 @@ namespace StoreLake.Sdk.CodeGeneration
                     }
                     else
                     {
-                        Adjust_TypeDecl(rr, dacpac, exttype, ns.Name, type_decl);
+                        Adjust_TypeDecl(rr, dacpac, exttype, ns_tables.Name, type_decl);
                         if (isSetClassDeclaration)
                         {
                             // skip it : 'NewDataSet'
                         }
                         else
                         {
-                            ns.Types.Add(type_decl);
+                            ns_tables.Types.Add(type_decl);
                         }
 
                         foreach (CodeTypeMember member_decl in type_decl.Members)
@@ -384,7 +404,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 foreach (NestedTypeDeclaration nested_type in nestedTypes)
                 {
                     nested_type.Owner.Members.Remove(nested_type.Member);
-                    ns.Types.Add(nested_type.Member);
+                    ns_tables.Types.Add(nested_type.Member);
                 }
             }
 
@@ -393,18 +413,18 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 Attributes = MemberAttributes.Public
             };
-            ns.Types.Add(procedures_handler_type_decl);
+            ns_procedures.Types.Add(procedures_handler_type_decl);
 
             string extMethodAccess_HandlerFacade = dacpac.TestStoreExtensionSetName + "Procedures" + "Facade";
             CodeTypeDeclaration procedures_facade_type_decl = new CodeTypeDeclaration(dacpac.TestStoreExtensionSetName + "Procedures" + "HandlerFacade")
             {
                 Attributes = MemberAttributes.Public
             };
-            ns.Types.Add(procedures_facade_type_decl);
+            ns_procedures.Types.Add(procedures_facade_type_decl);
 
 
             BuildStoreProceduresHandlerType(rr, dacpac, exttype.extensions_type_decl, procedures_handler_type_decl, procedures_facade_type_decl);
-            BuildStoreProceduresProvider(rr, dacpac, ns, exttype, procedures_handler_type_decl, extMethodAccess_CommandExecuteHandler, procedures_facade_type_decl, extMethodAccess_HandlerFacade);
+            BuildStoreProceduresProvider(rr, dacpac, ns_procedures, exttype, procedures_handler_type_decl, extMethodAccess_CommandExecuteHandler, procedures_facade_type_decl, extMethodAccess_HandlerFacade);
         }
 
         class ExtensionsClass
@@ -596,7 +616,7 @@ namespace StoreLake.Sdk.CodeGeneration
             if (fm != null)
             {
                 procedures_facade_type_decl.Members.Add(fm.facade_method_decl);
-                
+
                 //BuildInvokeFacadeMethod();
             }
 
@@ -623,7 +643,7 @@ namespace StoreLake.Sdk.CodeGeneration
             }
 
             facade_method.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "db"));
-            
+
             bool? hasReturnStatements = ProcedureGenerator.HasReturnStatement(procedure_metadata);
             if (!hasReturnStatements.HasValue)
             {
@@ -2344,7 +2364,7 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static void CompileCode(DacPacRegistration dacpac, CompilerParameters comparam, CodeCompileUnit codeCompileUnit, string libdir, string outputFolder, string fileName, string outputAssemblyFullFileName, DirectoryInfo tempDirInfo, string codeFileName)
+        private static void CompileCode(DacPacRegistration dacpac, CompilerParameters comparam, string libdir, string outputFolder, string fileName, string outputAssemblyFullFileName, DirectoryInfo tempDirInfo, string[] codeFileNames)
         {
             string errorsFullFileName = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".errors.txt");
             string tmpDllFullFileName = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".dll");
@@ -2386,7 +2406,7 @@ namespace StoreLake.Sdk.CodeGeneration
             //assembly in the respective path in case of successful //compilation  
             //CompilerResults compres = icc.CompileAssemblyFromDom(comparam, codeCompileUnit);
             s_tracer.TraceEvent(TraceEventType.Verbose, 0, "Compiling assembly (ref:" + dacpac.IsReferencedPackage + "):" + outputAssemblyFullFileName);
-            CompilerResults compres = icc.CompileAssemblyFromFile(comparam, codeFileName);
+            CompilerResults compres = icc.CompileAssemblyFromFileBatch(comparam, codeFileNames);
 
             if (compres == null || compres.Errors.Count > 0)
             {
