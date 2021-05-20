@@ -486,12 +486,22 @@ namespace StoreLake.Sdk.CodeGeneration
             exttype.extensions_type_decl.Members
                 .Add(procedure_provider_DataTable_Type_decl);
 
+            var method_decl_get_handler = BuildExtensionMethodsForProcedures(exttype, procedures_handler_type_decl, handlerMethod, procedure_provider_DataTable_Type_decl, Table_TableName, field_handlerInstanceCommandExecute);
+            var method_decl_get_facade = BuildExtensionMethodsForProcedures(exttype, procedures_facade_type_decl, facadeMethod, procedure_provider_DataTable_Type_decl, Table_TableName, field_handlerInstanceFacade);
 
+        }
+
+        private static CodeMemberMethod BuildExtensionMethodsForProcedures(ExtensionsClass exttype, 
+            CodeTypeDeclaration procedures_type_decl, string extensionMethodNameGet, 
+            CodeTypeDeclaration procedure_provider_DataTable_Type_decl, 
+            CodeMemberField Table_TableName, 
+            CodeMemberField field_handlerInstance)
+        {
             CodeMemberMethod extensions_method_GetHandler = new CodeMemberMethod()
             {
-                Name = handlerMethod,
+                Name = extensionMethodNameGet,
                 Attributes = MemberAttributes.Public | MemberAttributes.Static,
-                ReturnType = new CodeTypeReference(procedures_handler_type_decl.Name)
+                ReturnType = new CodeTypeReference(procedures_type_decl.Name)
             };
             CodeTypeParameter ctp = new CodeTypeParameter("TDataSet");
             ctp.Constraints.Add(new CodeTypeReference(typeof(DataSet)));
@@ -511,35 +521,33 @@ namespace StoreLake.Sdk.CodeGeneration
                 , new CodeFieldReferenceExpression(new CodeTypeReferenceExpression(procedure_provider_DataTable_Type_decl.Name), Table_TableName.Name)
             });
 
-            var field_ref_handlerInstanceCommandExecute = new CodeFieldReferenceExpression(invoke_GetTable_Handlers, field_handlerInstanceCommandExecute.Name);
+            var field_ref_handlerInstanceCommandExecute = new CodeFieldReferenceExpression(invoke_GetTable_Handlers, field_handlerInstance.Name);
             extensions_method_GetHandler.Statements.Add(new CodeMethodReturnStatement(field_ref_handlerInstanceCommandExecute));
 
 
             exttype.extensions_type_decl.Members.Add(extensions_method_GetHandler);
 
-            CodeMemberMethod extensions_method_SetProcedures = new CodeMemberMethod()
+            CodeMemberMethod extensions_method_SetHandler = new CodeMemberMethod()
             {
-                Name = "SetCommandExecuteHandlerInstanceFor" + handlerMethod, // SetHandlerFacadeInstanceDor
+                Name = "SetCommandExecuteHandlerInstanceFor" + extensionMethodNameGet, // SetHandlerFacadeInstanceDor
                 Attributes = MemberAttributes.Public | MemberAttributes.Static,
                 ReturnType = new CodeTypeReference("TDataSet")
             };
             CodeTypeParameter ctp_set_ds = new CodeTypeParameter("TDataSet");
             ctp_set_ds.Constraints.Add(new CodeTypeReference(typeof(DataSet)));
-            extensions_method_SetProcedures.TypeParameters.Add(ctp_set_ds);
+            extensions_method_SetHandler.TypeParameters.Add(ctp_set_ds);
             CodeTypeParameter ctp_set_hi = new CodeTypeParameter("THandler") { HasConstructorConstraint = true };
-            ctp_set_hi.Constraints.Add(new CodeTypeReference(procedures_handler_type_decl.Name));
-            extensions_method_SetProcedures.TypeParameters.Add(ctp_set_hi);
+            ctp_set_hi.Constraints.Add(new CodeTypeReference(procedures_type_decl.Name));
+            extensions_method_SetHandler.TypeParameters.Add(ctp_set_hi);
 
-            extensions_method_SetProcedures.Parameters.Add(param_decl_ds);
+            extensions_method_SetHandler.Parameters.Add(param_decl_ds);
 
             var assign_handler = new CodeAssignStatement(field_ref_handlerInstanceCommandExecute, new CodeObjectCreateExpression("THandler"));
 
-            extensions_method_SetProcedures.Statements.Add(assign_handler);
-            extensions_method_SetProcedures.Statements.Add(new CodeMethodReturnStatement(new CodeVariableReferenceExpression("ds")));
-
-
-
-            exttype.extensions_type_decl.Members.Add(extensions_method_SetProcedures);
+            extensions_method_SetHandler.Statements.Add(assign_handler);
+            extensions_method_SetHandler.Statements.Add(new CodeMethodReturnStatement(new CodeVariableReferenceExpression("ds")));
+            exttype.extensions_type_decl.Members.Add(extensions_method_SetHandler);
+            return extensions_method_GetHandler;
         }
 
         private static void BuildStoreProceduresHandlerType(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeTypeDeclaration procedures_handler_type_decl, CodeTypeDeclaration procedures_facade_type_decl)
@@ -604,7 +612,9 @@ namespace StoreLake.Sdk.CodeGeneration
             for (int ix = 0; ix < procedure.Parameters.Count; ix++)
             {
                 StoreLakeParameterRegistration parameter = procedure.Parameters[ix];
-                ProcedureParameterType parameterType = GetParameterClrType(parameter);
+                string codeParameterName = parameter.ParameterName.Replace("@", "");
+                ProcedureCodeParameter parameterType = GetParameterClrType(parameter);
+                parameterType.ParameterCodeName = codeParameterName;
                 procedure_metadata.parameters.Add(parameter.ParameterName, parameterType);
                 procedure_method.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name));
             }
@@ -637,10 +647,10 @@ namespace StoreLake.Sdk.CodeGeneration
                 return null;
             }
 
-            if (procedure.Parameters.Count > 0)
-            {
-                return null;
-            }
+            //if (procedure.Parameters.Count > 0)
+            //{
+            //    return null;
+            //}
 
             facade_method.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "db"));
 
@@ -653,10 +663,38 @@ namespace StoreLake.Sdk.CodeGeneration
             for (int ix = 0; ix < procedure.Parameters.Count; ix++)
             {
                 StoreLakeParameterRegistration parameter = procedure.Parameters[ix];
-                ProcedureParameterType parameterType = procedure_metadata.parameters[parameter.ParameterName];
-
-                facade_method.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name));
+                ProcedureCodeParameter parameterType = procedure_metadata.parameters[parameter.ParameterName];
+                facade_method.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name + " => " + parameterType.ParameterCodeName));
             }
+
+            for (int ix = 0; ix < procedure.Parameters.Count; ix++)
+            {
+                StoreLakeParameterRegistration parameter = procedure.Parameters[ix];
+                ProcedureCodeParameter parameterType = procedure_metadata.parameters[parameter.ParameterName];
+
+                //facade_method.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameterType.ParameterCodeName));
+                //if (parameterType.)
+
+                CodeParameterDeclarationExpression code_param_decl = new CodeParameterDeclarationExpression() { Name = parameterType.ParameterCodeName };
+                if (parameter.ParameterDbType != SqlDbType.Structured)
+                {
+                    if (parameter.AllowNull)
+                    {
+                        code_param_decl.Type = new CodeTypeReference(parameterType.TypeNull);
+                    }
+                    else
+                    {
+                        code_param_decl.Type = new CodeTypeReference(parameterType.TypeNotNull);
+
+                    }
+                }
+                else
+                {
+                    return null;
+                }
+                facade_method.Parameters.Add(code_param_decl);
+            }
+
 
             CommandFacadeMethod fm = new CommandFacadeMethod() { facade_method_decl = facade_method, HasReturn = hasReturnStatements.HasValue };
 
@@ -676,34 +714,34 @@ namespace StoreLake.Sdk.CodeGeneration
             return fm;// null;            
         }
 
-        private static ProcedureParameterType GetParameterClrType(StoreLakeParameterRegistration parameter)
+        private static ProcedureCodeParameter GetParameterClrType(StoreLakeParameterRegistration parameter)
         {
             if (parameter.ParameterDbType == SqlDbType.Structured)
-                return ProcedureParameterType.Create<NotImplementedException, NotImplementedException>();
+                return ProcedureCodeParameter.Create<NotImplementedException, NotImplementedException>();
             if (parameter.ParameterDbType == SqlDbType.Bit)
-                return ProcedureParameterType.Create<bool, bool>();
+                return ProcedureCodeParameter.Create<bool, bool>();
             if (parameter.ParameterDbType == SqlDbType.NVarChar)
-                return ProcedureParameterType.Create<string, string>();
+                return ProcedureCodeParameter.Create<string, string>();
             if (parameter.ParameterDbType == SqlDbType.Int)
-                return ProcedureParameterType.Create<int, int?>();
+                return ProcedureCodeParameter.Create<int, int?>();
             if (parameter.ParameterDbType == SqlDbType.BigInt)
-                return ProcedureParameterType.Create<long, long?>();
+                return ProcedureCodeParameter.Create<long, long?>();
             if (parameter.ParameterDbType == SqlDbType.SmallInt)
-                return ProcedureParameterType.Create<short, short?>();
+                return ProcedureCodeParameter.Create<short, short?>();
             if (parameter.ParameterDbType == SqlDbType.TinyInt)
-                return ProcedureParameterType.Create<byte, byte?>();
+                return ProcedureCodeParameter.Create<byte, byte?>();
             if (parameter.ParameterDbType == SqlDbType.UniqueIdentifier)
-                return ProcedureParameterType.Create<Guid, Guid?>();
+                return ProcedureCodeParameter.Create<Guid, Guid?>();
             if (parameter.ParameterDbType == SqlDbType.Xml)
-                return ProcedureParameterType.Create<System.Xml.Linq.XElement, System.Xml.Linq.XElement>();
+                return ProcedureCodeParameter.Create<System.Xml.Linq.XElement, System.Xml.Linq.XElement>();
             if (parameter.ParameterDbType == SqlDbType.DateTime)
-                return ProcedureParameterType.Create<DateTime, DateTime?>();
+                return ProcedureCodeParameter.Create<DateTime, DateTime?>();
             if (parameter.ParameterDbType == SqlDbType.VarBinary)
-                return ProcedureParameterType.Create<byte[], byte[]>();
+                return ProcedureCodeParameter.Create<byte[], byte[]>();
             if (parameter.ParameterDbType == SqlDbType.Decimal)
-                return ProcedureParameterType.Create<decimal, decimal?>();
+                return ProcedureCodeParameter.Create<decimal, decimal?>();
             if (parameter.ParameterDbType == SqlDbType.NChar)
-                return ProcedureParameterType.Create<string, string>(); // taskmanagement
+                return ProcedureCodeParameter.Create<string, string>(); // taskmanagement
 
             throw new NotImplementedException("" + parameter.ParameterDbType);
         }

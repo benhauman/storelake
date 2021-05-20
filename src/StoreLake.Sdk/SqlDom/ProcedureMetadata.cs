@@ -15,21 +15,24 @@ namespace StoreLake.Sdk.SqlDom
         public string ProcedureName { get; private set; }
         public TSqlFragment BodyFragment { get; private set; }
 
-        internal readonly IDictionary<string, ProcedureParameterType> parameters = new SortedDictionary<string, ProcedureParameterType>();
+        internal readonly IDictionary<string, ProcedureCodeParameter> parameters = new SortedDictionary<string, ProcedureCodeParameter>();
     }
 
-    class ProcedureParameterType
+    class ProcedureCodeParameter
     {
         internal readonly Type TypeNotNull;
         internal readonly Type TypeNull;
-        public ProcedureParameterType(Type typeNotNull, Type typeNull)
+        public ProcedureCodeParameter(Type typeNotNull, Type typeNull)
         {
             TypeNotNull = typeNotNull;
             TypeNull = typeNull;
         }
-        internal static ProcedureParameterType Create<TNotNull, TNull>()
+
+        internal string ParameterCodeName { get;  set; }
+
+        internal static ProcedureCodeParameter Create<TNotNull, TNull>()
         {
-            return new ProcedureParameterType(typeof(TNotNull), typeof(TNull));
+            return new ProcedureCodeParameter(typeof(TNotNull), typeof(TNull));
         }
 
     }
