@@ -7,8 +7,8 @@
     <Description>AAddeesscc</Description>
   </PropertyGroup>
   <PropertyGroup>
-    <PackageVersion>1.0.58</PackageVersion>
-    <FileVersion>1.0.58</FileVersion>
+    <PackageVersion>1.0.59</PackageVersion>
+    <FileVersion>1.0.59</FileVersion>
   </PropertyGroup>
   <!--<PropertyGroup>
     <VersionMajor>66</VersionMajor>

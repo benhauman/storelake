@@ -34,6 +34,7 @@ namespace StoreLake.Sdk.CodeGeneration
             Assembly asm_Dibix = assemblyResolver.ResolveAssembyByName(an_Dibix);
             //assemblyResolver.ResolveAssembyByName(an_DibixHttpServer);
             //assemblyResolver.ResolveAssembyByName(an_DibixHttpClient);
+            assemblyResolver.ResolveAssembyByName(typeof(System.Data.IDbCommand).Assembly.GetName());
 
             KnownDibixTypes dbx = StoreAccessorCodeGenerator.LoadKnownDibixTypes(asm_Dibix, assemblyResolver);
 
@@ -137,6 +138,7 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 assemblyResolver.ResolveAssembyByName(typeof(System.Data.DataTable).Assembly.GetName());
                 assemblyResolver.ResolveAssembyByName(typeof(System.Data.TypedTableBase<>).Assembly.GetName());
+                assemblyResolver.ResolveAssembyByName(typeof(System.Xml.Linq.XElement).Assembly.GetName());
                 AddReferencedAssembly(assemblyResolver, comparam, typeof(System.ComponentModel.MarshalByValueComponent).Assembly);
                 AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.DataTable).Assembly);
                 AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.TypedTableBase<>).Assembly);
@@ -804,7 +806,7 @@ namespace StoreLake.Sdk.CodeGeneration
             }
 
             AssemblyName asmName = AssemblyName.GetAssemblyName(foreign_dacpac.TestStoreAssemblyFullFileName);
-            return Assembly.Load(asmName);
+            return Assembly.ReflectionOnlyLoad(asmName.ToString()); // Assembly.Load(asmName); // ReflectionOnly?
         }
 
         private static CodeExpression new_CodePrimitiveExpression(object value)

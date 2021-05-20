@@ -189,8 +189,9 @@ namespace StoreLake.Sdk.CodeGeneration
             s_tracer.TraceInformation("ForceReferencePackageRegeneration=" + targs.ForceReferencePackageRegeneration);
             s_tracer.TraceInformation("GenerateMissingReferences=" + targs.GenerateMissingReferences);
 
-            AssemblyResolver assemblyResolver = new AssemblyResolver(targs.LibraryDirectory);
+            AssemblyResolver assemblyResolver = new AssemblyResolver(targs.LibraryDirectory, targs.OutputDirectory);
             AppDomain.CurrentDomain.AssemblyResolve += assemblyResolver.OnAssemblyResolve;
+            AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += assemblyResolver.OnReflectionOnlyAssemblyResolve;
             try
             {
                 string dacpacFullFileName = System.IO.Path.Combine(targs.InputDirectory, targs.DacpacFileName);
@@ -203,7 +204,8 @@ namespace StoreLake.Sdk.CodeGeneration
             }
             finally
             {
-                AppDomain.CurrentDomain.AssemblyResolve += assemblyResolver.OnAssemblyResolve;
+                AppDomain.CurrentDomain.AssemblyResolve -= assemblyResolver.OnAssemblyResolve;
+                AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve -= assemblyResolver.OnReflectionOnlyAssemblyResolve;
             }
         }
 

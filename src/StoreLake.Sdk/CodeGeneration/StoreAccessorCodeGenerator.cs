@@ -77,11 +77,41 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 foreach (Type type in asm.GetTypes())
                 {
-                    if (type.IsDefined(databaseAccessorAttributeType))
+                    IList<CustomAttributeData> customAttributes = type.GetCustomAttributesData();
+                    //Console.WriteLine("Type:" + type.FullName + "   A:" + customAttributes.Count);
+                    //if (customAttributes.Count > 0 && type.FullName.EndsWith("Set"))
+                    //{
+                    //    Console.WriteLine("       A:" + customAttributes.Count);
+                    //}
+
+                    bool type_IsDefined__databaseAccessorAttributeType = false;
+                    bool type_IsDefined__dbx_Dibix_StructuredTypeAttribute = false;
+                    foreach (CustomAttributeData customAttribute in customAttributes)
+                    {
+                        if (customAttribute.AttributeType == databaseAccessorAttributeType)
+                        {
+                            type_IsDefined__databaseAccessorAttributeType = true;
+                        }
+
+                        if (customAttribute.AttributeType == dbx.Dibix_StructuredTypeAttribute)
+                        {
+                            type_IsDefined__dbx_Dibix_StructuredTypeAttribute = true;
+                        }
+                    }
+
+                    //if (type.IsDefined(databaseAccessorAttributeType))
+                    //{
+                    //    GenerateDatabaseAccessHandlerFacade(dbx, ccu, type);
+                    //}
+                    //else if (type.IsDefined(dbx.Dibix_StructuredTypeAttribute))
+                    //{
+                    //    GenerateStructureTypeRow(ccu, type);
+                    //}
+                    if (type_IsDefined__databaseAccessorAttributeType)
                     {
                         GenerateDatabaseAccessHandlerFacade(dbx, ccu, type);
                     }
-                    else if (type.IsDefined(dbx.Dibix_StructuredTypeAttribute))
+                    else if (type_IsDefined__dbx_Dibix_StructuredTypeAttribute)
                     {
                         GenerateStructureTypeRow(ccu, type);
                     }

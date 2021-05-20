@@ -58,7 +58,8 @@ namespace StoreLake.Test
 	GROUP BY [a].[attributeid]
 END
 ";
-            var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(TestContext.TestName, sql);
+			var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
             //Assert.IsTrue(vstor.HasSelectStatements(), "HasSelectStatements");
         }
 

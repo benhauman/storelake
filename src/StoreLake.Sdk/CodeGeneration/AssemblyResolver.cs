@@ -10,9 +10,11 @@ namespace StoreLake.Sdk.CodeGeneration
     {
         private static readonly TraceSource s_tracer = SchemaExportCode.CreateTraceSource();
         private readonly string _libdir;
-        public AssemblyResolver(string libdir)
+        private readonly string _outputdir;
+        public AssemblyResolver(string libdir, string outputdir)
         {
             _libdir = libdir ?? string.Empty;
+            _outputdir = outputdir ?? string.Empty;
         }
         internal System.Reflection.Assembly OnAssemblyResolve(object sender, ResolveEventArgs args)
         {
@@ -24,6 +26,30 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 s_tracer.TraceInformation("OnAssemblyResolve (load) : " + fileName);
                 return Assembly.Load(AssemblyName.GetAssemblyName(fileName));
+            }
+            return null;
+        }
+        internal System.Reflection.Assembly OnReflectionOnlyAssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            return OnReflectionOnlyAssemblyResolveImpl(args.Name);
+        }
+        private System.Reflection.Assembly OnReflectionOnlyAssemblyResolveImpl(string args_Name)
+        {
+            s_tracer.TraceInformation("OnReflectionOnlyAssemblyResolve : " + args_Name);
+
+            AssemblyName asmName = new AssemblyName(args_Name); // Dibix.Http.Server, Version=1.0.0.0, Culture=neutral, PublicKeyToken=5b039a7bf8dc383e
+            string fileName = Path.Combine(_libdir, asmName.Name + ".dll");
+            if (File.Exists(fileName))
+            {
+                s_tracer.TraceInformation("OnReflectionOnlyAssemblyResolve (load) : " + fileName);
+                return Assembly.ReflectionOnlyLoadFrom(fileName);
+            }
+
+            fileName = Path.Combine(_outputdir, asmName.Name + ".dll");
+            if (File.Exists(fileName))
+            {
+                s_tracer.TraceInformation("OnReflectionOnlyAssemblyResolve (load) : " + fileName);
+                return Assembly.ReflectionOnlyLoadFrom(fileName);
             }
             return null;
         }
@@ -41,7 +67,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
             }
             AssemblyName asmName = AssemblyName.GetAssemblyName(dacpacDllFullFileName);
-            Assembly asm = Assembly.Load(asmName);
+            Assembly asm = OnReflectionOnlyAssemblyResolveImpl(asmName.ToString());
+            if (asm == null)
+            {
+                asm = Assembly.ReflectionOnlyLoad(asmName.ToString());// Assembly.Load(asmName); // ReflectionOnly?
+            }
 
             return CacheAssembly(asmName, asm);
         }
@@ -58,7 +88,12 @@ namespace StoreLake.Sdk.CodeGeneration
                 return cached_asm;
             }
 
-            Assembly asm = Assembly.Load(asmName);
+            Assembly asm = OnReflectionOnlyAssemblyResolveImpl(asmName.ToString());
+
+            if (asm == null)
+            {
+                asm = Assembly.ReflectionOnlyLoad(asmName.ToString()); // Assembly.Load(asmName); // ReflectionOnly?
+            }
 
             return CacheAssembly(asmName, asm);
         }
