@@ -222,9 +222,9 @@ namespace StoreLake.Sdk.CodeGeneration
             return level;
         }
 
-        private static void CollectRelationParameters(string objectName, XElement xRelationshipParent, string collectionName, Action<string, string> collector)
+        private static void CollectRelationParameters(string objectName, XElement xRelationshipParent, Action<StoreLakeParameterRegistration> collector)
         {
-            var xRelationship = xRelationshipParent.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == collectionName)).SingleOrDefault();
+            var xRelationship = xRelationshipParent.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Parameters")).SingleOrDefault();
             if (xRelationship == null)
             {
                 // no parameters
@@ -233,8 +233,9 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 foreach (var xRelationship_Entry in xRelationship.Elements())
                 {
-                    foreach (var xRelationship_Entry_Element in xRelationship_Entry.Elements().Where(e => e.Name.LocalName == "Element" && e.Attributes().Any(t => t.Name.LocalName == "Type" && t.Value == "SqlSubroutineParameter")))
+                    foreach (var xSqlSubroutineParameter in xRelationship_Entry.Elements().Where(e => e.Name.LocalName == "Element" && e.Attributes().Any(t => t.Name.LocalName == "Type" && t.Value == "SqlSubroutineParameter")))
                     {
+                        var xRelationship_Entry_Element = xSqlSubroutineParameter;
                         var xRelationship_Entry_Element_Name = xRelationship_Entry_Element.Attributes().Single(a => a.Name.LocalName == "Name");
                         string[] name_tokens = xRelationship_Entry_Element_Name.Value.Split('.');
                         string parameter_name = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
@@ -255,14 +256,46 @@ namespace StoreLake.Sdk.CodeGeneration
                         var Type_SqlTypeSpecifier = ReadParameterRelationshipTypeElement(xRelationship_Entry_Element, "Type");
                         string vtName = ReadTypeSpecifierRelationshipReferencesName(Type_SqlTypeSpecifier, "Type");
 
-                        var ColumnDbType = ParseKnownDbType(objectName, parameter_name, vtName);
+                        SqlDbType ColumnDbType = ParseKnownDbType(objectName, parameter_name, vtName, out string structureTypeSchemaName, out string structureTypeName);
                         //if (!ColumnDbType.HasValue)
                         //{
                         //    ColumnDbType = SqlDbType.Structured;
                         //    //Console.WriteLine("    " + parameter_name + "  " + vtName);
                         //}
 
-                        collector(parameter_name, vtName);
+                        // <Property Name="DefaultExpressionScript">
+                        // @objectid INT NULL = NULL
+                        string DefaultExpressionScript;
+                        var xProperty_DefaultExpressionScript = xRelationship_Entry_Element.Elements().FirstOrDefault(e => e.Name.LocalName == "Property" && e.Attributes().Any(t => t.Name.LocalName == "Name" && t.Value == "DefaultExpressionScript"));
+                        if (xProperty_DefaultExpressionScript != null)
+                        {
+                            var xProperty_DefaultExpressionScript_Value = xProperty_DefaultExpressionScript.Elements().Single(x => x.Name.LocalName == "Value");
+                            DefaultExpressionScript = xProperty_DefaultExpressionScript_Value.Value;
+                        }
+                        else
+                        {
+                            DefaultExpressionScript = null;
+                        }
+                        
+                        bool allowNull = false;
+                        if (string.Equals(DefaultExpressionScript, "NULL", StringComparison.OrdinalIgnoreCase))
+                        {
+                            allowNull = true;
+                        }
+
+
+                        //collector(parameter_name, vtName, ColumnDbType, false, structureTypeSchemaName, structureTypeName);
+                        StoreLakeParameterRegistration parameter = new StoreLakeParameterRegistration()
+                        {
+                            ParameterName = parameter_name,
+                            ParameterTypeName = vtName,
+                            ParameterDbType = ColumnDbType,
+                            AllowNull = allowNull,
+                            StructureTypeSchemaName = structureTypeSchemaName,
+                            StructureTypeName = structureTypeName,
+                        };
+
+                        collector(parameter);
                     }
                 }
             }
@@ -339,14 +372,9 @@ namespace StoreLake.Sdk.CodeGeneration
 
 
                 // <Relationship Name="Parameters">
-                CollectRelationParameters(xProcedureName.Value, xProcedure, "Parameters", (parameter_name, type_name) =>
+                CollectRelationParameters(xProcedureName.Value, xProcedure, (StoreLakeParameterRegistration parameter) =>
                 {
-                    //ck_reg.DefiningColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
-                    procedure_reg.Parameters.Add(new StoreLakeParameterRegistration()
-                    {
-                        ParameterName = parameter_name,
-                        ParameterTypeName = type_name
-                    });
+                    procedure_reg.Parameters.Add(parameter);
                 });
 
                 dacpac.registered_Procedures.Add(xProcedureName.Value, procedure_reg);
@@ -947,7 +975,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         var xTypeSpecifier_Entry_Element_Relationship_Entry = xTypeSpecifier_Entry_Element_Relationship.Elements().Single(x => x.Name.LocalName == "Entry");
                         var xTypeSpecifier_Entry_Element_Relationship_Entry_References = xTypeSpecifier_Entry_Element_Relationship_Entry.Elements().Single(x => x.Name.LocalName == "References");
                         var xColumnTypeName = xTypeSpecifier_Entry_Element_Relationship_Entry_References.Attributes().Single(a => a.Name.LocalName == "Name");
-                        creg.ColumnDbType = ParseKnownDbType(treg.TableName, creg.ColumnName, xColumnTypeName.Value);
+                        creg.ColumnDbType = ParseKnownDbType(treg.TableName, creg.ColumnName, xColumnTypeName.Value, out string structureTypeSchemaName, out string structureTypeName);
                     }
 
                     treg.Columns.Add(creg);
@@ -955,8 +983,10 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
-        private static System.Data.SqlDbType ParseKnownDbType(string objectName, string itemName, string typeName)
+        private static System.Data.SqlDbType ParseKnownDbType(string objectName, string itemName, string typeName, out string structureTypeSchemaName, out string structureTypeName)
         {
+            structureTypeSchemaName = null;
+            structureTypeName = null;
             if (string.Equals(typeName, "[int]", StringComparison.Ordinal))
             {
                 return System.Data.SqlDbType.Int;
@@ -1038,6 +1068,9 @@ namespace StoreLake.Sdk.CodeGeneration
                 string[] name_tokens = typeName.Split('.');
                 if (name_tokens.Length == 2)
                 {
+                    structureTypeSchemaName = name_tokens[0].Replace("[", "").Replace("]", "");
+                    structureTypeName = name_tokens[1].Replace("[", "").Replace("]", "");
+
                     return SqlDbType.Structured; // Schema/Name
                 }
                 //string references_name = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");

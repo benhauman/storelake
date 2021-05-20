@@ -10,10 +10,15 @@ namespace StoreLake.Sdk.SqlDom
 {
     public static class ProcedureGenerator
     {
-        public static bool? IsQueryProcedure(string procedure_name, string procedure_body)
+        public static ProcedureMetadata ParseProcedureBody(string procedure_name, string procedure_body)
         {
             TSqlFragment sqlF = ScriptDomFacade.Parse(procedure_body);
-            bool? res = SelectVisitor.AnalyzeHasOutputResultSet(sqlF);
+            return new ProcedureMetadata(procedure_name, sqlF);
+        }
+        public static bool? IsQueryProcedure(ProcedureMetadata procedure_metadata)
+        {
+            
+            bool? res = SelectVisitor.AnalyzeHasOutputResultSet(procedure_metadata.BodyFragment);
             return res.GetValueOrDefault();
         }
 

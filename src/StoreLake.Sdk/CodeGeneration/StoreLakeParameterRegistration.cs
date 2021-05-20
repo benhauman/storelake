@@ -10,5 +10,8 @@ namespace StoreLake.Sdk.CodeGeneration
         public string ParameterTypeName { get; set; }
 
         public SqlDbType ParameterDbType { get; set; }
+        public bool AllowNull { get; set; }
+        public string StructureTypeSchemaName { get; set; }
+        public string StructureTypeName { get; set; }
     }
 }
