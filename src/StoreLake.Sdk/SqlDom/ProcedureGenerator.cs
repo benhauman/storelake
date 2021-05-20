@@ -323,5 +323,21 @@ namespace StoreLake.Sdk.SqlDom
                 resultFragment = node;
             }
         }
+
+        internal static bool? HasReturnStatement(ProcedureMetadata procedure_metadata)
+        {
+            ReturnStatementVisitor vstor = new ReturnStatementVisitor();
+            procedure_metadata.BodyFragment.Accept(vstor);
+            return vstor.result;
+        }
+
+        class ReturnStatementVisitor : TSqlFragmentVisitor
+        {
+            internal bool result;
+            public override void ExplicitVisit(ReturnStatement node)
+            {
+                result = true;
+            }
+        }
     }
 }
