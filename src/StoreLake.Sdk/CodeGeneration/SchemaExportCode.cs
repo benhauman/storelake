@@ -642,6 +642,10 @@ namespace StoreLake.Sdk.CodeGeneration
                 return ProcedureParameterType.Create<DateTime, DateTime?>();
             if (parameter.ParameterDbType == SqlDbType.VarBinary)
                 return ProcedureParameterType.Create<byte[], byte[]>();
+            if (parameter.ParameterDbType == SqlDbType.Decimal)
+                return ProcedureParameterType.Create<decimal, decimal?>();
+            if (parameter.ParameterDbType == SqlDbType.NChar)
+                return ProcedureParameterType.Create<string, string>(); // taskmanagement
 
             throw new NotImplementedException("" + parameter.ParameterDbType);
         }
