@@ -14,6 +14,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Xml.Linq;
 using System.Xml.Schema;
 
 namespace StoreLake.Sdk.CodeGeneration
@@ -423,7 +424,7 @@ namespace StoreLake.Sdk.CodeGeneration
             ns_procedures.Types.Add(procedures_facade_type_decl);
 
 
-            BuildStoreProceduresHandlerType(rr, dacpac, exttype.extensions_type_decl, procedures_handler_type_decl, procedures_facade_type_decl);
+            BuildStoreProceduresHandlerType(rr, dacpac, exttype.extensions_type_decl, procedures_handler_type_decl, procedures_facade_type_decl, extMethodAccess_HandlerFacade);
             BuildStoreProceduresProvider(rr, dacpac, ns_procedures, exttype, procedures_handler_type_decl, extMethodAccess_CommandExecuteHandler, procedures_facade_type_decl, extMethodAccess_HandlerFacade);
         }
 
@@ -491,10 +492,10 @@ namespace StoreLake.Sdk.CodeGeneration
 
         }
 
-        private static CodeMemberMethod BuildExtensionMethodsForProcedures(ExtensionsClass exttype, 
-            CodeTypeDeclaration procedures_type_decl, string extensionMethodNameGet, 
-            CodeTypeDeclaration procedure_provider_DataTable_Type_decl, 
-            CodeMemberField Table_TableName, 
+        private static CodeMemberMethod BuildExtensionMethodsForProcedures(ExtensionsClass exttype,
+            CodeTypeDeclaration procedures_type_decl, string extensionMethodNameGet,
+            CodeTypeDeclaration procedure_provider_DataTable_Type_decl,
+            CodeMemberField Table_TableName,
             CodeMemberField field_handlerInstance)
         {
             CodeMemberMethod extensions_method_GetHandler = new CodeMemberMethod()
@@ -550,8 +551,10 @@ namespace StoreLake.Sdk.CodeGeneration
             return extensions_method_GetHandler;
         }
 
-        private static void BuildStoreProceduresHandlerType(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeTypeDeclaration procedures_handler_type_decl, CodeTypeDeclaration procedures_facade_type_decl)
+        private static void BuildStoreProceduresHandlerType(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeTypeDeclaration procedures_handler_type_decl, CodeTypeDeclaration procedures_facade_type_decl, string extMethodAccess_HandlerFacade)
         {
+            AddReadParameterFunctions(procedures_handler_type_decl);
+
             Console.WriteLine("Procedures found:" + dacpac.registered_Procedures.Values.Count);
             foreach (var procedure in dacpac.registered_Procedures.Values)
             {
@@ -585,7 +588,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 if (countOfResultSets.HasValue)
                 {
-                    GenerateProcedureDeclaration(procedures_handler_type_decl, procedure, countOfResultSets.Value, procedureMethodName, procedures_facade_type_decl, procedure_metadata);
+                    GenerateProcedureDeclaration(extMethodAccess_HandlerFacade, procedures_handler_type_decl, procedure, countOfResultSets.Value, procedureMethodName, procedures_facade_type_decl, procedure_metadata);
                 }
                 else
                 {
@@ -594,20 +597,201 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
-        private static void GenerateProcedureDeclaration(CodeTypeDeclaration procedures_type_decl, StoreLakeProcedureRegistration procedure, int countOfResultSets, string procedureMethodName, CodeTypeDeclaration procedures_facade_type_decl, SqlDom.ProcedureMetadata procedure_metadata)
+        class ParameterTypeMap
         {
-            CodeMemberMethod procedure_method = new CodeMemberMethod() { Name = procedureMethodName, Attributes = MemberAttributes.Public };
-            procedures_type_decl.Members.Add(procedure_method);
-            procedure_method.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "db"));
-            procedure_method.Parameters.Add(new CodeParameterDeclarationExpression(typeof(System.Data.Common.DbCommand), "cmd"));
+            public Type TypeNotNull;
+            public Type TypeNull;
+        }
+        private static IDictionary<string, ParameterTypeMap> s_ParameterTypeMap = InitializeParameterTypeMap();
+        private static IDictionary<string, ParameterTypeMap> AddParameterTypeMap<TNotNull, TNull>(IDictionary<string, ParameterTypeMap> dict)
+        {
+            dict.Add(typeof(TNotNull).AssemblyQualifiedName, new ParameterTypeMap() { TypeNotNull = typeof(TNotNull), TypeNull = typeof(TNull) });
+            return dict;
+        }
+        private static IDictionary<string, ParameterTypeMap> InitializeParameterTypeMap()
+        {
+            IDictionary<string, ParameterTypeMap> dict = new SortedDictionary<string, ParameterTypeMap>();
+            AddParameterTypeMap<string, string>(dict);
+            AddParameterTypeMap<bool, bool?>(dict);
+            AddParameterTypeMap<byte, byte?>(dict);
+            AddParameterTypeMap<short, short?>(dict);
+            AddParameterTypeMap<int, int?>(dict);
+            AddParameterTypeMap<long, long?>(dict);
+            AddParameterTypeMap<DateTime, DateTime?>(dict);
+            AddParameterTypeMap<Guid, Guid?>(dict);
+            AddParameterTypeMap<byte[], byte[]>(dict);
+            return dict;
+        }
+
+        private static void AddReadParameterFunctions(CodeTypeDeclaration type_decl)
+        {
+            //type_decl.StartDirectives.Add(new CodeRegionDirective(CodeRegionMode.Start, "Readers"));
+
+
+            bool startRegion = true;
+            foreach (ParameterTypeMap prm_type in s_ParameterTypeMap.Values)
+            {
+                var mtd = AddReadParameterFunctions_Cast(type_decl, prm_type.TypeNotNull);
+                if (startRegion)
+                {
+                    mtd.StartDirectives.Add(new CodeRegionDirective(CodeRegionMode.Start, "Readers"));
+                    startRegion = false;
+                }
+                AddReadParameterFunctions_NullOrCast(type_decl, prm_type.TypeNotNull, prm_type.TypeNull);
+            }
+
+            AddReadParameterFunctions_XElement(type_decl, false, typeof(System.Xml.Linq.XElement));
+            var mtd_end = AddReadParameterFunctions_XElement(type_decl, true, typeof(System.Xml.Linq.XElement));
+
+            mtd_end.EndDirectives.Add(new CodeRegionDirective(CodeRegionMode.End, String.Empty));
+        }
+
+        private static CodeMemberMethod AddReadParameterFunctions_Cast(CodeTypeDeclaration type_decl, Type typeNotNull)
+        {
+            //System.Data.Common.DbCommand cmd = null;
+            //(string)cmd.Parameters[""].Value;
+
+            CodeMemberMethod read_method_decl = BuildReadCommandParameterMethodDeclaration(type_decl, false, typeNotNull, typeNotNull);
+
+            var cmd_Parameters = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("cmd"), "Parameters");
+            var cmd_Parameter_prm = new CodeIndexerExpression(cmd_Parameters, new CodeExpression[] { new CodeVariableReferenceExpression("name") });
+            var cmd_Parameter_prm_Value = new CodePropertyReferenceExpression(cmd_Parameter_prm, "Value");
+
+            var cast_prm = new CodeCastExpression(typeNotNull, cmd_Parameter_prm_Value);
+            read_method_decl.Statements.Add(new CodeMethodReturnStatement(cast_prm));
+            return read_method_decl;
+        }
+
+        private static CodeMemberMethod AddReadParameterFunctions_XElement(CodeTypeDeclaration type_decl, bool allowNull, Type typeNotNull)
+        {
+            //System.Data.Common.DbCommand cmd = null;
+            //object val = cmd.Parameters[""].Value;
+            // if val is XElement return cast
+            // return XElement.Parse();
+
+            CodeMemberMethod read_method_decl = BuildReadCommandParameterMethodDeclaration(type_decl, allowNull, typeNotNull, typeNotNull);
+
+            var cmd_Parameters = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("cmd"), "Parameters");
+            var cmd_Parameter_prm = new CodeIndexerExpression(cmd_Parameters, new CodeExpression[] { new CodeVariableReferenceExpression("name") });
+            var cmd_Parameter_prm_Value = new CodePropertyReferenceExpression(cmd_Parameter_prm, "Value");
+
+            var var_val_decl = new CodeVariableDeclarationStatement(typeof(object), "val")
+            {
+                InitExpression = cmd_Parameter_prm_Value
+            };
+            read_method_decl.Statements.Add(var_val_decl);
+
+            var var_val_ref = new CodeVariableReferenceExpression(var_val_decl.Name);
+
+            if (allowNull)
+            {
+                var DBNull_Value = new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(DBNull)), "Value");
+
+                var is_Null = new CodeBinaryOperatorExpression(var_val_ref, CodeBinaryOperatorType.ValueEquality, new CodePrimitiveExpression(null));
+                var is_DBNull = new CodeBinaryOperatorExpression(var_val_ref, CodeBinaryOperatorType.ValueEquality, DBNull_Value);
+
+                var if_is_Null_or_DBNull = new CodeConditionStatement();
+                if_is_Null_or_DBNull.Condition = new CodeBinaryOperatorExpression(is_Null, CodeBinaryOperatorType.BooleanOr, is_DBNull);
+                if_is_Null_or_DBNull.TrueStatements.Add(new CodeMethodReturnStatement(new CodePrimitiveExpression(null)));
+
+                read_method_decl.Statements.Add(if_is_Null_or_DBNull);
+            }
+
+            var cast_prm_XElement = new CodeCastExpression(typeNotNull, var_val_ref);
+            var cast_prm_String = new CodeCastExpression(typeof(string), var_val_ref);
+            var invoke_XElement_Parse = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(
+                    new CodeTypeReferenceExpression(typeof(XElement)), "Parse"
+                ), cast_prm_String);
+
+            CodeExpression isAssignable = new CodeMethodInvokeExpression(
+                new CodeTypeOfExpression(typeof(XElement)), "IsAssignableFrom",
+                 new CodeMethodInvokeExpression(var_val_ref, "GetType"));
+
+            var if_is_XElement = new CodeConditionStatement();
+            if_is_XElement.Condition = isAssignable;
+            if_is_XElement.TrueStatements.Add(new CodeMethodReturnStatement(cast_prm_XElement));
+            if_is_XElement.FalseStatements.Add(new CodeMethodReturnStatement(invoke_XElement_Parse));
+
+
+            read_method_decl.Statements.Add(if_is_XElement);
+            return read_method_decl;
+        }
+
+        private static void AddReadParameterFunctions_NullOrCast(CodeTypeDeclaration type_decl, Type typeNotNull, Type typeNull)
+        {
+            //System.Data.Common.DbCommand cmd = null;
+            //object val = cmd.Parameters[""].Value;
+            // if val == null || val == DBNull.Value return null
+            // return cast;
+
+            CodeMemberMethod read_method_decl = BuildReadCommandParameterMethodDeclaration(type_decl, true, typeNotNull, typeNull);
+
+            var cmd_Parameters = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("cmd"), "Parameters");
+            var cmd_Parameter_prm = new CodeIndexerExpression(cmd_Parameters, new CodeExpression[] { new CodeVariableReferenceExpression("name") });
+            var cmd_Parameter_prm_Value = new CodePropertyReferenceExpression(cmd_Parameter_prm, "Value");
+
+            var var_val_decl = new CodeVariableDeclarationStatement(typeof(object), "val")
+            {
+                InitExpression = cmd_Parameter_prm_Value
+            };
+            read_method_decl.Statements.Add(var_val_decl);
+
+
+            var var_val_ref = new CodeVariableReferenceExpression(var_val_decl.Name);
+            var cast_prm_XElement = new CodeCastExpression(typeNotNull, var_val_ref);
+
+            var DBNull_Value = new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(DBNull)), "Value");
+
+            var is_Null = new CodeBinaryOperatorExpression(var_val_ref, CodeBinaryOperatorType.ValueEquality, new CodePrimitiveExpression(null));
+            var is_DBNull = new CodeBinaryOperatorExpression(var_val_ref, CodeBinaryOperatorType.ValueEquality, DBNull_Value);
+
+            var if_is_Null_or_DBNull = new CodeConditionStatement();
+            if_is_Null_or_DBNull.Condition = new CodeBinaryOperatorExpression(is_Null, CodeBinaryOperatorType.BooleanOr, is_DBNull);
+            if_is_Null_or_DBNull.TrueStatements.Add(new CodeMethodReturnStatement(new CodePrimitiveExpression(null)));
+            if_is_Null_or_DBNull.FalseStatements.Add(new CodeMethodReturnStatement(cast_prm_XElement));
+
+
+            read_method_decl.Statements.Add(if_is_Null_or_DBNull);
+        }
+
+        private static CodeMemberMethod BuildReadCommandParameterMethodDeclaration(CodeTypeDeclaration type_decl, bool allowNull, Type typeNotNull, Type typeReturn)
+        {
+            CodeMemberMethod read_method_decl = new CodeMemberMethod() { Name = BuildReadCommandParameterMethodName(typeNotNull, allowNull) };
+            read_method_decl.Attributes = MemberAttributes.Static | MemberAttributes.Private;
+            read_method_decl.ReturnType = new CodeTypeReference(typeReturn);
+            read_method_decl.Parameters.Add(new CodeParameterDeclarationExpression(typeof(System.Data.Common.DbCommand), "cmd"));
+            read_method_decl.Parameters.Add(new CodeParameterDeclarationExpression(typeof(string), "name"));
+
+            type_decl.Members.Add(read_method_decl);
+            return read_method_decl;
+        }
+
+        private static string BuildReadCommandParameterMethodName(Type typeNotNull, bool allowNull)
+        {
+            string typeName = (typeNotNull == typeof(byte[])) ? "Bytes" : typeNotNull.Name;
+            return "read_" + typeName + (allowNull ? "_OrNull" : "");
+        }
+
+        class CommandHandlerMethod
+        {
+            internal string handler_type_name;
+            internal CodeMemberMethod handler_method_decl;
+        }
+        private static void GenerateProcedureDeclaration(string extMethodAccess_HandlerFacade, CodeTypeDeclaration procedures_type_decl, StoreLakeProcedureRegistration procedure, int countOfResultSets, string procedureMethodName, CodeTypeDeclaration procedures_facade_type_decl, SqlDom.ProcedureMetadata procedure_metadata)
+        {
+            CommandHandlerMethod hm = new CommandHandlerMethod() { handler_type_name = procedures_type_decl.Name };
+            hm.handler_method_decl = new CodeMemberMethod() { Name = procedureMethodName, Attributes = MemberAttributes.Public };
+            procedures_type_decl.Members.Add(hm.handler_method_decl);
+            hm.handler_method_decl.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "db"));
+            hm.handler_method_decl.Parameters.Add(new CodeParameterDeclarationExpression(typeof(System.Data.Common.DbCommand), "cmd"));
 
             Type returnType = countOfResultSets > 0
                 ? typeof(System.Data.Common.DbDataReader)
                 : typeof(int);
 
-            procedure_method.ReturnType = new CodeTypeReference(returnType);
+            hm.handler_method_decl.ReturnType = new CodeTypeReference(returnType);
 
-            procedure_method.Statements.Add(new CodeCommentStatement("Parameters:" + procedure.Parameters.Count));
+            hm.handler_method_decl.Statements.Add(new CodeCommentStatement("Parameters:" + procedure.Parameters.Count));
 
             for (int ix = 0; ix < procedure.Parameters.Count; ix++)
             {
@@ -616,31 +800,74 @@ namespace StoreLake.Sdk.CodeGeneration
                 ProcedureCodeParameter parameterType = GetParameterClrType(parameter);
                 parameterType.ParameterCodeName = codeParameterName;
                 procedure_metadata.parameters.Add(parameter.ParameterName, parameterType);
-                procedure_method.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name));
+                hm.handler_method_decl.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name));
             }
 
 
             CodeMemberMethod facade_method_decl = new CodeMemberMethod() { Name = procedureMethodName, Attributes = MemberAttributes.Public };
 
-            CommandFacadeMethod fm = TryBuildCommandFacadeMethod(facade_method_decl, procedure, countOfResultSets, procedure_metadata);
+            CommandFacadeMethod fm = TryBuildCommandFacadeMethod(procedures_facade_type_decl.Name, facade_method_decl, procedure, countOfResultSets, procedure_metadata);
             if (fm != null)
             {
                 procedures_facade_type_decl.Members.Add(fm.facade_method_decl);
 
-                //BuildInvokeFacadeMethod();
+                if (!BuildInvokeFacadeMethod(extMethodAccess_HandlerFacade, fm, procedure, procedure_metadata, hm))
+                {
+                    hm.handler_method_decl.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
+                }
+            }
+            else
+            {
+                hm.handler_method_decl.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
+            }
+        }
+
+
+        private static bool BuildInvokeFacadeMethod(string extMethodAccess_HandlerFacade, CommandFacadeMethod fm, StoreLakeProcedureRegistration procedure, ProcedureMetadata procedure_metadata
+            , CommandHandlerMethod hm)
+        {
+            hm.handler_method_decl.Statements.Add(new CodeCommentStatement("db." + extMethodAccess_HandlerFacade + "()." + fm.facade_method_decl.Name + "(" + "..." + ")"));
+            if (fm.CountOfResultSets > 0)
+                return false;
+
+
+            var invoke_get_facade = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(
+                new CodeVariableReferenceExpression("db"), extMethodAccess_HandlerFacade));
+
+            hm.handler_method_decl.Statements.Add(invoke_get_facade);
+
+            var invoke_facade_method = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(invoke_get_facade, fm.facade_method_decl.Name));
+            for (int ix = 0; ix < procedure.Parameters.Count; ix++)
+            {
+                //prm_get_Int32_OrNull()
+                StoreLakeParameterRegistration parameter = procedure.Parameters[ix];
+                ProcedureCodeParameter parameterType = procedure_metadata.parameters[parameter.ParameterName];
+                string get_param_value_method_name = BuildReadCommandParameterMethodName(parameterType.TypeNotNull, parameter.AllowNull);
+
+                var invoke_get_parameter_value = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(
+                    new CodeTypeReferenceExpression(hm.handler_type_name), get_param_value_method_name));
+                invoke_get_parameter_value.Parameters.Add(new CodeVariableReferenceExpression("cmd"));
+                invoke_get_parameter_value.Parameters.Add(new CodePrimitiveExpression(parameter.ParameterName));
+
+                hm.handler_method_decl.Statements.Add(invoke_get_parameter_value);
+                //return;
             }
 
-
-            procedure_method.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
+            //procedure_method.Statements.Add(invoke_facade_method);
+            hm.handler_method_decl.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
+            return true; // implemented
         }
 
         class CommandFacadeMethod
         {
+            internal string facade_type_name;
             internal CodeMemberMethod facade_method_decl;
             internal bool HasReturn;
+
+            public int CountOfResultSets;
         }
 
-        private static CommandFacadeMethod TryBuildCommandFacadeMethod(CodeMemberMethod facade_method, StoreLakeProcedureRegistration procedure, int countOfResultSets, SqlDom.ProcedureMetadata procedure_metadata)
+        private static CommandFacadeMethod TryBuildCommandFacadeMethod(string facade_type_name, CodeMemberMethod facade_method, StoreLakeProcedureRegistration procedure, int countOfResultSets, SqlDom.ProcedureMetadata procedure_metadata)
         {
             if (countOfResultSets > 0)
             {
@@ -696,7 +923,13 @@ namespace StoreLake.Sdk.CodeGeneration
             }
 
 
-            CommandFacadeMethod fm = new CommandFacadeMethod() { facade_method_decl = facade_method, HasReturn = hasReturnStatements.HasValue };
+            CommandFacadeMethod fm = new CommandFacadeMethod()
+            {
+                facade_type_name = facade_type_name,
+                facade_method_decl = facade_method,
+                CountOfResultSets = countOfResultSets,
+                HasReturn = hasReturnStatements.HasValue
+            };
 
             facade_method.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
 
@@ -2460,7 +2693,8 @@ namespace StoreLake.Sdk.CodeGeneration
                 Console.WriteLine(errorsFullFileName);
 
                 var err = compres.Errors[0];
-                throw new StoreLakeSdkException("Compile failed: (" + err.Line + "," + err.Column + "): error " + err.ErrorNumber + " : " + err.ErrorText);
+                string fn = Path.GetFileName(err.FileName);
+                throw new StoreLakeSdkException("Compile failed: " + fn + " (" + err.Line + "," + err.Column + "): error " + err.ErrorNumber + " : " + err.ErrorText);
             }
 
             s_tracer.TraceEvent(TraceEventType.Verbose, 0, "  Copy generated assembly : " + outputAssemblyFullFileName);
