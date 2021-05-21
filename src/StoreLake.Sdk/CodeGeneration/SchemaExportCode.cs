@@ -800,7 +800,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 ProcedureCodeParameter parameterType = GetParameterClrType(parameter);
                 parameterType.ParameterCodeName = codeParameterName;
                 procedure_metadata.parameters.Add(parameter.ParameterName, parameterType);
-                hm.handler_method_decl.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name));
+
+                if (parameter.ParameterDbType == SqlDbType.Structured)
+                {
+                    hm.handler_method_decl.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name));
+                }
             }
 
 
@@ -826,7 +830,7 @@ namespace StoreLake.Sdk.CodeGeneration
         private static bool BuildInvokeFacadeMethod(string extMethodAccess_HandlerFacade, CommandFacadeMethod fm, StoreLakeProcedureRegistration procedure, ProcedureMetadata procedure_metadata
             , CommandHandlerMethod hm)
         {
-            hm.handler_method_decl.Statements.Add(new CodeCommentStatement("db." + extMethodAccess_HandlerFacade + "()." + fm.facade_method_decl.Name + "(" + "..." + ")"));
+            //hm.handler_method_decl.Statements.Add(new CodeCommentStatement("db." + extMethodAccess_HandlerFacade + "()." + fm.facade_method_decl.Name + "(" + "..." + ")"));
             if (fm.CountOfResultSets > 0)
                 return false;
 
@@ -834,9 +838,11 @@ namespace StoreLake.Sdk.CodeGeneration
             var invoke_get_facade = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(
                 new CodeVariableReferenceExpression("db"), extMethodAccess_HandlerFacade));
 
-            hm.handler_method_decl.Statements.Add(invoke_get_facade);
+            //hm.handler_method_decl.Statements.Add(invoke_get_facade);
 
             var invoke_facade_method = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(invoke_get_facade, fm.facade_method_decl.Name));
+            invoke_facade_method.Parameters.Add(new CodeVariableReferenceExpression("db"));
+
             for (int ix = 0; ix < procedure.Parameters.Count; ix++)
             {
                 //prm_get_Int32_OrNull()
@@ -849,12 +855,19 @@ namespace StoreLake.Sdk.CodeGeneration
                 invoke_get_parameter_value.Parameters.Add(new CodeVariableReferenceExpression("cmd"));
                 invoke_get_parameter_value.Parameters.Add(new CodePrimitiveExpression(parameter.ParameterName));
 
-                hm.handler_method_decl.Statements.Add(invoke_get_parameter_value);
-                //return;
+                var prm_variable_decl = new CodeVariableDeclarationStatement(parameter.AllowNull ? parameterType.TypeNull : parameterType.TypeNotNull, parameterType.ParameterCodeName);
+                prm_variable_decl.InitExpression = invoke_get_parameter_value;
+                hm.handler_method_decl.Statements.Add(prm_variable_decl);
+
+                invoke_facade_method.Parameters.Add(new CodeVariableReferenceExpression(prm_variable_decl.Name));
             }
 
+            //hm.handler_method_decl.Statements.Add(invoke_facade_method);
+
+            //CodeMethodInvokeExpression invoke_facade_method_decl = new CodeMethodInvokeExpression(invoke_get_facade, fm.facade_method_decl.Name, invoke_facade_method_parameters.ToArray());
             //procedure_method.Statements.Add(invoke_facade_method);
-            hm.handler_method_decl.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
+            //hm.handler_method_decl.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
+            hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(invoke_facade_method));
             return true; // implemented
         }
 
@@ -952,7 +965,7 @@ namespace StoreLake.Sdk.CodeGeneration
             if (parameter.ParameterDbType == SqlDbType.Structured)
                 return ProcedureCodeParameter.Create<NotImplementedException, NotImplementedException>();
             if (parameter.ParameterDbType == SqlDbType.Bit)
-                return ProcedureCodeParameter.Create<bool, bool>();
+                return ProcedureCodeParameter.Create<bool, bool?>();
             if (parameter.ParameterDbType == SqlDbType.NVarChar)
                 return ProcedureCodeParameter.Create<string, string>();
             if (parameter.ParameterDbType == SqlDbType.Int)

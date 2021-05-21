@@ -19,3 +19,4 @@
 /src/StoreLake.ClientApp/obj
 /src/StoreLake.Test/bin/Debug/net45
 /src/StoreLake.Test/obj
+*.user
