@@ -818,7 +818,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         throw new NotSupportedException("Type registration could not be found:" + parameter.ParameterTypeFullName);
                     }
-                    hm.handler_method_decl.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeFullName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name));
+                    hm.handler_method_decl.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeFullName + ") " + parameterType.UserDefinedTybleTypeFullName));
                 }
             }
 
@@ -919,7 +919,14 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 StoreLakeParameterRegistration parameter = procedure.Parameters[ix];
                 ProcedureCodeParameter parameterType = procedure_metadata.parameters[parameter.ParameterName];
-                facade_method.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeFullName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name + " => " + parameterType.ParameterCodeName));
+                if (parameter.ParameterDbType == SqlDbType.Structured)
+                {
+                    facade_method.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeFullName + ") " + parameterType.UserDefinedTybleTypeFullName + " => " + parameterType.ParameterCodeName));
+                }
+                else
+                {
+                    facade_method.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeFullName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name + " => " + parameterType.ParameterCodeName));
+                }
             }
 
             for (int ix = 0; ix < procedure.Parameters.Count; ix++)
@@ -931,7 +938,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 //if (parameterType.)
 
                 CodeParameterDeclarationExpression code_param_decl = new CodeParameterDeclarationExpression() { Name = parameterType.ParameterCodeName };
-                if (parameter.ParameterDbType != SqlDbType.Structured)
+                if (parameter.ParameterDbType == SqlDbType.Structured) // // IEnumerable<udtRow>
+                {
+                    return null; // IEnumerable<udtRow>
+                }
+                else
                 {
                     if (parameter.AllowNull)
                     {
@@ -942,10 +953,6 @@ namespace StoreLake.Sdk.CodeGeneration
                         code_param_decl.Type = new CodeTypeReference(parameterType.TypeNotNull);
 
                     }
-                }
-                else
-                {
-                    return null;
                 }
                 facade_method.Parameters.Add(code_param_decl);
             }
@@ -978,7 +985,7 @@ namespace StoreLake.Sdk.CodeGeneration
         private static ProcedureCodeParameter GetParameterClrType(StoreLakeParameterRegistration parameter)
         {
             if (parameter.ParameterDbType == SqlDbType.Structured)
-                return ProcedureCodeParameter.Create<NotImplementedException, NotImplementedException>();
+                return ProcedureCodeParameter.CreateUdt(parameter.ParameterTypeFullName);
             if (parameter.ParameterDbType == SqlDbType.Bit)
                 return ProcedureCodeParameter.Create<bool, bool?>();
             if (parameter.ParameterDbType == SqlDbType.NVarChar)

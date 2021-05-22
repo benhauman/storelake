@@ -1189,31 +1189,9 @@ namespace StoreLake.Sdk.CodeGeneration
             }
             else
             {
-                //SchemaObjectName sonType = ReadSchemaObjectName();
-                //string[] name_tokens = typeName.Split('.');
-                //if (name_tokens.Length == 2)
-                {
-                    structureTypeSchemaName = sonType.SchemaName;// name_tokens[0].Replace("[", "").Replace("]", "");
-                    structureTypeName = sonType.ObjectName;// name_tokens[1].Replace("[", "").Replace("]", "");
-
-                    return SqlDbType.Structured; // Schema/Name
-                }
-                //string references_name = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
-                //
-                //string schemaName = name_tokens.Length < 2 ? null : name_tokens[0].Replace("[", "").Replace("]", "");
-                //return new ValueTypeName() { TypeName = references_name, SchemaName = schemaName };
-
-
-                //if (typeName[0] == '[')
-                //    typeName = typeName.Substring(1, typeName.Length - 2);
-                //else
-                //    typeName = typeName;
-
-                //if (throwOnError)
-                {
-                    throw new StoreLakeSdkException("Cannot resolve database type (" + typeName + ") for [" + sonObject.FullName + "] [" + itemName + "].");
-                }
-                //return null;
+                structureTypeSchemaName = sonType.SchemaName;
+                structureTypeName = sonType.ObjectName;
+                return SqlDbType.Structured;
             }
         }
     }

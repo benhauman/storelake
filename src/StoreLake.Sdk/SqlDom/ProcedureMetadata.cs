@@ -18,8 +18,10 @@ namespace StoreLake.Sdk.SqlDom
         internal readonly IDictionary<string, ProcedureCodeParameter> parameters = new SortedDictionary<string, ProcedureCodeParameter>();
     }
 
-    class ProcedureCodeParameter
+    sealed class ProcedureCodeParameter
     {
+        internal readonly bool IsUserDefinedTableType;
+        internal readonly string UserDefinedTybleTypeFullName;
         internal readonly Type TypeNotNull;
         internal readonly Type TypeNull;
         public ProcedureCodeParameter(Type typeNotNull, Type typeNull)
@@ -27,12 +29,21 @@ namespace StoreLake.Sdk.SqlDom
             TypeNotNull = typeNotNull;
             TypeNull = typeNull;
         }
+        public ProcedureCodeParameter(string userDefinedTybleTypeFullName)
+        {
+            IsUserDefinedTableType = true;
+            UserDefinedTybleTypeFullName = userDefinedTybleTypeFullName;
+        }
 
         internal string ParameterCodeName { get;  set; }
 
         internal static ProcedureCodeParameter Create<TNotNull, TNull>()
         {
             return new ProcedureCodeParameter(typeof(TNotNull), typeof(TNull));
+        }
+        internal static ProcedureCodeParameter CreateUdt(string userDefinedTybleTypeFullName)
+        {
+            return new ProcedureCodeParameter(userDefinedTybleTypeFullName);
         }
 
     }
