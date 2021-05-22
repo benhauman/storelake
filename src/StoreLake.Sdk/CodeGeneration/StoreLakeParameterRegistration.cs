@@ -7,7 +7,7 @@ namespace StoreLake.Sdk.CodeGeneration
     public sealed class StoreLakeParameterRegistration
     {
         public string ParameterName { get; set; }
-        public string ParameterTypeName { get; set; }
+        public string ParameterTypeFullName { get; set; }
 
         public SqlDbType ParameterDbType { get; set; }
         public bool AllowNull { get; set; }

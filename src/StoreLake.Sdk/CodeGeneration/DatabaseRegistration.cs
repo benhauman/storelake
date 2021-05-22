@@ -251,6 +251,10 @@ namespace StoreLake.Sdk.CodeGeneration
         internal static void RegisterPrimaryKey(DataSet ds, StoreLakeTableKeyRegistration primaryKey)
         {
             var table = ds.Tables[primaryKey.TableName, primaryKey.TableSchema];
+            if (table == null)
+            {
+                throw new InvalidOperationException($"Table registration '{primaryKey.TableSchema}.{primaryKey.TableName}' for primary key '{primaryKey.KeyName}' could not be found. ");
+            }
 
             List<DataColumn> pkColumns = new List<DataColumn>();
             foreach (StoreLakeKeyColumnRegistration pkcol in primaryKey.Columns)

@@ -803,7 +803,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 if (parameter.ParameterDbType == SqlDbType.Structured)
                 {
-                    hm.handler_method_decl.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name));
+                    hm.handler_method_decl.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeFullName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name));
                 }
             }
 
@@ -904,7 +904,7 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 StoreLakeParameterRegistration parameter = procedure.Parameters[ix];
                 ProcedureCodeParameter parameterType = procedure_metadata.parameters[parameter.ParameterName];
-                facade_method.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name + " => " + parameterType.ParameterCodeName));
+                facade_method.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeFullName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name + " => " + parameterType.ParameterCodeName));
             }
 
             for (int ix = 0; ix < procedure.Parameters.Count; ix++)
