@@ -298,6 +298,9 @@ namespace StoreLake.Sdk.CodeGeneration
                             AllowNull = allowNull,
                             StructureTypeSchemaName = structureTypeSchemaName,
                             StructureTypeName = structureTypeName,
+
+                            StructureTypeClassName = structureTypeName,
+                            //StructureTypeNamespaceName = null,
                         };
 
                         collector(parameter);
@@ -351,6 +354,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 StoreLakeTableTypeRegistration treg = new StoreLakeTableTypeRegistration()
                 {
+                    TableTypeSqlFullName= sonTableType.FullName,
                     TableTypeName = sonTableType.ObjectName,
                     TableTypeSchema = sonTableType.SchemaName,
                 };
@@ -359,10 +363,51 @@ namespace StoreLake.Sdk.CodeGeneration
                 CollectTableColumns(xTableType, sonTableType, treg.Columns, false);
                 CollectTableColumns(xTableType, sonTableType, treg.Columns, true);
 
+                // <Relationship Name="Constraints">
+                // <Element Type="SqlTableTypePrimaryKeyConstraint">
+                CollectTableTypePrimaryKeyColumns(xTableType, (column_name) =>
+                {
+                    var column = treg.Columns.Single(x => x.ColumnName == column_name);
+                    column.IsNullable = false;
+
+                    if (treg.PrimaryKey == null)
+                    {
+                        treg.PrimaryKey = new StoreLakeTableTypeKey();
+                    }
+                    treg.PrimaryKey.ColumnNames.Add(column_name);
+                });
+
                 ctx.registered_tabletypes.Add(sonTableType.FullName, dacpac);
                 dacpac.registered_tabletypes.Add(sonTableType.FullName, treg);
             }
 
+        }
+
+        private static void CollectTableTypePrimaryKeyColumns(XElement xTableType, Action<string> collector)
+        {
+            var xRelationship_Constraints = xTableType.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Constraints")).SingleOrDefault();
+            if (xRelationship_Constraints == null)
+                return; // no primary key
+            var xRelationship_Constraints_Entry = xRelationship_Constraints.Elements().Where(e => e.Name.LocalName == "Entry").Single();
+
+            var xSqlTableTypePrimaryKeyConstraint = xRelationship_Constraints_Entry.Elements().Single(e => e.Name.LocalName == "Element" && e.Attributes().Any(a => a.Name.LocalName == "Type" && a.Value == "SqlTableTypePrimaryKeyConstraint"));
+
+            var xRelationship_Columns = xSqlTableTypePrimaryKeyConstraint.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "ColumnSpecifications")).Single();
+
+            foreach (var xRelationship_Columns_Entry in xRelationship_Columns.Elements())
+            {
+                var xElement_Column = xRelationship_Columns_Entry.Elements().Single(e => e.Name.LocalName == "Element" && e.Attributes().Any(a => a.Name.LocalName == "Type" && a.Value == "SqlTableTypeIndexedColumnSpecification"));
+
+                var xRelationship_Column = xElement_Column.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Column")).Single();
+
+                var xRelationship_Column_Entry = xRelationship_Column.Elements().Where(e => e.Name.LocalName == "Entry").Single();
+
+                var xRelationship_Column_Entry_References = xRelationship_Column_Entry.Elements().Where(e => e.Name.LocalName == "References").Single();
+
+                string column_name = ReadSchemaObjectName(3, xRelationship_Column_Entry_References).ItemName;
+
+                collector(column_name);
+            }
         }
 
         private static string DequoteName(string quotedName)
@@ -518,10 +563,10 @@ namespace StoreLake.Sdk.CodeGeneration
                 ck_reg.DefiningTableName = defining_table.ObjectName;
                 ck_reg.DefiningTableSchema = defining_table.SchemaName;
 
-                CollectRelationReferencesColumns(xCheckConstraint,0, false, "CheckExpressionDependencies", (columnName) =>
-                {
-                    ck_reg.DefiningColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
-                });
+                CollectRelationReferencesColumns(xCheckConstraint, 0, false, "CheckExpressionDependencies", (columnName) =>
+                 {
+                     ck_reg.DefiningColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
+                 });
 
                 var xCheckExpressionScript = xCheckConstraint.Elements().Single(e => e.Name.LocalName == "Property" && e.Attributes().Any(t => t.Name.LocalName == "Name" && t.Value == "CheckExpressionScript"));
                 var xCheckExpressionScript_Value = xCheckExpressionScript.Elements().Single(e => e.Name.LocalName == "Value");
@@ -552,10 +597,10 @@ namespace StoreLake.Sdk.CodeGeneration
                 fk_reg.DefiningTableName = defining_table.ObjectName;
                 fk_reg.DefiningTableSchema = defining_table.SchemaName;
 
-                CollectRelationReferencesColumns(xForeignKey,1, false, "Columns", (columnName) =>
-                {
-                    fk_reg.DefiningColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
-                });
+                CollectRelationReferencesColumns(xForeignKey, 1, false, "Columns", (columnName) =>
+                 {
+                     fk_reg.DefiningColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
+                 });
                 CollectRelationReferencesColumns(xForeignKey, 1, true, "ForeignColumns", (columnName) =>
                 {
                     fk_reg.ForeignColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
@@ -997,7 +1042,7 @@ namespace StoreLake.Sdk.CodeGeneration
             if (columns_collected < minColumnsCount)
             {
                 throw new NotImplementedException("No columns collected.");
-            }    
+            }
         }
 
         private static void CollectTableColumns(XElement xTable, SchemaObjectName sonTable, List<StoreLakeColumnRegistration> columns, bool processComputed)
@@ -1024,7 +1069,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     if (xIsNullable != null)
                     {
                         var xValue = xIsNullable.Attributes().Single(a => a.Name.LocalName == "Value");
-                        creg.IsNullable = string.Equals(xValue.Value, "False", StringComparison.OrdinalIgnoreCase) ? false 
+                        creg.IsNullable = string.Equals(xValue.Value, "False", StringComparison.OrdinalIgnoreCase) ? false
                                         : string.Equals(xValue.Value, "True", StringComparison.OrdinalIgnoreCase);
                     }
                     else

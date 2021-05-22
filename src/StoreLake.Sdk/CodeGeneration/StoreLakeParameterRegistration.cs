@@ -13,5 +13,8 @@ namespace StoreLake.Sdk.CodeGeneration
         public bool AllowNull { get; set; }
         public string StructureTypeSchemaName { get; set; }
         public string StructureTypeName { get; set; }
+
+        public string StructureTypeClassName { get; set; }
+        //public string StructureTypeNamespaceName { get; set; }
     }
 }

@@ -21,7 +21,7 @@ namespace StoreLake.Sdk.SqlDom
     sealed class ProcedureCodeParameter
     {
         internal readonly bool IsUserDefinedTableType;
-        internal readonly string UserDefinedTybleTypeFullName;
+        internal readonly string UserDefinedTableTypeSqlFullName;
         internal readonly Type TypeNotNull;
         internal readonly Type TypeNull;
         public ProcedureCodeParameter(Type typeNotNull, Type typeNull)
@@ -32,7 +32,7 @@ namespace StoreLake.Sdk.SqlDom
         public ProcedureCodeParameter(string userDefinedTybleTypeFullName)
         {
             IsUserDefinedTableType = true;
-            UserDefinedTybleTypeFullName = userDefinedTybleTypeFullName;
+            UserDefinedTableTypeSqlFullName = userDefinedTybleTypeFullName;
         }
 
         internal string ParameterCodeName { get;  set; }
