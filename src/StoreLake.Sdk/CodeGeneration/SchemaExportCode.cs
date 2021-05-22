@@ -588,7 +588,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 if (countOfResultSets.HasValue)
                 {
-                    GenerateProcedureDeclaration(extMethodAccess_HandlerFacade, procedures_handler_type_decl, procedure, countOfResultSets.Value, procedureMethodName, procedures_facade_type_decl, procedure_metadata);
+                    GenerateProcedureDeclaration(rr, extMethodAccess_HandlerFacade, procedures_handler_type_decl, procedure, countOfResultSets.Value, procedureMethodName, procedures_facade_type_decl, procedure_metadata);
                 }
                 else
                 {
@@ -777,7 +777,7 @@ namespace StoreLake.Sdk.CodeGeneration
             internal string handler_type_name;
             internal CodeMemberMethod handler_method_decl;
         }
-        private static void GenerateProcedureDeclaration(string extMethodAccess_HandlerFacade, CodeTypeDeclaration procedures_type_decl, StoreLakeProcedureRegistration procedure, int countOfResultSets, string procedureMethodName, CodeTypeDeclaration procedures_facade_type_decl, SqlDom.ProcedureMetadata procedure_metadata)
+        private static void GenerateProcedureDeclaration(RegistrationResult rr, string extMethodAccess_HandlerFacade, CodeTypeDeclaration procedures_type_decl, StoreLakeProcedureRegistration procedure, int countOfResultSets, string procedureMethodName, CodeTypeDeclaration procedures_facade_type_decl, SqlDom.ProcedureMetadata procedure_metadata)
         {
             CommandHandlerMethod hm = new CommandHandlerMethod() { handler_type_name = procedures_type_decl.Name };
             hm.handler_method_decl = new CodeMemberMethod() { Name = procedureMethodName, Attributes = MemberAttributes.Public };
@@ -803,6 +803,21 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 if (parameter.ParameterDbType == SqlDbType.Structured)
                 {
+                    if (rr.registered_tabletypes.TryGetValue(parameter.ParameterTypeFullName, out DacPacRegistration type_dacpac))
+                    {
+                        if ( type_dacpac.registered_tabletypes.TryGetValue(parameter.ParameterTypeFullName, out StoreLakeTableTypeRegistration type_reg))
+                        {
+                            
+                        }
+                        else
+                        {
+                            throw new InvalidProgramException("Type registration could not be found:" + parameter.ParameterTypeFullName);
+                        }
+                    }
+                    else
+                    {
+                        throw new NotSupportedException("Type registration could not be found:" + parameter.ParameterTypeFullName);
+                    }
                     hm.handler_method_decl.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeFullName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name));
                 }
             }

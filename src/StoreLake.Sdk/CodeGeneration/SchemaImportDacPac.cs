@@ -32,6 +32,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
         internal readonly IDictionary<string, DacPacRegistration> referenced_dacpacs = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
         internal readonly IDictionary<string, bool> registered_tables = new SortedDictionary<string, bool>(); // < ;
+        internal readonly IDictionary<string, StoreLakeTableTypeRegistration> registered_tabletypes = new SortedDictionary<string, StoreLakeTableTypeRegistration>(); // < ;
         internal readonly IDictionary<string, string> referenced_assemblies = new SortedDictionary<string, string>(); // assemblyname/assemblylocation;
         internal readonly IDictionary<string, StoreLakeCheckConstraintRegistration> registered_CheckConstraints = new SortedDictionary<string, StoreLakeCheckConstraintRegistration>();
         internal readonly IDictionary<string, StoreLakeProcedureRegistration> registered_Procedures = new SortedDictionary<string, StoreLakeProcedureRegistration>();
@@ -52,6 +53,7 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly IDictionary<string, DacPacRegistration> registered_dacpacs = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
         internal readonly IDictionary<string, DacPacRegistration> procesed_files = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
         internal readonly IDictionary<string, DacPacRegistration> registered_tables = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
+        internal readonly IDictionary<string, DacPacRegistration> registered_tabletypes = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
     }
 
 
@@ -199,7 +201,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                 // <Element Type="SqlMultiStatementTableValuedFunction" Name="[dbo].[hlsyssec_query_agentsystemacl]">
                                 // <Element Type="SqlScalarFunction" Name="[dbo].[hlsystablecfgdeskfield_validate_attribute]">
 
-                                AddUserDefinedTableTypes(ctx.ds, dacpac, xModel);
+                                AddUserDefinedTableTypes(ctx, dacpac, xModel);
 
                                 ctx.registered_dacpacs.Add(dacpac.UniqueKey, dacpac);
                             }
@@ -224,7 +226,7 @@ namespace StoreLake.Sdk.CodeGeneration
             return level;
         }
 
-        private static void CollectRelationParameters(string objectName, XElement xRelationshipParent, Action<StoreLakeParameterRegistration> collector)
+        private static void CollectRelationParameters(SchemaObjectName sonObject, XElement xRelationshipParent, Action<StoreLakeParameterRegistration> collector)
         {
             var xRelationship = xRelationshipParent.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Parameters")).SingleOrDefault();
             if (xRelationship == null)
@@ -259,7 +261,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         var Type_SqlTypeSpecifier = ReadParameterRelationshipTypeElement(xRelationship_Entry_Element, "Type");
                         SchemaObjectName vtName = ReadTypeSpecifierRelationshipReferencesName(Type_SqlTypeSpecifier, "Type");
 
-                        SqlDbType ColumnDbType = ParseKnownDbType(objectName, parameter_name, vtName, out string structureTypeSchemaName, out string structureTypeName);
+                        SqlDbType ColumnDbType = ParseKnownDbType(sonObject, parameter_name, vtName, out string structureTypeSchemaName, out string structureTypeName);
                         //if (!ColumnDbType.HasValue)
                         //{
                         //    ColumnDbType = SqlDbType.Structured;
@@ -340,14 +342,25 @@ namespace StoreLake.Sdk.CodeGeneration
             internal string ItemName; // 2 column or parameter
         }
 
-        private static void AddUserDefinedTableTypes(DataSet ds, DacPacRegistration dacpac, XElement xModel)
+        private static void AddUserDefinedTableTypes(RegistrationResult ctx, DacPacRegistration dacpac, XElement xModel)
         {
             // <Element Type="SqlTableType" Name="[dbo].[hlsys_udt_idset]">
             foreach (var xTableType in xModel.Elements().Where(e => e.Attributes().Any(t => t.Name == "Type" && t.Value == "SqlTableType")))
             {
                 SchemaObjectName sonTableType = ReadSchemaObjectName(2, xTableType);
 
+                StoreLakeTableTypeRegistration treg = new StoreLakeTableTypeRegistration()
+                {
+                    TableTypeName = sonTableType.ObjectName,
+                    TableTypeSchema = sonTableType.SchemaName,
+                };
+
                 // <Relationship Name="Columns">
+                CollectTableColumns(xTableType, sonTableType, treg.Columns, false);
+                CollectTableColumns(xTableType, sonTableType, treg.Columns, true);
+
+                ctx.registered_tabletypes.Add(sonTableType.FullName, dacpac);
+                dacpac.registered_tabletypes.Add(sonTableType.FullName, treg);
             }
 
         }
@@ -439,7 +452,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
 
                 // <Relationship Name="Parameters">
-                CollectRelationParameters(sonProcedure.FullName, xProcedure, (StoreLakeParameterRegistration parameter) =>
+                CollectRelationParameters(sonProcedure, xProcedure, (StoreLakeParameterRegistration parameter) =>
                 {
                     procedure_reg.Parameters.Add(parameter);
                 });
@@ -505,7 +518,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 ck_reg.DefiningTableName = defining_table.ObjectName;
                 ck_reg.DefiningTableSchema = defining_table.SchemaName;
 
-                CollectRelationReferencesColumns(xCheckConstraint, "CheckExpressionDependencies", (columnName) =>
+                CollectRelationReferencesColumns(xCheckConstraint,0, false, "CheckExpressionDependencies", (columnName) =>
                 {
                     ck_reg.DefiningColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
                 });
@@ -539,11 +552,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 fk_reg.DefiningTableName = defining_table.ObjectName;
                 fk_reg.DefiningTableSchema = defining_table.SchemaName;
 
-                CollectRelationReferencesColumns(xForeignKey, "Columns", (columnName) =>
+                CollectRelationReferencesColumns(xForeignKey,1, false, "Columns", (columnName) =>
                 {
                     fk_reg.DefiningColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
                 });
-                CollectRelationReferencesColumns(xForeignKey, "ForeignColumns", (columnName) =>
+                CollectRelationReferencesColumns(xForeignKey, 1, true, "ForeignColumns", (columnName) =>
                 {
                     fk_reg.ForeignColumns.Add(new StoreLakeKeyColumnRegistration { ColumnName = columnName });
                 });
@@ -914,41 +927,27 @@ namespace StoreLake.Sdk.CodeGeneration
             //     <Element Type="SqlTable" Name="[dbo].[hlsysagent]" Disambiguator="8">
             foreach (var xTable in xModel.Elements().Where(e => e.Attributes().Any(t => t.Name == "Type" && t.Value == "SqlTable")))
             {
-                //XAttribute xTableName = xTable.Attributes().Where(x => x.Name == "Name").First();
-                //foreach (var xElementType2 in xx.Attributes())
-                {
-
-                    //Console.WriteLine(xTableName.Value);
-                }
-                // <Relationship Name="Columns">
-                var xRelationship_Schema = xTable.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Schema")).First();
-                var xRelationship_Columns = xTable.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Columns")).First();
-
                 SchemaObjectName sonTable = ReadSchemaObjectName(2, xTable);
-                //string[] name_tokens = xTableName.Value.Split('.');
-                //string table_name = name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
-                //if (string.Equals(tableName, table_name, StringComparison.OrdinalIgnoreCase))
+
+                StoreLakeTableRegistration treg = new StoreLakeTableRegistration()
                 {
-                    //Console.WriteLine(table_name);
-                    StoreLakeTableRegistration treg = new StoreLakeTableRegistration()
-                    {
-                        TableName = sonTable.ObjectName,// table_name, // 
-                        TableSchema = sonTable.SchemaName,//
-                        //TableSchema = (name_tokens.Length == 2) ? name_tokens[0] : "dbo",
-                    };
+                    TableName = sonTable.ObjectName,
+                    TableSchema = sonTable.SchemaName,
+                };
 
-                    CollectTableColumns(xRelationship_Columns, treg, false);
-                    CollectTableColumns(xRelationship_Columns, treg, true);
+                // <Relationship Name="Columns">
+                CollectTableColumns(xTable, sonTable, treg.Columns, false);
+                CollectTableColumns(xTable, sonTable, treg.Columns, true);
 
-                    ctx.registered_tables.Add(treg.TableName, dacpac);
-                    dacpac.registered_tables.Add(treg.TableName, true);
-                    DatabaseRegistration.RegisterTable(ctx.ds, treg);
-                }
+                ctx.registered_tables.Add(treg.TableName, dacpac);
+                dacpac.registered_tables.Add(treg.TableName, true);
+                DatabaseRegistration.RegisterTable(ctx.ds, treg);
             }
         }
 
-        private static void CollectRelationReferencesColumns(XElement xRelationship, string collectionName, Action<string> collector)
+        private static void CollectRelationReferencesColumns(XElement xRelationship, int minColumnsCount, bool use_ExternalSource, string collectionName, Action<string> collector)
         {
+            int columns_collected = 0;
             var xRelationship_Columns = xRelationship.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == collectionName)).First();
             foreach (var xRelationship_Columns_Entry in xRelationship_Columns.Elements())
             {
@@ -958,27 +957,53 @@ namespace StoreLake.Sdk.CodeGeneration
                     if (xElement_References.Attributes().Any(a => a.Name.LocalName == "ExternalSource"))
                     {
                         // CONVERT(BIT,[dbo].[hlspdefinition_check_cmdb_assignment]([sptaskid],[cmdbflowid]))=(0)]
-                    }
-                    else
-                    {
-                        //var xColumnName = xElement_References.Attributes().Single(a => a.Name.LocalName == "Name");
-                        //string[] name_tokens = xColumnName.Value.Split('.');
-                        SchemaObjectName sonTableOrColumn = ReadSchemaObjectName(2, xElement_References); //name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
-                        if (sonTableOrColumn.PartsCount == 2)
+                        if (use_ExternalSource)
                         {
-                            // table
+                            // <References ExternalSource="HelplineData.dacpac" Name="[dbo].[hlsyscasedef].[casedefid]" 
+                            SchemaObjectName sonTableOrColumn = ReadSchemaObjectName(3, xElement_References); //name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                            columns_collected++;
+                            collector(sonTableOrColumn.ItemName);
                         }
                         else
                         {
-                            collector(sonTableOrColumn.ItemName);
+                            // skip
+                        }
+                    }
+                    else
+                    {
+                        if (use_ExternalSource)
+                        {
+
+                        }
+                        //else
+                        {
+                            //var xColumnName = xElement_References.Attributes().Single(a => a.Name.LocalName == "Name");
+                            //string[] name_tokens = xColumnName.Value.Split('.');
+                            SchemaObjectName sonTableOrColumn = ReadSchemaObjectName(2, xElement_References); //name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                            if (sonTableOrColumn.PartsCount == 2)
+                            {
+                                // table
+                            }
+                            else
+                            {
+                                columns_collected++;
+                                collector(sonTableOrColumn.ItemName);
+                            }
                         }
                     }
                 }
             }
+
+            if (columns_collected < minColumnsCount)
+            {
+                throw new NotImplementedException("No columns collected.");
+            }    
         }
 
-        private static void CollectTableColumns(XElement xRelationship_Columns, StoreLakeTableRegistration treg, bool processComputed)
+        private static void CollectTableColumns(XElement xTable, SchemaObjectName sonTable, List<StoreLakeColumnRegistration> columns, bool processComputed)
         {
+            var xRelationship_Columns = xTable.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Columns")).First();
+
             foreach (var xRelationship_Columns_Entry in xRelationship_Columns.Elements())
             {
                 var xElement_Column = xRelationship_Columns_Entry.Elements().Single(e => e.Name.LocalName == "Element" && e.Attributes().Any(a => a.Name.LocalName == "Type"));
@@ -999,7 +1024,8 @@ namespace StoreLake.Sdk.CodeGeneration
                     if (xIsNullable != null)
                     {
                         var xValue = xIsNullable.Attributes().Single(a => a.Name.LocalName == "Value");
-                        creg.IsNullable = string.Equals(xValue.Value, "False", StringComparison.OrdinalIgnoreCase) ? false : XmlConvert.ToBoolean(xValue.Value);
+                        creg.IsNullable = string.Equals(xValue.Value, "False", StringComparison.OrdinalIgnoreCase) ? false 
+                                        : string.Equals(xValue.Value, "True", StringComparison.OrdinalIgnoreCase);
                     }
                     else
                     {
@@ -1044,7 +1070,7 @@ namespace StoreLake.Sdk.CodeGeneration
                             }
                             else
                             {
-                                throw new StoreLakeSdkException("Oops [" + treg.TableName + "] COMPUTED [" + creg.ColumnName + "] AS " + expressionScript_Value + "");
+                                throw new StoreLakeSdkException("Oops [" + sonTable.ObjectName + "] COMPUTED [" + creg.ColumnName + "] AS " + expressionScript_Value + "");
                             }
                         }
                         else
@@ -1057,7 +1083,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                 string dependecy_column_name = ReadSchemaObjectName(3, xExpressionDependencies_Entry_References).ItemName;// name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
                                 ExpressionDependencies_ColumnNames.Add(dependecy_column_name);
 
-                                creg.ColumnDbType = treg.Columns.Single(x => x.ColumnName == dependecy_column_name).ColumnDbType;
+                                creg.ColumnDbType = columns.Single(x => x.ColumnName == dependecy_column_name).ColumnDbType;
                             }
                         }
                         //Console.WriteLine("Skip [" + treg.TableName + "] COMPUTED [" + creg.ColumnName + "] AS [" + string.Join(",", ExpressionDependencies_ColumnNames.ToArray()) + "]"); ;
@@ -1072,15 +1098,15 @@ namespace StoreLake.Sdk.CodeGeneration
                         var xTypeSpecifier_Entry_Element_Relationship_Entry_References = xTypeSpecifier_Entry_Element_Relationship_Entry.Elements().Single(x => x.Name.LocalName == "References");
                         //var xColumnTypeName = xTypeSpecifier_Entry_Element_Relationship_Entry_References.Attributes().Single(a => a.Name.LocalName == "Name");
                         var sonType = ReadSchemaObjectName(1, xTypeSpecifier_Entry_Element_Relationship_Entry_References);
-                        creg.ColumnDbType = ParseKnownDbType(treg.TableName, creg.ColumnName, sonType, out string structureTypeSchemaName, out string structureTypeName);
+                        creg.ColumnDbType = ParseKnownDbType(sonTable, creg.ColumnName, sonType, out string structureTypeSchemaName, out string structureTypeName);
                     }
 
-                    treg.Columns.Add(creg);
+                    columns.Add(creg);
                 }// not a computedcolumn
             }
         }
 
-        private static System.Data.SqlDbType ParseKnownDbType(string objectName, string itemName, SchemaObjectName sonType, out string structureTypeSchemaName, out string structureTypeName)
+        private static System.Data.SqlDbType ParseKnownDbType(SchemaObjectName sonObject, string itemName, SchemaObjectName sonType, out string structureTypeSchemaName, out string structureTypeName)
         {
             string typeName = sonType.FullName;
             structureTypeSchemaName = null;
@@ -1185,7 +1211,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 //if (throwOnError)
                 {
-                    throw new StoreLakeSdkException("Cannot resolve database type (" + typeName + ") for [" + objectName + "] [" + itemName + "].");
+                    throw new StoreLakeSdkException("Cannot resolve database type (" + typeName + ") for [" + sonObject.FullName + "] [" + itemName + "].");
                 }
                 //return null;
             }

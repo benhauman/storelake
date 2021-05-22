@@ -225,14 +225,15 @@ namespace StoreLake.Sdk.SqlDom
                     || (node is DbccNamedLiteral) //  N'dbo.hlsysattrpathodedef'
                     || (node is XmlNamespacesDefaultElement) //  DEFAULT N'pd'
                     || (node is DefaultLiteral) //  DEFAULT
+                    || (node is QueryParenthesisExpression) // hltm_getnotificationagentids (SELECT a3.objectida, a3.objectdefida
                  )
                 {
                     // ok
                 }
                 else
                 {
-                    throw new NotImplementedException("Node type:" + node.GetType().Name);
-                    //throw new NotImplementedException("|| (node is " + node.GetType().Name + ") //  " + node.AsText());
+                    //throw new NotImplementedException("Node type:" + node.GetType().Name);
+                    throw new NotImplementedException("|| (node is " + node.GetType().Name + ") //  " + node.AsText());
                 }
                 base.Visit(node);
             }
