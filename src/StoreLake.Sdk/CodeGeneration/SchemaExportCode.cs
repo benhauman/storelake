@@ -415,8 +415,8 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
             }
 
-            IDictionary<string, TableTypeRow> udt_rows = new SortedDictionary<string, TableTypeRow>();
-            BuildUdts(rr, dacpac, ns_tabletypes, udt_rows);
+            //rr.udt_rows = new SortedDictionary<string, TableTypeRow>();
+            BuildUdts(rr, dacpac, ns_tabletypes, rr.udt_rows);
 
             string extMethodAccess_CommandExecuteHandler = dacpac.TestStoreExtensionSetName + "Procedures" + "Handler";
             CodeTypeDeclaration procedures_handler_type_decl = new CodeTypeDeclaration(dacpac.TestStoreExtensionSetName + "Procedures" + "CommandExecuteHandler")
@@ -432,13 +432,8 @@ namespace StoreLake.Sdk.CodeGeneration
             };
             ns_procedures.Types.Add(procedures_facade_type_decl);
 
-            BuildStoreProceduresHandlerType(rr, dacpac, exttype.extensions_type_decl, ns_procedures, procedures_handler_type_decl, procedures_facade_type_decl, extMethodAccess_HandlerFacade, udt_rows);
+            BuildStoreProceduresHandlerType(rr, dacpac, exttype.extensions_type_decl, ns_procedures, procedures_handler_type_decl, procedures_facade_type_decl, extMethodAccess_HandlerFacade, rr.udt_rows);
             BuildStoreProceduresProvider(rr, dacpac, ns_procedures, exttype, procedures_handler_type_decl, extMethodAccess_CommandExecuteHandler, procedures_facade_type_decl, extMethodAccess_HandlerFacade);
-        }
-
-        class TableTypeRow
-        {
-            internal CodeTypeDeclaration udt_row_type_decl;
         }
 
         private static void BuildUdts(RegistrationResult rr, DacPacRegistration dacpac, CodeNamespace ns_tabletypes, IDictionary<string, TableTypeRow> udt_rows)
@@ -449,6 +444,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 TableTypeRow udtRow = new TableTypeRow();
                 udtRow.udt_row_type_decl = new CodeTypeDeclaration(udtRowClassName);
+                udtRow.ClrFullTypeName = ns_tabletypes.Name + "." + udtRowClassName;
                 ns_tabletypes.Types.Add(udtRow.udt_row_type_decl);
 
                 BuildUdtRow(udt_reg, udtRow);
@@ -760,6 +756,7 @@ namespace StoreLake.Sdk.CodeGeneration
             AddParameterTypeMap<long, long?>(dict);
             AddParameterTypeMap<DateTime, DateTime?>(dict);
             AddParameterTypeMap<Guid, Guid?>(dict);
+            AddParameterTypeMap<decimal, decimal?>(dict);
             AddParameterTypeMap<byte[], byte[]>(dict);
             return dict;
         }
@@ -977,7 +974,14 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         if (type_dacpac.registered_tabletypes.TryGetValue(parameter.ParameterTypeFullName, out StoreLakeTableTypeRegistration type_reg))
                         {
-                            var xx = udt_rows[parameter.ParameterTypeFullName];
+                            if (udt_rows.TryGetValue(parameter.ParameterTypeFullName, out TableTypeRow ttrow))
+                            {
+                                // in this dacpac.
+                            }
+                            else
+                            {
+                                // not in this -> generation not needed
+                            }
                         }
                         else
                         {
@@ -1132,13 +1136,13 @@ namespace StoreLake.Sdk.CodeGeneration
                     hm.handler_method_decl.Statements.Add(prm_variable_rec_decl);
                     var prm_variable_rec_ref = new CodeVariableReferenceExpression(prm_variable_rec_decl.Name);
 
-                    var method_Create = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(udtRow.udt_row_type_decl.Name), "Create");
+                    var method_Create = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(udtRow.ClrFullTypeName), "Create");
                     //CodeExpression method_Create = new CodeSnippetExpression(udtRow.udt_row_type_decl.Name + "." + "Create");
                     var invoke_Select = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(typeof(Enumerable)), "Select"), prm_variable_rec_ref, method_Create);
                     var invoke_ToArray = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(typeof(System.Linq.Enumerable)), "ToArray"));
                     invoke_ToArray.Parameters.Add(invoke_Select);
 
-                    var prm_variable_decl_row = new CodeVariableDeclarationStatement(new CodeTypeReference(udtRow.udt_row_type_decl.Name + "[]"), parameterType.ParameterCodeName + "_rows");
+                    var prm_variable_decl_row = new CodeVariableDeclarationStatement(new CodeTypeReference(udtRow.ClrFullTypeName + "[]"), parameterType.ParameterCodeName + "_rows");
                     prm_variable_decl_row.InitExpression = invoke_ToArray;
                     hm.handler_method_decl.Statements.Add(prm_variable_decl_row);
 
@@ -1222,7 +1226,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 {
                     var udtRow = udt_rows[parameter.ParameterTypeFullName];
                     code_param_decl.Type = new CodeTypeReference(typeof(IEnumerable<>));
-                    code_param_decl.Type.TypeArguments.Add(new CodeTypeReference(udtRow.udt_row_type_decl.Name));
+                    code_param_decl.Type.TypeArguments.Add(new CodeTypeReference(udtRow.ClrFullTypeName));
                 }
                 else
                 {
@@ -1295,6 +1299,8 @@ namespace StoreLake.Sdk.CodeGeneration
                 return ProcedureCodeParameter.Create<decimal, decimal?>();
             if (parameter_ParameterDbType == SqlDbType.NChar)
                 return ProcedureCodeParameter.Create<string, string>(); // taskmanagement
+            if (parameter_ParameterDbType == SqlDbType.Date)
+                return ProcedureCodeParameter.Create<DateTime, DateTime?>();
 
             throw new NotImplementedException("" + parameter_ParameterDbType);
         }

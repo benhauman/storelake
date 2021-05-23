@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -54,6 +55,14 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly IDictionary<string, DacPacRegistration> procesed_files = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
         internal readonly IDictionary<string, DacPacRegistration> registered_tables = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
         internal readonly IDictionary<string, DacPacRegistration> registered_tabletypes = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
+        // context
+        internal readonly IDictionary<string, TableTypeRow> udt_rows = new SortedDictionary<string, TableTypeRow>();
+    }
+
+    internal sealed class TableTypeRow
+    {
+        internal CodeTypeDeclaration udt_row_type_decl;
+        internal string ClrFullTypeName;
     }
 
 
@@ -388,25 +397,28 @@ namespace StoreLake.Sdk.CodeGeneration
             var xRelationship_Constraints = xTableType.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Constraints")).SingleOrDefault();
             if (xRelationship_Constraints == null)
                 return; // no primary key
-            var xRelationship_Constraints_Entry = xRelationship_Constraints.Elements().Where(e => e.Name.LocalName == "Entry").Single();
-
-            var xSqlTableTypePrimaryKeyConstraint = xRelationship_Constraints_Entry.Elements().Single(e => e.Name.LocalName == "Element" && e.Attributes().Any(a => a.Name.LocalName == "Type" && a.Value == "SqlTableTypePrimaryKeyConstraint"));
-
-            var xRelationship_Columns = xSqlTableTypePrimaryKeyConstraint.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "ColumnSpecifications")).Single();
-
-            foreach (var xRelationship_Columns_Entry in xRelationship_Columns.Elements())
+            foreach (var xRelationship_Constraints_Entry in xRelationship_Constraints.Elements().Where(e => e.Name.LocalName == "Entry"))
             {
-                var xElement_Column = xRelationship_Columns_Entry.Elements().Single(e => e.Name.LocalName == "Element" && e.Attributes().Any(a => a.Name.LocalName == "Type" && a.Value == "SqlTableTypeIndexedColumnSpecification"));
+                var xSqlTableTypePrimaryKeyConstraint = xRelationship_Constraints_Entry.Elements().SingleOrDefault(e => e.Name.LocalName == "Element" && e.Attributes().Any(a => a.Name.LocalName == "Type" && a.Value == "SqlTableTypePrimaryKeyConstraint"));
+                if (xSqlTableTypePrimaryKeyConstraint != null) // SqlTableTypeDefaultConstraint
+                {
+                    var xRelationship_Columns = xSqlTableTypePrimaryKeyConstraint.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "ColumnSpecifications")).Single();
 
-                var xRelationship_Column = xElement_Column.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Column")).Single();
+                    foreach (var xRelationship_Columns_Entry in xRelationship_Columns.Elements())
+                    {
+                        var xElement_Column = xRelationship_Columns_Entry.Elements().Single(e => e.Name.LocalName == "Element" && e.Attributes().Any(a => a.Name.LocalName == "Type" && a.Value == "SqlTableTypeIndexedColumnSpecification"));
 
-                var xRelationship_Column_Entry = xRelationship_Column.Elements().Where(e => e.Name.LocalName == "Entry").Single();
+                        var xRelationship_Column = xElement_Column.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Column")).Single();
 
-                var xRelationship_Column_Entry_References = xRelationship_Column_Entry.Elements().Where(e => e.Name.LocalName == "References").Single();
+                        var xRelationship_Column_Entry = xRelationship_Column.Elements().Where(e => e.Name.LocalName == "Entry").Single();
 
-                string column_name = ReadSchemaObjectName(3, xRelationship_Column_Entry_References).ItemName;
+                        var xRelationship_Column_Entry_References = xRelationship_Column_Entry.Elements().Where(e => e.Name.LocalName == "References").Single();
 
-                collector(column_name);
+                        string column_name = ReadSchemaObjectName(3, xRelationship_Column_Entry_References).ItemName;
+
+                        collector(column_name);
+                    }
+                }
             }
         }
 
