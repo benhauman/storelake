@@ -94,10 +94,67 @@ END
 -- DROP PROCEDURE [dbo].[hlsys_createactioncontext]
 ";
 			var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
-			procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor());
+			//procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor());
 			
 			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
-			Assert.IsTrue(res.Value);
+			Assert.AreEqual(1, res.Value);
+		}
+
+		[TestMethod]
+		public void hlcmgetcontact()
+		{
+			string sql = @"BEGIN
+SET NOCOUNT ON;
+SELECT 
+ personid, persondefid, surname, name, language, title,
+ street, city, region, zipcode,country, email, phonenumber
+FROM dbo.hlcmcontactvw
+WHERE personid=@PersonId AND persondefid=@PersonDefId
+END
+";
+			var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+			//procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor());
+
+			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
+			Assert.AreEqual(1, res.Value);
+		}
+
+		
+		[TestMethod]
+		public void hlsyswatchlist_add()
+		{
+			string sql = @"
+BEGIN
+    SET NOCOUNT ON
+	
+    --DECLARE @agentid INT = 106690
+    --DECLARE @ids [dbo].[hlsys_udt_intthreeset]
+    --INSERT INTO @ids VALUES (1, 100824, 530510), (2, 101009, 531927), (3, 101009, 592357), (4, 100824, 4179322)
+    
+    DECLARE @limit INT = 100
+    
+    -- Determine how many entries to add until the limit is reached for this agent
+	DECLARE @count INT = ISNULL((SELECT COUNT(1) FROM [dbo].[hlsyswatchlist] WHERE [agentid] = @agentid GROUP BY [agentid]), 0)
+	DECLARE @todo INT = (SELECT COUNT (1) FROM @ids)
+    DECLARE @take INT = @limit - @count
+	DECLARE @limitreached BIT = IIF((@count + @todo) > @limit, 1, 0)
+    
+    -- Merge new entries until limit is reached
+    INSERT INTO [dbo].[hlsyswatchlist] ([agentid], [defid], [objid], [createdtime])
+    SELECT @agentid AS [agentid], [i].[vb] AS [objectdefid], [i].[vc] AS [objectid], GETUTCDATE() AS [createdtime]
+    FROM [dbo].[hlsyswatchlist] AS [w]
+    RIGHT JOIN @ids AS [i] ON [w].[defid] = [i].[vb] AND [w].[objid] = [i].[vc] AND [w].[agentid] = @agentid
+    WHERE [w].[objid] IS NULL
+    ORDER BY [i].[va]
+    OFFSET 0 ROWS FETCH NEXT @take ROWS ONLY
+
+	SELECT IIF(@limitreached = 1, 1, 0)
+END
+";
+			var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+
+			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
+			Assert.AreEqual(1, res.Value);
 		}
 	}
 }

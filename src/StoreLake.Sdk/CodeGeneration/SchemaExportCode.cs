@@ -678,11 +678,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 try
                 {
                     procedure_metadata = SqlDom.ProcedureGenerator.ParseProcedureBody(procedure.ProcedureName, procedure.ProcedureBodyScript);
-                    bool? isQueryProcedure = SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
+                    int? isQueryProcedure = SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
                     countOfResultSets = procedure.Annotations.Count(x => x.AnnotationKey == "Return");
                     if (countOfResultSets > 0)
                     {
-                        if (isQueryProcedure.GetValueOrDefault())
+                        if (isQueryProcedure.GetValueOrDefault() > 0)
                         {
                             // ok
                         }
@@ -694,7 +694,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     }
                     else
                     {
-                        if (isQueryProcedure.GetValueOrDefault())
+                        if (isQueryProcedure.GetValueOrDefault() > 0)
                         {
                             // uups => no annotations =>
                             //[hlcmgetcontact]
