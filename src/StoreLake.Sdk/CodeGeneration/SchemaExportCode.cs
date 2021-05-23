@@ -432,7 +432,7 @@ namespace StoreLake.Sdk.CodeGeneration
             };
             ns_procedures.Types.Add(procedures_facade_type_decl);
 
-            BuildStoreProceduresHandlerType(rr, dacpac, exttype.extensions_type_decl, procedures_handler_type_decl, procedures_facade_type_decl, extMethodAccess_HandlerFacade, udt_rows);
+            BuildStoreProceduresHandlerType(rr, dacpac, exttype.extensions_type_decl, ns_procedures, procedures_handler_type_decl, procedures_facade_type_decl, extMethodAccess_HandlerFacade, udt_rows);
             BuildStoreProceduresProvider(rr, dacpac, ns_procedures, exttype, procedures_handler_type_decl, extMethodAccess_CommandExecuteHandler, procedures_facade_type_decl, extMethodAccess_HandlerFacade);
         }
 
@@ -468,8 +468,7 @@ namespace StoreLake.Sdk.CodeGeneration
             CodeMemberField field_record = new CodeMemberField(typeof(IDataRecord), "record");
             udtRow.udt_row_type_decl.Members.Add(field_record);
 
-            CodeConstructor ctor = new CodeConstructor();
-            ctor.Attributes = MemberAttributes.Private;
+            CodeConstructor ctor = new CodeConstructor() { Attributes = MemberAttributes.Private };
             ctor.Parameters.Add(new CodeParameterDeclarationExpression(typeof(IDataRecord), "record"));
             udtRow.udt_row_type_decl.Members.Add(ctor);
             CodeAssignStatement assign_record = new CodeAssignStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "record"), new CodeVariableReferenceExpression("record"));
@@ -668,7 +667,7 @@ namespace StoreLake.Sdk.CodeGeneration
             return extensions_method_GetHandler;
         }
 
-        private static void BuildStoreProceduresHandlerType(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeTypeDeclaration procedures_handler_type_decl, CodeTypeDeclaration procedures_facade_type_decl, string extMethodAccess_HandlerFacade, IDictionary<string, TableTypeRow> udt_rows)
+        private static void BuildStoreProceduresHandlerType(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeNamespace ns_procedures, CodeTypeDeclaration procedures_handler_type_decl, CodeTypeDeclaration procedures_facade_type_decl, string extMethodAccess_HandlerFacade, IDictionary<string, TableTypeRow> udt_rows)
         {
             AddReadParameterFunctions(procedures_handler_type_decl);
 
@@ -705,7 +704,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 if (countOfResultSets.HasValue)
                 {
-                    GenerateProcedureDeclaration(rr, extMethodAccess_HandlerFacade, procedures_handler_type_decl, procedure, countOfResultSets.Value, procedureMethodName, procedures_facade_type_decl, procedure_metadata, udt_rows);
+                    GenerateProcedureDeclaration(rr, extMethodAccess_HandlerFacade, procedures_handler_type_decl, procedure, countOfResultSets.Value, procedureMethodName, ns_procedures, procedures_facade_type_decl, procedure_metadata, udt_rows);
                 }
                 else
                 {
@@ -767,8 +766,9 @@ namespace StoreLake.Sdk.CodeGeneration
 
         private static void AddReadParameterFunctions_UDT(CodeTypeDeclaration type_decl)
         {
+            // "read_Records"
             string get_param_value_method_name = BuildReadCommandParameterMethodName(true, null, false);
-            CodeMemberMethod read_method_decl = BuildReadCommandParameterMethodDeclaration(type_decl, get_param_value_method_name, typeof(IDataRecord[]));
+            CodeMemberMethod read_method_decl = BuildReadCommandParameterMethodDeclaration(type_decl, get_param_value_method_name, typeof(IEnumerable<IDataRecord>));
 
             var cmd_Parameters = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("cmd"), "Parameters");
             var cmd_Parameter_prm = new CodeIndexerExpression(cmd_Parameters, new CodeExpression[] { new CodeVariableReferenceExpression("name") });
@@ -777,11 +777,10 @@ namespace StoreLake.Sdk.CodeGeneration
             //Array.fr
             var cast_prm = new CodeCastExpression(typeof(IEnumerable<IDataRecord>), cmd_Parameter_prm_Value);
 
-            var invoke_ToArray = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(typeof(System.Linq.Enumerable)), "ToArray"));
-            invoke_ToArray.Parameters.Add(cast_prm);
-            read_method_decl.Statements.Add(new CodeMethodReturnStatement(invoke_ToArray));
-            //return read_method_decl;
-
+            //var invoke_ToArray = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(typeof(System.Linq.Enumerable)), "ToArray"));
+            //invoke_ToArray.Parameters.Add(cast_prm);
+            //read_method_decl.Statements.Add(new CodeMethodReturnStatement(invoke_ToArray));
+            read_method_decl.Statements.Add(new CodeMethodReturnStatement(cast_prm));
         }
 
         private static CodeMemberMethod AddReadParameterFunctions_Cast(CodeTypeDeclaration type_decl, Type typeNotNull)
@@ -919,7 +918,7 @@ namespace StoreLake.Sdk.CodeGeneration
             internal string handler_type_name;
             internal CodeMemberMethod handler_method_decl;
         }
-        private static void GenerateProcedureDeclaration(RegistrationResult rr, string extMethodAccess_HandlerFacade, CodeTypeDeclaration procedures_type_decl, StoreLakeProcedureRegistration procedure, int countOfResultSets, string procedureMethodName, CodeTypeDeclaration procedures_facade_type_decl, SqlDom.ProcedureMetadata procedure_metadata, IDictionary<string, TableTypeRow> udt_rows)
+        private static void GenerateProcedureDeclaration(RegistrationResult rr, string extMethodAccess_HandlerFacade, CodeTypeDeclaration procedures_type_decl, StoreLakeProcedureRegistration procedure, int countOfResultSets, string procedureMethodName, CodeNamespace ns_procedures, CodeTypeDeclaration procedures_facade_type_decl, SqlDom.ProcedureMetadata procedure_metadata, IDictionary<string, TableTypeRow> udt_rows)
         {
             bool? hasReturnStatements = ProcedureGenerator.HasReturnStatement(procedure_metadata);
 
@@ -968,10 +967,19 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
             }
 
+            CodeTypeDeclaration facade_output_type_decl;
+            if (countOfResultSets > 0)
+            {
+                // read
+                facade_output_type_decl = BuildCommandFacadeOutputType(procedureMethodName, countOfResultSets);
+                ns_procedures.Types.Add(facade_output_type_decl);
+            }
+            else
+            {
+                facade_output_type_decl = null;
+            }
 
-            CodeMemberMethod facade_method_decl = new CodeMemberMethod() { Name = procedureMethodName, Attributes = MemberAttributes.Public };
-
-            CommandFacadeMethod fm = TryBuildCommandFacadeMethod(procedures_facade_type_decl.Name, facade_method_decl, procedure, countOfResultSets, procedure_metadata, udt_rows);
+            CommandFacadeMethod fm = BuildCommandFacadeMethod(procedures_facade_type_decl.Name, procedureMethodName, procedure, facade_output_type_decl, countOfResultSets, procedure_metadata, udt_rows);
             if (fm != null)
             {
                 procedures_facade_type_decl.Members.Add(fm.facade_method_decl);
@@ -987,21 +995,93 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
+        private static CodeTypeDeclaration BuildCommandFacadeOutputType(string method_name, int countOfResultSets)
+        {
+            CodeTypeDeclaration output_type_decl = new CodeTypeDeclaration() { Name = method_name + "ResultSets" };
+
+            CodeConstructor ctor = new CodeConstructor() { Attributes = MemberAttributes.Private };
+            output_type_decl.Members.Add(ctor);
+
+            // Create
+            CodeMemberMethod method_create = new CodeMemberMethod()
+            {
+                Name = "Create",
+                Attributes = MemberAttributes.Public | MemberAttributes.Static,
+                ReturnType = new CodeTypeReference(output_type_decl.Name)
+            };
+            //method_create.Parameters.Add(new CodeParameterDeclarationExpression(typeof(IDataRecord), "record"));
+            var invoke_ctor = new CodeObjectCreateExpression(new CodeTypeReference(output_type_decl.Name));//, new CodeVariableReferenceExpression("record"));
+            method_create.Statements.Add(new CodeMethodReturnStatement(invoke_ctor));
+            output_type_decl.Members.Add(method_create);
+
+            // CreateDataReader
+            CodeMemberMethod method_reader = new CodeMemberMethod()
+            {
+                Name = "CreateDataReader",
+                Attributes = MemberAttributes.Assembly | MemberAttributes.Final,
+                ReturnType = new CodeTypeReference(typeof(System.Data.Common.DbDataReader))
+            };
+            //method_reader.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
+            output_type_decl.Members.Add(method_reader);
+
+            if (countOfResultSets > 1)
+            {
+                CodeMemberField field_tables_decl = new CodeMemberField() { Attributes = MemberAttributes.Private };
+                field_tables_decl.Name = "tables";
+                field_tables_decl.Type = new CodeTypeReference(new CodeTypeReference(typeof(DataTable)), 1);
+                field_tables_decl.InitExpression = new CodeArrayCreateExpression(typeof(DataTable), countOfResultSets);
+                output_type_decl.Members.Add(field_tables_decl);
+                CodeFieldReferenceExpression field_tables_ref = new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), field_tables_decl.Name);
+
+                method_reader.Statements.Add(new CodeMethodReturnStatement(new CodeObjectCreateExpression(typeof(DataTableReader), field_tables_ref)));
+
+                CodeVariableDeclarationStatement var_table_decl = new CodeVariableDeclarationStatement(new CodeTypeReference(typeof(DataTable)), "table");
+                ctor.Statements.Add(var_table_decl);
+                CodeVariableReferenceExpression var_table_ref = new CodeVariableReferenceExpression(var_table_decl.Name);
+                for (int ix = 0; ix < countOfResultSets; ix++)
+                {
+                    CodeAssignStatement assign_table_ref = new CodeAssignStatement(var_table_ref, new CodeObjectCreateExpression(typeof(DataTable), new CodePrimitiveExpression("Output" + (1 + ix))));
+                    ctor.Statements.Add(assign_table_ref);
+                    // setup table....
+
+                    // put into the array
+                    CodeArrayIndexerExpression table_at = new CodeArrayIndexerExpression(field_tables_ref, new CodePrimitiveExpression(ix));
+                    CodeAssignStatement assign_table_at = new CodeAssignStatement(table_at, var_table_ref);
+                    ctor.Statements.Add(assign_table_at);
+
+                    CodeMemberProperty prop_Table = new CodeMemberProperty() { Name = "OutputTable" + (1 + ix), Type = new CodeTypeReference(typeof(DataTable)), Attributes = MemberAttributes.Public | MemberAttributes.Final };
+                    prop_Table.GetStatements.Add(new CodeMethodReturnStatement(table_at));
+                    output_type_decl.Members.Add(prop_Table);
+
+                }
+            }
+            else
+            {
+                CodeMemberField field_tables_decl = new CodeMemberField() { Attributes = MemberAttributes.Private };
+                field_tables_decl.Name = "table";
+                field_tables_decl.Type = new CodeTypeReference(typeof(DataTable));
+                field_tables_decl.InitExpression = new CodeObjectCreateExpression(typeof(DataTable), new CodePrimitiveExpression("Output"));
+                output_type_decl.Members.Add(field_tables_decl);
+                CodeFieldReferenceExpression field_table_ref = new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), field_tables_decl.Name);
+
+                method_reader.Statements.Add(new CodeMethodReturnStatement(new CodeObjectCreateExpression(typeof(DataTableReader), field_table_ref)));
+
+                CodeMemberProperty prop_Table = new CodeMemberProperty() { Name = "OutputTable", Type = new CodeTypeReference(typeof(DataTable)), Attributes = MemberAttributes.Public | MemberAttributes.Final };
+                prop_Table.GetStatements.Add(new CodeMethodReturnStatement(field_table_ref));
+                output_type_decl.Members.Add(prop_Table);
+            }
+
+
+            return output_type_decl;
+        }
 
         private static bool BuildInvokeFacadeMethod(string extMethodAccess_HandlerFacade, CommandFacadeMethod fm, StoreLakeProcedureRegistration procedure, ProcedureMetadata procedure_metadata
             , CommandHandlerMethod hm
             , IDictionary<string, TableTypeRow> udt_rows
             )
         {
-            //hm.handler_method_decl.Statements.Add(new CodeCommentStatement("db." + extMethodAccess_HandlerFacade + "()." + fm.facade_method_decl.Name + "(" + "..." + ")"));
-            if (fm.CountOfResultSets > 0)
-                return false;
-
-
             var invoke_get_facade = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(
                 new CodeVariableReferenceExpression("db"), extMethodAccess_HandlerFacade));
-
-            //hm.handler_method_decl.Statements.Add(invoke_get_facade);
 
             var invoke_facade_method = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(invoke_get_facade, fm.facade_method_decl.Name));
             invoke_facade_method.Parameters.Add(new CodeVariableReferenceExpression("db"));
@@ -1015,8 +1095,31 @@ namespace StoreLake.Sdk.CodeGeneration
                 if (parameterType.IsUserDefinedTableType)
                 {
                     var udtRow = udt_rows[parameter.ParameterTypeFullName];
-                    hm.handler_method_decl.Statements.Add(new CodeCommentStatement("" + parameterType.UserDefinedTableTypeSqlFullName));
-                    return false;
+                    string get_param_value_method_name = BuildReadCommandParameterMethodName(true, null, false);
+
+                    var invoke_get_parameter_value = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(
+                        new CodeTypeReferenceExpression(hm.handler_type_name), get_param_value_method_name));
+                    invoke_get_parameter_value.Parameters.Add(new CodeVariableReferenceExpression("cmd"));
+                    invoke_get_parameter_value.Parameters.Add(new CodePrimitiveExpression(parameter.ParameterName));
+
+                    var prm_variable_rec_decl = new CodeVariableDeclarationStatement(typeof(IEnumerable<IDataRecord>), parameterType.ParameterCodeName + "_records");
+                    prm_variable_rec_decl.InitExpression = invoke_get_parameter_value;
+                    hm.handler_method_decl.Statements.Add(prm_variable_rec_decl);
+                    var prm_variable_rec_ref = new CodeVariableReferenceExpression(prm_variable_rec_decl.Name);
+
+                    var method_Create = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(udtRow.udt_row_type_decl.Name), "Create");
+                    //CodeExpression method_Create = new CodeSnippetExpression(udtRow.udt_row_type_decl.Name + "." + "Create");
+                    var invoke_Select = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(typeof(Enumerable)), "Select"), prm_variable_rec_ref, method_Create);
+                    var invoke_ToArray = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(typeof(System.Linq.Enumerable)), "ToArray"));
+                    invoke_ToArray.Parameters.Add(invoke_Select);
+
+                    var prm_variable_decl_row = new CodeVariableDeclarationStatement(new CodeTypeReference(udtRow.udt_row_type_decl.Name + "[]"), parameterType.ParameterCodeName + "_rows");
+                    prm_variable_decl_row.InitExpression = invoke_ToArray;
+                    hm.handler_method_decl.Statements.Add(prm_variable_decl_row);
+
+                    //hm.handler_method_decl.Statements.Add(new CodeCommentStatement("" + parameterType.UserDefinedTableTypeSqlFullName));
+                    invoke_facade_method.Parameters.Add(new CodeVariableReferenceExpression(prm_variable_decl_row.Name));
+                    //return false;
                 }
                 else
                 {
@@ -1036,21 +1139,27 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
             }
 
-            //hm.handler_method_decl.Statements.Add(invoke_facade_method);
-
-            //CodeMethodInvokeExpression invoke_facade_method_decl = new CodeMethodInvokeExpression(invoke_get_facade, fm.facade_method_decl.Name, invoke_facade_method_parameters.ToArray());
-            //procedure_method.Statements.Add(invoke_facade_method);
-            //hm.handler_method_decl.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
-            if (fm.HasReturn)
+            if (fm.CountOfResultSets > 0)
             {
-                hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(invoke_facade_method));
+                var invoke_CreateDataReader = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(invoke_facade_method, "CreateDataReader"));
+                hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(invoke_CreateDataReader));
+                return true;
             }
             else
             {
-                hm.handler_method_decl.Statements.Add(invoke_facade_method);
-                hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(new CodePrimitiveExpression(0)));
+
+                if (fm.HasReturn)
+                {
+                    hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(invoke_facade_method));
+                }
+                else
+                {
+                    hm.handler_method_decl.Statements.Add(invoke_facade_method);
+                    hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(new CodePrimitiveExpression(0)));
+                }
+
+                return true;
             }
-            return true; // implemented
         }
 
         class CommandFacadeMethod
@@ -1060,32 +1169,23 @@ namespace StoreLake.Sdk.CodeGeneration
             internal bool HasReturn;
 
             public int CountOfResultSets;
+            internal CodeTypeDeclaration facade_output_type_decl;
         }
 
-        private static CommandFacadeMethod TryBuildCommandFacadeMethod(string facade_type_name, CodeMemberMethod facade_method, StoreLakeProcedureRegistration procedure, int countOfResultSets, SqlDom.ProcedureMetadata procedure_metadata, IDictionary<string, TableTypeRow> udt_rows)
+        private static CommandFacadeMethod BuildCommandFacadeMethod(string facade_type_name, string procedureMethodName, StoreLakeProcedureRegistration procedure, CodeTypeDeclaration facade_output_type_decl, int countOfResultSets, SqlDom.ProcedureMetadata procedure_metadata, IDictionary<string, TableTypeRow> udt_rows)
         {
-            if (countOfResultSets > 0)
-            {
-                return null;
-            }
-
-            facade_method.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "db"));
-
             bool? hasReturnStatements = ProcedureGenerator.HasReturnStatement(procedure_metadata);
 
-            for (int ix = 0; ix < procedure.Parameters.Count; ix++)
+            CommandFacadeMethod fm = new CommandFacadeMethod()
             {
-                StoreLakeParameterRegistration parameter = procedure.Parameters[ix];
-                ProcedureCodeParameter parameterType = procedure_metadata.parameters[parameter.ParameterName];
-                if (parameter.ParameterDbType == SqlDbType.Structured)
-                {
-                    facade_method.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeFullName + ") " + parameterType.UserDefinedTableTypeSqlFullName + " => " + parameterType.ParameterCodeName));
-                }
-                else
-                {
-                    facade_method.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeFullName + ") " + parameterType.TypeNotNull.Name + " " + parameterType.TypeNull.Name + " => " + parameterType.ParameterCodeName));
-                }
-            }
+                facade_type_name = facade_type_name,
+                CountOfResultSets = countOfResultSets,
+                HasReturn = hasReturnStatements.GetValueOrDefault()
+            };
+
+            fm.facade_method_decl = new CodeMemberMethod() { Name = procedureMethodName, Attributes = MemberAttributes.Public };
+
+            fm.facade_method_decl.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "db"));
 
             for (int ix = 0; ix < procedure.Parameters.Count; ix++)
             {
@@ -1096,10 +1196,8 @@ namespace StoreLake.Sdk.CodeGeneration
                 if (parameter.ParameterDbType == SqlDbType.Structured) // IEnumerable<udtRow>
                 {
                     var udtRow = udt_rows[parameter.ParameterTypeFullName];
-                    //parameterType.UserDefinedTableTypeSqlFullName
-                    code_param_decl.Type = new CodeTypeReference(typeof(List<>));
+                    code_param_decl.Type = new CodeTypeReference(typeof(IEnumerable<>));
                     code_param_decl.Type.TypeArguments.Add(new CodeTypeReference(udtRow.udt_row_type_decl.Name));
-                    //return null; // IEnumerable<udtRow>
                 }
                 else
                 {
@@ -1113,32 +1211,31 @@ namespace StoreLake.Sdk.CodeGeneration
 
                     }
                 }
-                facade_method.Parameters.Add(code_param_decl);
+                fm.facade_method_decl.Parameters.Add(code_param_decl);
             }
 
 
-            CommandFacadeMethod fm = new CommandFacadeMethod()
-            {
-                facade_type_name = facade_type_name,
-                facade_method_decl = facade_method,
-                CountOfResultSets = countOfResultSets,
-                HasReturn = hasReturnStatements.GetValueOrDefault()
-            };
+            fm.facade_method_decl.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
 
-            facade_method.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
-
-            if (fm.HasReturn)
+            if (countOfResultSets > 0)
             {
-                // hlsyssec_inherit_groups
-                facade_method.ReturnType = new CodeTypeReference(typeof(int));
-                // facade_method.Statements.Add(new CodeMethodReturnStatement(new CodePrimitiveExpression(0)));
+                fm.facade_output_type_decl = facade_output_type_decl;
+                fm.facade_method_decl.ReturnType = new CodeTypeReference(facade_output_type_decl.Name);
             }
             else
             {
-                facade_method.ReturnType = new CodeTypeReference(typeof(void));
+                if (fm.HasReturn)
+                {
+                    // hlsyssec_inherit_groups
+                    fm.facade_method_decl.ReturnType = new CodeTypeReference(typeof(int));
+                }
+                else
+                {
+                    fm.facade_method_decl.ReturnType = new CodeTypeReference(typeof(void));
+                }
             }
-            // SqlDom.ProcedureMetadata procedure_metadata
-            return fm;// null;            
+
+            return fm;
         }
 
         private static ProcedureCodeParameter GetParameterClrType(StoreLakeParameterRegistration parameter)
