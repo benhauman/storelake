@@ -150,6 +150,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.DataTable).Assembly);
                 AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Data.TypedTableBase<>).Assembly);
                 AddReferencedAssembly(assemblyResolver, comparam, typeof(System.Xml.Serialization.IXmlSerializable).Assembly);
+                AddReferencedAssembly(assemblyResolver, comparam, typeof(Enumerable).Assembly);
 
                 AddAssemblyAttributes(ccu_main);
 
@@ -468,12 +469,22 @@ namespace StoreLake.Sdk.CodeGeneration
             udtRow.udt_row_type_decl.Members.Add(field_record);
 
             CodeConstructor ctor = new CodeConstructor();
-            ctor.Attributes = MemberAttributes.Public;
+            ctor.Attributes = MemberAttributes.Private;
             ctor.Parameters.Add(new CodeParameterDeclarationExpression(typeof(IDataRecord), "record"));
             udtRow.udt_row_type_decl.Members.Add(ctor);
-
             CodeAssignStatement assign_record = new CodeAssignStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "record"), new CodeVariableReferenceExpression("record"));
             ctor.Statements.Add(assign_record);
+
+            CodeMemberMethod method_create = new CodeMemberMethod()
+            {
+                Name = "Create",
+                Attributes = MemberAttributes.Public | MemberAttributes.Static,
+                ReturnType = new CodeTypeReference(udtRow.udt_row_type_decl.Name)
+            };
+            method_create.Parameters.Add(new CodeParameterDeclarationExpression(typeof(IDataRecord), "record"));
+            var invoke_ctor = new CodeObjectCreateExpression(new CodeTypeReference(udtRow.udt_row_type_decl.Name), new CodeVariableReferenceExpression("record"));
+            method_create.Statements.Add(new CodeMethodReturnStatement(invoke_ctor));
+            udtRow.udt_row_type_decl.Members.Add(method_create);
 
             //foreach (var pi in mi.GetParameters())
             foreach (var pi in udt_reg.Columns)
@@ -746,18 +757,39 @@ namespace StoreLake.Sdk.CodeGeneration
                 AddReadParameterFunctions_NullOrCast(type_decl, prm_type.TypeNotNull, prm_type.TypeNull);
             }
 
+            AddReadParameterFunctions_UDT(type_decl);
+
             AddReadParameterFunctions_XElement(type_decl, false, typeof(System.Xml.Linq.XElement));
             var mtd_end = AddReadParameterFunctions_XElement(type_decl, true, typeof(System.Xml.Linq.XElement));
 
             mtd_end.EndDirectives.Add(new CodeRegionDirective(CodeRegionMode.End, String.Empty));
         }
 
+        private static void AddReadParameterFunctions_UDT(CodeTypeDeclaration type_decl)
+        {
+            string get_param_value_method_name = BuildReadCommandParameterMethodName(true, null, false);
+            CodeMemberMethod read_method_decl = BuildReadCommandParameterMethodDeclaration(type_decl, get_param_value_method_name, typeof(IDataRecord[]));
+
+            var cmd_Parameters = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("cmd"), "Parameters");
+            var cmd_Parameter_prm = new CodeIndexerExpression(cmd_Parameters, new CodeExpression[] { new CodeVariableReferenceExpression("name") });
+            var cmd_Parameter_prm_Value = new CodePropertyReferenceExpression(cmd_Parameter_prm, "Value");
+
+            //Array.fr
+            var cast_prm = new CodeCastExpression(typeof(IEnumerable<IDataRecord>), cmd_Parameter_prm_Value);
+
+            var invoke_ToArray = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(typeof(System.Linq.Enumerable)), "ToArray"));
+            invoke_ToArray.Parameters.Add(cast_prm);
+            read_method_decl.Statements.Add(new CodeMethodReturnStatement(invoke_ToArray));
+            //return read_method_decl;
+
+        }
+
         private static CodeMemberMethod AddReadParameterFunctions_Cast(CodeTypeDeclaration type_decl, Type typeNotNull)
         {
             //System.Data.Common.DbCommand cmd = null;
             //(string)cmd.Parameters[""].Value;
-
-            CodeMemberMethod read_method_decl = BuildReadCommandParameterMethodDeclaration(type_decl, false, typeNotNull, typeNotNull);
+            var get_param_value_method_name = BuildReadCommandParameterMethodName(false, typeNotNull, false);
+            CodeMemberMethod read_method_decl = BuildReadCommandParameterMethodDeclaration(type_decl, get_param_value_method_name, typeNotNull);
 
             var cmd_Parameters = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("cmd"), "Parameters");
             var cmd_Parameter_prm = new CodeIndexerExpression(cmd_Parameters, new CodeExpression[] { new CodeVariableReferenceExpression("name") });
@@ -774,8 +806,8 @@ namespace StoreLake.Sdk.CodeGeneration
             //object val = cmd.Parameters[""].Value;
             // if val is XElement return cast
             // return XElement.Parse();
-
-            CodeMemberMethod read_method_decl = BuildReadCommandParameterMethodDeclaration(type_decl, allowNull, typeNotNull, typeNotNull);
+            var get_param_value_method_name = BuildReadCommandParameterMethodName(false, typeNotNull, allowNull);
+            CodeMemberMethod read_method_decl = BuildReadCommandParameterMethodDeclaration(type_decl, get_param_value_method_name, typeNotNull);
 
             var cmd_Parameters = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("cmd"), "Parameters");
             var cmd_Parameter_prm = new CodeIndexerExpression(cmd_Parameters, new CodeExpression[] { new CodeVariableReferenceExpression("name") });
@@ -829,8 +861,8 @@ namespace StoreLake.Sdk.CodeGeneration
             //object val = cmd.Parameters[""].Value;
             // if val == null || val == DBNull.Value return null
             // return cast;
-
-            CodeMemberMethod read_method_decl = BuildReadCommandParameterMethodDeclaration(type_decl, true, typeNotNull, typeNull);
+            var get_param_value_method_name = BuildReadCommandParameterMethodName(false, typeNotNull, true);
+            CodeMemberMethod read_method_decl = BuildReadCommandParameterMethodDeclaration(type_decl, get_param_value_method_name, typeNull);
 
             var cmd_Parameters = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("cmd"), "Parameters");
             var cmd_Parameter_prm = new CodeIndexerExpression(cmd_Parameters, new CodeExpression[] { new CodeVariableReferenceExpression("name") });
@@ -860,9 +892,9 @@ namespace StoreLake.Sdk.CodeGeneration
             read_method_decl.Statements.Add(if_is_Null_or_DBNull);
         }
 
-        private static CodeMemberMethod BuildReadCommandParameterMethodDeclaration(CodeTypeDeclaration type_decl, bool allowNull, Type typeNotNull, Type typeReturn)
+        private static CodeMemberMethod BuildReadCommandParameterMethodDeclaration(CodeTypeDeclaration type_decl, string name, Type typeReturn)
         {
-            CodeMemberMethod read_method_decl = new CodeMemberMethod() { Name = BuildReadCommandParameterMethodName(typeNotNull, allowNull) };
+            CodeMemberMethod read_method_decl = new CodeMemberMethod() { Name = name };
             read_method_decl.Attributes = MemberAttributes.Static | MemberAttributes.Private;
             read_method_decl.ReturnType = new CodeTypeReference(typeReturn);
             read_method_decl.Parameters.Add(new CodeParameterDeclarationExpression(typeof(System.Data.Common.DbCommand), "cmd"));
@@ -872,8 +904,12 @@ namespace StoreLake.Sdk.CodeGeneration
             return read_method_decl;
         }
 
-        private static string BuildReadCommandParameterMethodName(Type typeNotNull, bool allowNull)
+        private static string BuildReadCommandParameterMethodName(bool isUDT, Type typeNotNull, bool allowNull)
         {
+            if (isUDT)
+            {
+                return "read_Records";
+            }
             string typeName = (typeNotNull == typeof(byte[])) ? "Bytes" : typeNotNull.Name;
             return "read_" + typeName + (allowNull ? "_OrNull" : "");
         }
@@ -985,8 +1021,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 else
                 {
 
-
-                    string get_param_value_method_name = BuildReadCommandParameterMethodName(parameterType.TypeNotNull, parameter.AllowNull);
+                    string get_param_value_method_name = BuildReadCommandParameterMethodName(false, parameterType.TypeNotNull, parameter.AllowNull);
 
                     var invoke_get_parameter_value = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(
                         new CodeTypeReferenceExpression(hm.handler_type_name), get_param_value_method_name));
