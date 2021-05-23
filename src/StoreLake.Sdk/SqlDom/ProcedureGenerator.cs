@@ -1,5 +1,4 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using StoreLake.Sdk.CodeGeneration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,18 +23,23 @@ namespace StoreLake.Sdk.SqlDom
         class OutputSet
         {
             private readonly TSqlFragment initiator;
-            public OutputSet(TSqlFragment resultFragment)
+            public OutputSet(SelectStatement resultFragment)
             {
                 initiator = resultFragment;
             }
+
+            public OutputSet(OutputClause resultFragment)
+            {
+                initiator = resultFragment;
+            }
+            
         }
 
         class SelectVisitor : DumpFragmentVisitor
         {
             private readonly TSqlFragment _toAnalyze;
 
-            internal int? resultHasOutputResultSet;
-            internal TSqlFragment resultFragment;
+            internal readonly List<OutputSet> resultHasOutputResultSet = new List<OutputSet>();
 
             private SelectVisitor(TSqlFragment toAnalyze = null) : base(false)
             {
@@ -46,26 +50,17 @@ namespace StoreLake.Sdk.SqlDom
             {
                 SelectVisitor vstor = new SelectVisitor(toAnalyze);
                 toAnalyze.Accept(vstor);
-                return vstor.resultHasOutputResultSet;
+                return vstor.resultHasOutputResultSet.Count;
             }
             private void DoHasOutputResultSet(TSqlFragment toAnalyze)
             {
                 SelectVisitor vstor = new SelectVisitor(toAnalyze);
                 toAnalyze.Accept(vstor);
-                int cnt = vstor.resultHasOutputResultSet.GetValueOrDefault();
+                int cnt = vstor.resultHasOutputResultSet.Count;
                 if (cnt > 0)
                 {
-                    this.resultHasOutputResultSet = cnt + this.resultHasOutputResultSet.GetValueOrDefault();
-                    this.resultFragment = vstor.resultFragment;
+                    this.resultHasOutputResultSet.AddRange(vstor.resultHasOutputResultSet);
                 }
-
-                //return this.resultHasOutputResultSet;
-            }
-            private void AddOutput(TSqlFragment node)
-            {
-                resultHasOutputResultSet = 1 + resultHasOutputResultSet.GetValueOrDefault();
-                resultFragment = node; //vstor.resultFragment;
-
             }
 
             public override void ExplicitVisit(UnqualifiedJoin node)
@@ -80,7 +75,7 @@ namespace StoreLake.Sdk.SqlDom
                 if (node.ElseStatement != null)
                 {
                     // skip else  but it can be use for column type discovery
-                    if (resultHasOutputResultSet.GetValueOrDefault() == 0)
+                    if (resultHasOutputResultSet.Count == 0)
                     {
                         // no SELECT in ThenStatement list : maybe THROW? or RAISEERROR
                         DoHasOutputResultSet(node.ElseStatement);
@@ -113,58 +108,23 @@ namespace StoreLake.Sdk.SqlDom
                 qspec.Accept(vstor);
                 if (vstor.ResultFragments.Count > 0)
                 {
-                    AddOutput(qspec);
-                }
-                
-                //foreach (var se in qspec.SelectElements)
-                //{
-                //    if (se is SelectSetVariable setVar)
-                //    {
-                //        // premature optimization : without visitor
-                //    }
-                //    else
-                //    {
-                //        SelectScalarExpression scalarExpr = (SelectScalarExpression)se;
-                //        resultHasOutputResultSet = 1 + resultHasOutputResultSet.GetValueOrDefault();
-                //        resultFragment = scalarExpr; //vstor.resultFragment;
-                            
-                //        if (vstor.resultFragments.Count == 0)
-                //        {
-                //            throw new NotImplementedException();
-                //        }
-                //    }
-                //}
-            }
-
-            public override void ExplicitVisit(InsertStatement node)
-            {
-                var vstor = new InsertSpecificationVisitor();
-                node.InsertSpecification.Accept(vstor);
-                if (vstor.hasOutputColumns.GetValueOrDefault())
-                {
-                    AddOutput(node);
+                    resultHasOutputResultSet.Add(new OutputSet(node));
                 }
             }
 
-
-
-
-        }
-
-        class InsertSpecificationVisitor : TSqlFragmentVisitor
-        {
-            internal bool? hasOutputColumns;
             public override void ExplicitVisit(OutputClause node)
             {
-                hasOutputColumns = true;
-                base.ExplicitVisit(node);
+                var vstor = new SelectElementVisitor();
+                node.Accept(vstor);
+                if (vstor.ResultFragments.Count > 0)
+                {
+                    resultHasOutputResultSet.Add(new OutputSet(node));
+                }
             }
         }
 
         class SelectElementVisitor : DumpFragmentVisitor
         {
-            //internal bool? resultHasOutputResultSet;
-            //internal TSqlFragment resultFragment;
             private readonly List<TSqlFragment> resultFragments = new List<TSqlFragment>();
             private bool hasSetVariable;
 
@@ -189,22 +149,19 @@ namespace StoreLake.Sdk.SqlDom
             public override void ExplicitVisit(SelectSetVariable node)
             {
                 // no! do not call the base implementation : stop the visiting of the child fragments!
-                //resultHasOutputResultSet = false;
                 hasSetVariable = true; // => no outputs
                 resultFragments.Clear();
             }
 
             public override void ExplicitVisit(ColumnReferenceExpression node)
             {
-                //resultHasOutputResultSet = true;
-                //resultFragment = node;
                 if (hasSetVariable)
                 {
                     resultFragments.Clear();
                 }
                 else
                 {
-                    resultFragments.Add(node);
+                    resultFragments.Add(node); // ColumnReferenceExpression : [a].[attributeid]
                 }
             }
 
@@ -217,7 +174,7 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
-                    resultFragments.Add(node);
+                    resultFragments.Add(node); // IdentifierOrValueExpression
                 }
             }
 
@@ -230,7 +187,7 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
-                    resultFragments.Add(node);
+                    resultFragments.Add(node); // SelectScalarExpression
                 }
             }
         }
