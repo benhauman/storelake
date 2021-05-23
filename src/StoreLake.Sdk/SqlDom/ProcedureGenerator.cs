@@ -21,6 +21,14 @@ namespace StoreLake.Sdk.SqlDom
             return res;
         }
 
+        class OutputSet
+        {
+            private readonly TSqlFragment initiator;
+            public OutputSet(TSqlFragment resultFragment)
+            {
+                initiator = resultFragment;
+            }
+        }
 
         class SelectVisitor : DumpFragmentVisitor
         {
@@ -68,9 +76,15 @@ namespace StoreLake.Sdk.SqlDom
             public override void ExplicitVisit(IfStatement node)
             {
                 DoHasOutputResultSet(node.ThenStatement);
+                
                 if (node.ElseStatement != null)
                 {
-                    DoHasOutputResultSet(node.ElseStatement);
+                    // skip else  but it can be use for column type discovery
+                    if (resultHasOutputResultSet.GetValueOrDefault() == 0)
+                    {
+                        // no SELECT in ThenStatement list : maybe THROW? or RAISEERROR
+                        DoHasOutputResultSet(node.ElseStatement);
+                    }
                 }
             }
 

@@ -682,7 +682,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     countOfResultSets = procedure.Annotations.Count(x => x.AnnotationKey == "Return");
                     if (countOfResultSets > 0)
                     {
-                        if (isQueryProcedure.GetValueOrDefault() > 0)
+                        if (isQueryProcedure.GetValueOrDefault() == countOfResultSets)
                         {
                             // ok
                         }
