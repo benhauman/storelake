@@ -9,15 +9,15 @@ using System.Threading.Tasks;
 
 namespace StoreLake.Test
 {
-    [TestClass]
-    public class ProcedureGenerator_Tests
-    {
-        public TestContext TestContext { get; set; }
+	[TestClass]
+	public class ProcedureGenerator_Tests
+	{
+		public TestContext TestContext { get; set; }
 
-        [TestMethod]
-        public void hlbpm_query_cmdbflowattributes()
-        {
-            string sql = @"BEGIN
+		[TestMethod]
+		public void hlbpm_query_cmdbflowattributes()
+		{
+			string sql = @"BEGIN
 	DECLARE @error_text NVARCHAR(MAX);
 	DECLARE @table TABLE (
 		cmdbflowname NVARCHAR(255) NOT NULL,
@@ -60,8 +60,44 @@ END
 ";
 			var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
 			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
-            //Assert.IsTrue(vstor.HasSelectStatements(), "HasSelectStatements");
-        }
+			//Assert.IsTrue(vstor.HasSelectStatements(), "HasSelectStatements");
+		}
 
-    }
+		[TestMethod]
+		public void hlsys_createactioncontext()
+		{
+			string sql = @"
+BEGIN
+	SET NOCOUNT ON;
+
+	DECLARE @actionid BIGINT;
+	
+	SELECT @actionid = actionid FROM [dbo].[hlsysaction] WITH (NOLOCK) WHERE actionname = @actionname
+
+	IF (@actionid IS NULL)
+	BEGIN
+		SET @actionid = CAST(HASHBYTES(N'SHA2_512', @actionname) AS BIGINT);
+		--DECLARE @action TABLE (actionid BIGINT);
+
+		INSERT INTO [dbo].[hlsysaction] (actionid, actionname)
+		--OUTPUT INSERTED.actionid INTO @action
+		VALUES (@actionid, @actionname);
+
+		--SELECT @actionid = actionid FROM @action;
+	END
+
+	INSERT INTO [dbo].[hlsysactioncontext] ([actioncontextid], [actionid], [parentactioncontextid], [spid], [hostname], [actionagentid], [actionchannel], [actionlcid], [creationtime])
+	OUTPUT INSERTED.[actioncontextid]
+	SELECT NEXT VALUE FOR [dbo].[SEQ_hlsysactioncontext_id], @actionid, @parentactioncontextid, @@SPID, HOST_NAME(), @actionagentid, @actionchannel, @actionlcid, GETUTCDATE();  
+END
+
+-- DROP PROCEDURE [dbo].[hlsys_createactioncontext]
+";
+			var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+			procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor());
+			
+			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
+			Assert.IsTrue(res.Value);
+		}
+	}
 }

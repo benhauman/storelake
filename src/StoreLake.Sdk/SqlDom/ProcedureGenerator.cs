@@ -29,7 +29,7 @@ namespace StoreLake.Sdk.SqlDom
             //internal readonly List<SelectVisitor> statements_If = new List<SelectVisitor>();
             //internal readonly List<SelectVisitor> statements_TryCatch = new List<SelectVisitor>();
             //internal readonly List<SelectStatement> statements_Select = new List<SelectStatement>();
-            internal bool? resultHasOutputResultSet;
+            internal int? resultHasOutputResultSet;
             internal TSqlFragment resultFragment;
 
             private SelectVisitor(TSqlFragment toAnalyze = null)
@@ -41,19 +41,20 @@ namespace StoreLake.Sdk.SqlDom
             {
                 SelectVisitor vstor = new SelectVisitor(toAnalyze);
                 toAnalyze.Accept(vstor);
-                return vstor.resultHasOutputResultSet;
+                return vstor.resultHasOutputResultSet.GetValueOrDefault() > 0;
             }
-            private bool? DoHasOutputResultSet(TSqlFragment toAnalyze)
+            private void DoHasOutputResultSet(TSqlFragment toAnalyze)
             {
                 SelectVisitor vstor = new SelectVisitor(toAnalyze);
                 toAnalyze.Accept(vstor);
-                if (vstor.resultHasOutputResultSet.GetValueOrDefault())
+                int cnt = vstor.resultHasOutputResultSet.GetValueOrDefault();
+                if (cnt > 0)
                 {
-                    this.resultHasOutputResultSet = true;
+                    this.resultHasOutputResultSet = cnt + this.resultHasOutputResultSet.GetValueOrDefault();
                     this.resultFragment = vstor.resultFragment;
                 }
 
-                return this.resultHasOutputResultSet;
+                //return this.resultHasOutputResultSet;
             }
 
             private SelectVisitor Sub(TSqlFragment node)
@@ -287,9 +288,9 @@ namespace StoreLake.Sdk.SqlDom
                         //scalarExpr.Accept(vstor);
                         //if (vstor.resultHasOutputResultSet.GetValueOrDefault())
                         {
-                            resultHasOutputResultSet = true;
+                            resultHasOutputResultSet = 1 + resultHasOutputResultSet.GetValueOrDefault();
                             resultFragment = scalarExpr; //vstor.resultFragment;
-                            break;
+                            //break;
                         }
                     }
                 }
@@ -297,7 +298,28 @@ namespace StoreLake.Sdk.SqlDom
                 //DoHasOutputResultSet(node.QueryExpression);
             }
 
+            public override void ExplicitVisit(InsertStatement node)
+            {
+                var vstor = new InsertSpecificationVisitor();
+                node.InsertSpecification.Accept(vstor);
+                if (vstor.hasOutputColumns.GetValueOrDefault())
+                {
+                    resultHasOutputResultSet = 1 + resultHasOutputResultSet.GetValueOrDefault();
+                    resultFragment = node; //vstor.resultFragment;
+                }
+            }
 
+
+        }
+
+        class InsertSpecificationVisitor : TSqlFragmentVisitor
+        {
+            internal bool? hasOutputColumns;
+            public override void ExplicitVisit(OutputClause node)
+            {
+                hasOutputColumns = true;
+                base.ExplicitVisit(node);
+            }
         }
 
         class SelectElementVisitor : TSqlFragmentVisitor
