@@ -678,7 +678,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 try
                 {
                     procedure_metadata = SqlDom.ProcedureGenerator.ParseProcedureBody(procedure.ProcedureName, procedure.ProcedureBodyScript);
-                    int? isQueryProcedure = SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
+                    int? isQueryProcedure = SqlDom.ProcedureGenerator.IsQueryProcedure(rr.SchemaMetadata(), procedure_metadata);
                     countOfResultSets = procedure.Annotations.Count(x => x.AnnotationKey == "Return");
                     if (countOfResultSets > 0)
                     {

@@ -1,6 +1,7 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,9 +15,10 @@ namespace StoreLake.Sdk.SqlDom
             TSqlFragment sqlF = ScriptDomFacade.Parse(procedure_body);
             return new ProcedureMetadata(procedure_name, sqlF);
         }
-        public static int? IsQueryProcedure(ProcedureMetadata procedure_metadata)
+        public static int? IsQueryProcedure(ISchemaMetadataProvider schemaMetadata, ProcedureMetadata procedure_metadata)
         {
-            StatementVisitor vstor = new StatementVisitor(procedure_metadata.BodyFragment);
+            BatchOutputColumnTypeResolver columnTypeResolver = new BatchOutputColumnTypeResolver(schemaMetadata, procedure_metadata.BodyFragment);
+            StatementVisitor vstor = new StatementVisitor(columnTypeResolver, procedure_metadata.BodyFragment);
             procedure_metadata.BodyFragment.Accept(vstor);
             return vstor.resultHasOutputResultSet.Count;
         }
@@ -34,17 +36,19 @@ namespace StoreLake.Sdk.SqlDom
         class StatementVisitor : DumpFragmentVisitor
         {
             private readonly TSqlFragment _toAnalyze;
+            private readonly BatchOutputColumnTypeResolver columnTypeResolver;
 
             internal readonly List<OutputSet> resultHasOutputResultSet = new List<OutputSet>();
 
-            internal StatementVisitor(TSqlFragment toAnalyze = null) : base(false)
+            internal StatementVisitor(BatchOutputColumnTypeResolver columnTypeResolver, TSqlFragment toAnalyze) : base(false)
             {
+                this.columnTypeResolver = columnTypeResolver;
                 _toAnalyze = toAnalyze;
             }
 
             private void DoHasOutputResultSet(TSqlStatement toAnalyze)
             {
-                StatementVisitor vstor = new StatementVisitor(toAnalyze);
+                StatementVisitor vstor = new StatementVisitor(columnTypeResolver, toAnalyze);
                 toAnalyze.Accept(vstor);
                 int cnt = vstor.resultHasOutputResultSet.Count;
                 if (cnt > 0)
@@ -53,9 +57,9 @@ namespace StoreLake.Sdk.SqlDom
                 }
             }
 
-            private void DoHasOutputResultSet(StatementList toAnalyze)
+            private void DoHasOutputResultSet(StatementList toAnalyze) // try, catch
             {
-                StatementVisitor vstor = new StatementVisitor(toAnalyze);
+                StatementVisitor vstor = new StatementVisitor(columnTypeResolver, toAnalyze);
                 toAnalyze.Accept(vstor);
                 int cnt = vstor.resultHasOutputResultSet.Count;
                 if (cnt > 0)
@@ -75,7 +79,7 @@ namespace StoreLake.Sdk.SqlDom
 
                 if (node.ElseStatement != null)
                 {
-                    // skip else  but it can be use for column type discovery
+                    // skip 'else'  but it can be use for column type discovery
                     if (resultHasOutputResultSet.Count == 0)
                     {
                         // no SELECT in ThenStatement list : maybe THROW? or RAISEERROR
@@ -89,7 +93,12 @@ namespace StoreLake.Sdk.SqlDom
                 DoHasOutputResultSet(node.TryStatements);
                 if (node.CatchStatements != null)
                 {
-                    DoHasOutputResultSet(node.CatchStatements);
+                    // skip 'catch' but it can be use for column type discovery
+                    if (resultHasOutputResultSet.Count == 0)
+                    {
+                        // no SELECT in TryStatements list : maybe THROW? or RAISEERROR
+                        DoHasOutputResultSet(node.CatchStatements);
+                    }
                 }
             }
 
@@ -108,7 +117,7 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     qspec = (QuerySpecification)node.QueryExpression;
                 }
-                var vstor = new SelectElementVisitor(node);
+                var vstor = new SelectElementVisitor(columnTypeResolver, node);
                 qspec.Accept(vstor);
                 if (vstor.HasOutput)
                 {
@@ -120,7 +129,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (node.UpdateSpecification != null && node.UpdateSpecification.OutputClause != null)
                 {
-                    var vstor = new SelectElementVisitor(node);
+                    var vstor = new SelectElementVisitor(columnTypeResolver, node);
                     node.UpdateSpecification.OutputClause.Accept(vstor);
                     if (vstor.HasOutput)
                     {
@@ -133,7 +142,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (node.InsertSpecification != null && node.InsertSpecification.OutputClause != null)
                 {
-                    var vstor = new SelectElementVisitor(node);
+                    var vstor = new SelectElementVisitor(columnTypeResolver, node);
                     node.InsertSpecification.OutputClause.Accept(vstor);
                     if (vstor.HasOutput)
                     {
@@ -146,7 +155,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (node.DeleteSpecification != null && node.DeleteSpecification.OutputClause != null)
                 {
-                    var vstor = new SelectElementVisitor(node);
+                    var vstor = new SelectElementVisitor(columnTypeResolver, node);
                     node.DeleteSpecification.OutputClause.Accept(vstor);
                     if (vstor.HasOutput)
                     {
@@ -160,10 +169,14 @@ namespace StoreLake.Sdk.SqlDom
         {
             private bool hasSetVariable;
             private readonly OutputSet outputSet;
+            private readonly StatementOutputColumnTypeResolver columnTypeResolver;
+            private readonly StatementWithCtesAndXmlNamespaces statement;
 
-            public SelectElementVisitor(StatementWithCtesAndXmlNamespaces statement) : base(false)
+            public SelectElementVisitor(BatchOutputColumnTypeResolver columnTypeResolver, StatementWithCtesAndXmlNamespaces statement) : base(false)
             {
+                this.columnTypeResolver = new StatementOutputColumnTypeResolver(columnTypeResolver, statement);
                 this.outputSet = new OutputSet(statement);
+                this.statement = statement;
             }
 
             internal bool HasOutput
@@ -206,10 +219,23 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
+                    //System.Data.DbType? columnDbType = columnTypeResolver.ResolveColumnReference(node);
                     outputSet.resultFragments.Add(node); // ColumnReferenceExpression : [a].[attributeid]
                 }
             }
-
+            public override void ExplicitVisit(SelectScalarExpression node)
+            {
+                // IIF(@limitreached = 1, 1, 0)
+                if (hasSetVariable)
+                {
+                    outputSet.resultFragments.Clear();
+                }
+                else
+                {
+                    //System.Data.DbType? columnDbType = columnTypeResolver.ResolveScalarExpression(node);
+                    outputSet.resultFragments.Add(node); // SelectScalarExpression
+                }
+            }
             public override void ExplicitVisit(IdentifierOrValueExpression node)
             {
                 // column from constant
@@ -221,19 +247,6 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     throw new NotSupportedException(node.AsText());
                     //outputSet.resultFragments.Add(node); // IdentifierOrValueExpression
-                }
-            }
-
-            public override void ExplicitVisit(SelectScalarExpression node)
-            {
-                // IIF(@limitreached = 1, 1, 0)
-                if (hasSetVariable)
-                {
-                    outputSet.resultFragments.Clear();
-                }
-                else
-                {
-                    outputSet.resultFragments.Add(node); // SelectScalarExpression
                 }
             }
         }
@@ -252,6 +265,11 @@ namespace StoreLake.Sdk.SqlDom
             {
                 result = true;
             }
+        }
+
+        internal static int? IsQueryProcedure(object schemaMetadata, ProcedureMetadata procedure_metadata)
+        {
+            throw new NotImplementedException();
         }
     }
 }

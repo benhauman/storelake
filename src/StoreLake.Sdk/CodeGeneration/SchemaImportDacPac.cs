@@ -1,4 +1,5 @@
-﻿using System;
+﻿using StoreLake.Sdk.SqlDom;
+using System;
 using System.CodeDom;
 using System.Collections.Generic;
 using System.Data;
@@ -40,7 +41,7 @@ namespace StoreLake.Sdk.CodeGeneration
     }
 
 
-    public sealed class RegistrationResult
+    public sealed class RegistrationResult : SqlDom.ISchemaMetadataProvider
     {
         internal RegistrationResult(DataSet ds, bool forceReferencePackageRegeneration, bool generateMissingReferences)
         {
@@ -57,6 +58,28 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly IDictionary<string, DacPacRegistration> registered_tabletypes = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
         // context
         internal readonly IDictionary<string, TableTypeRow> udt_rows = new SortedDictionary<string, TableTypeRow>();
+
+        internal ISchemaMetadataProvider SchemaMetadata()
+        {
+            return this;
+        }
+
+        IColumnSourceMetadata ISchemaMetadataProvider.TryGetColumnSourceMetadata(string schemaName, string objectName)
+        {
+            //string schema = string.IsNullOrEmpty(schemaName) ? ds.Namespace : schemaName;
+            if (!string.Equals(schemaName, ds.Namespace, StringComparison.OrdinalIgnoreCase))
+                return null;
+            string fullName = schemaName + "." + objectName;
+            if (!registered_tables.TryGetValue(objectName, out DacPacRegistration dacpac))
+            {
+                if (!registered_tables.TryGetValue(objectName.ToUpperInvariant(), out dacpac))
+                {
+                    //throw new NotSupportedException("Object could not be found:" + "[" + schemaName + "].[" + objectName + "]");
+                    return null;
+                }
+            }
+            throw new NotImplementedException(fullName);
+        }
     }
 
     internal sealed class TableTypeRow

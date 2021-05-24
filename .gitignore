@@ -20,3 +20,4 @@
 /src/StoreLake.Test/bin/Debug/net45
 /src/StoreLake.Test/obj
 *.user
+/src/StoreLake.Test/bin/Debug/net48

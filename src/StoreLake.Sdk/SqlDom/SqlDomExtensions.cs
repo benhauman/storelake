@@ -33,5 +33,17 @@ namespace StoreLake.Sdk.SqlDom
             var text = buffer.ToString();
             return text;
         }
+
+        internal static string Dequote(this Identifier id)
+        {
+            if (id.QuoteType == QuoteType.NotQuoted)
+                return id.Value;
+            return Identifier.DecodeIdentifier(id.Value, out QuoteType _);
+        }
+
+        internal static string WhatIsThis(this TSqlFragment fragment)
+        {
+            return fragment.GetType().Name + " # " + fragment.AsText();
+        }
     }
 }

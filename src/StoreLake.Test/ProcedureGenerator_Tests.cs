@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using StoreLake.Sdk.SqlDom;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,6 +14,114 @@ namespace StoreLake.Test
 	public class ProcedureGenerator_Tests
 	{
 		public TestContext TestContext { get; set; }
+
+        class TestSchema : ISchemaMetadataProvider
+        {
+			internal readonly IDictionary<string, IColumnSourceMetadata> sources = new SortedDictionary<string, IColumnSourceMetadata>();
+			IColumnSourceMetadata ISchemaMetadataProvider.TryGetColumnSourceMetadata(string schemaName, string objectName)
+            {
+				string key;
+				if (string.IsNullOrEmpty(schemaName) && objectName[0] == '@')
+				{
+					key = objectName.ToUpperInvariant();
+				}
+				else
+				{
+					key = TestSource.CreateKey(schemaName, objectName).ToUpperInvariant();
+				}
+				if (sources.TryGetValue(key, out IColumnSourceMetadata source))
+					return source;
+				return null;
+            }
+
+			internal TestSchema AddSource(TestSource source)
+            {
+				string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]").ToUpperInvariant();
+				sources.Add(key, source);
+				return this;
+			}
+		}
+
+		class TestSource : IColumnSourceMetadata
+		{
+			internal readonly string Key;
+			internal readonly string SchemaName;
+			internal readonly string ObjectName;
+            public TestSource(string schemaName, string objectName)
+            {
+				Key = CreateKey(schemaName, objectName);
+				SchemaName = schemaName;
+				ObjectName = objectName;
+			}
+			public TestSource(string objectName)
+			{
+				Key = objectName.ToUpperInvariant();
+				ObjectName = objectName;
+			}
+
+			internal static string CreateKey(string schemaName, string objectName)
+            {
+				return ("[" + schemaName + "].[" + objectName + "]").ToUpperInvariant();
+			}
+
+			internal readonly IDictionary<string, TestColumn> columns = new SortedDictionary<string, TestColumn>();
+
+
+			DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
+            {
+				string key = columnName.ToUpperInvariant();
+				return columns.TryGetValue(key, out TestColumn column)
+					? column.ColumnDbType
+					: null;
+            }
+
+            internal TestSource AddColumn(string name, DbType columnDbType)
+            {
+				columns.Add(name.ToUpperInvariant(), new TestColumn(name, columnDbType));
+				return this;
+            }
+        }
+
+		class TestColumn
+        {
+			internal readonly string ColumnName;
+			internal readonly DbType ColumnDbType;
+
+			public TestColumn(string columnName, DbType columnDbType)
+            {
+				ColumnName = columnName;
+				ColumnDbType = columnDbType;
+
+			}
+        }
+
+		private static TestSchema s_metadata_1 = new TestSchema()
+					.AddSource(new TestSource("dbo", "hlcmcontactvw")
+						.AddColumn("personid", DbType.Int32)
+						.AddColumn("persondefid", DbType.Int32)
+						.AddColumn("surname", DbType.String)
+						.AddColumn("name", DbType.String)
+						.AddColumn("language", DbType.Int32)
+						.AddColumn("title", DbType.String)
+						.AddColumn("street", DbType.String)
+						.AddColumn("city", DbType.String)
+						.AddColumn("region", DbType.String)
+						.AddColumn("zipcode", DbType.String)
+						.AddColumn("country", DbType.String)
+						.AddColumn("email", DbType.String)
+						.AddColumn("phonenumber", DbType.String)
+					)
+					.AddSource(new TestSource("dbo", "hlsysactioncontext")
+						.AddColumn("actioncontextid", DbType.Int64)
+					)
+		;
+
+		private static TestSchema CreateTestMetadata()
+        {
+			// SEQ_hlsysactioncontext_id
+			return s_metadata_1;
+
+		}
 
 		[TestMethod]
 		public void hlbpm_query_cmdbflowattributes()
@@ -59,7 +168,10 @@ namespace StoreLake.Test
 END
 ";
 			var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
-			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
+			var schemaMetadata = CreateTestMetadata()
+				.AddSource(new TestSource(null, "@table"))
+				;
+			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(schemaMetadata, procedure_metadata);
 			//Assert.IsTrue(vstor.HasSelectStatements(), "HasSelectStatements");
 		}
 
@@ -95,8 +207,8 @@ END
 ";
 			var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
 			//procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor());
-			
-			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
+			var schemaMetadata = CreateTestMetadata();
+			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(schemaMetadata, procedure_metadata);
 			Assert.AreEqual(1, res.Value);
 		}
 
@@ -114,8 +226,8 @@ END
 ";
 			var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
 			//procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor());
-
-			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
+			var schemaMetadata = CreateTestMetadata();
+			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(schemaMetadata, procedure_metadata);
 			Assert.AreEqual(1, res.Value);
 		}
 
@@ -152,8 +264,8 @@ BEGIN
 END
 ";
 			var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
-
-			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
+			var schemaMetadata = CreateTestMetadata();
+			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(schemaMetadata, procedure_metadata);
 			Assert.AreEqual(1, res.Value);
 		}
 
@@ -220,8 +332,8 @@ END
 END
 ";
 			var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
-
-			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(procedure_metadata);
+			var schemaMetadata = CreateTestMetadata();
+			var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(schemaMetadata, procedure_metadata);
 			Assert.AreEqual(1, res.Value);
 		}
 	}
