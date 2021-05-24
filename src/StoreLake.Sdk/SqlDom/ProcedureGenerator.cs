@@ -16,45 +16,46 @@ namespace StoreLake.Sdk.SqlDom
         }
         public static int? IsQueryProcedure(ProcedureMetadata procedure_metadata)
         {
-            int? res = SelectVisitor.AnalyzeHasOutputResultSet(procedure_metadata.BodyFragment);
-            return res;
+            StatementVisitor vstor = new StatementVisitor(procedure_metadata.BodyFragment);
+            procedure_metadata.BodyFragment.Accept(vstor);
+            return vstor.resultHasOutputResultSet.Count;
         }
 
         class OutputSet
         {
             private readonly TSqlFragment initiator;
-            public OutputSet(SelectStatement resultFragment)
+            public OutputSet(StatementWithCtesAndXmlNamespaces initiator)
             {
-                initiator = resultFragment;
+                this.initiator = initiator;
             }
-
-            public OutputSet(OutputClause resultFragment)
-            {
-                initiator = resultFragment;
-            }
-            
+            internal readonly List<TSqlFragment> resultFragments = new List<TSqlFragment>();
         }
 
-        class SelectVisitor : DumpFragmentVisitor
+        class StatementVisitor : DumpFragmentVisitor
         {
             private readonly TSqlFragment _toAnalyze;
 
             internal readonly List<OutputSet> resultHasOutputResultSet = new List<OutputSet>();
 
-            private SelectVisitor(TSqlFragment toAnalyze = null) : base(false)
+            internal StatementVisitor(TSqlFragment toAnalyze = null) : base(false)
             {
                 _toAnalyze = toAnalyze;
             }
 
-            public static int? AnalyzeHasOutputResultSet(TSqlFragment toAnalyze)
+            private void DoHasOutputResultSet(TSqlStatement toAnalyze)
             {
-                SelectVisitor vstor = new SelectVisitor(toAnalyze);
+                StatementVisitor vstor = new StatementVisitor(toAnalyze);
                 toAnalyze.Accept(vstor);
-                return vstor.resultHasOutputResultSet.Count;
+                int cnt = vstor.resultHasOutputResultSet.Count;
+                if (cnt > 0)
+                {
+                    this.resultHasOutputResultSet.AddRange(vstor.resultHasOutputResultSet);
+                }
             }
-            private void DoHasOutputResultSet(TSqlFragment toAnalyze)
+
+            private void DoHasOutputResultSet(StatementList toAnalyze)
             {
-                SelectVisitor vstor = new SelectVisitor(toAnalyze);
+                StatementVisitor vstor = new StatementVisitor(toAnalyze);
                 toAnalyze.Accept(vstor);
                 int cnt = vstor.resultHasOutputResultSet.Count;
                 if (cnt > 0)
@@ -71,7 +72,7 @@ namespace StoreLake.Sdk.SqlDom
             public override void ExplicitVisit(IfStatement node)
             {
                 DoHasOutputResultSet(node.ThenStatement);
-                
+
                 if (node.ElseStatement != null)
                 {
                     // skip else  but it can be use for column type discovery
@@ -94,6 +95,9 @@ namespace StoreLake.Sdk.SqlDom
 
             public override void ExplicitVisit(SelectStatement node)
             {
+                if (node.Into != null)
+                    return;
+
                 QuerySpecification qspec;
                 if (node.QueryExpression is BinaryQueryExpression bqe) // UNION?
                 {
@@ -104,45 +108,86 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     qspec = (QuerySpecification)node.QueryExpression;
                 }
-                var vstor = new SelectElementVisitor();
+                var vstor = new SelectElementVisitor(node);
                 qspec.Accept(vstor);
-                if (vstor.ResultFragments.Count > 0)
+                if (vstor.HasOutput)
                 {
                     resultHasOutputResultSet.Add(new OutputSet(node));
                 }
             }
 
-            public override void ExplicitVisit(OutputClause node)
+            public override void ExplicitVisit(UpdateStatement node)
             {
-                var vstor = new SelectElementVisitor();
-                node.Accept(vstor);
-                if (vstor.ResultFragments.Count > 0)
+                if (node.UpdateSpecification != null && node.UpdateSpecification.OutputClause != null)
                 {
-                    resultHasOutputResultSet.Add(new OutputSet(node));
+                    var vstor = new SelectElementVisitor(node);
+                    node.UpdateSpecification.OutputClause.Accept(vstor);
+                    if (vstor.HasOutput)
+                    {
+                        resultHasOutputResultSet.Add(vstor.ResultOutput);
+                    }
+                }
+            }
+
+            public override void ExplicitVisit(InsertStatement node)
+            {
+                if (node.InsertSpecification != null && node.InsertSpecification.OutputClause != null)
+                {
+                    var vstor = new SelectElementVisitor(node);
+                    node.InsertSpecification.OutputClause.Accept(vstor);
+                    if (vstor.HasOutput)
+                    {
+                        resultHasOutputResultSet.Add(vstor.ResultOutput);
+                    }
+                }
+            }
+
+            public override void ExplicitVisit(DeleteStatement node)
+            {
+                if (node.DeleteSpecification != null && node.DeleteSpecification.OutputClause != null)
+                {
+                    var vstor = new SelectElementVisitor(node);
+                    node.DeleteSpecification.OutputClause.Accept(vstor);
+                    if (vstor.HasOutput)
+                    {
+                        resultHasOutputResultSet.Add(vstor.ResultOutput);
+                    }
                 }
             }
         }
 
         class SelectElementVisitor : DumpFragmentVisitor
         {
-            private readonly List<TSqlFragment> resultFragments = new List<TSqlFragment>();
             private bool hasSetVariable;
+            private readonly OutputSet outputSet;
 
-            public SelectElementVisitor() : base(false)
+            public SelectElementVisitor(StatementWithCtesAndXmlNamespaces statement) : base(false)
             {
-
+                this.outputSet = new OutputSet(statement);
             }
 
-            internal IList<TSqlFragment> ResultFragments
+            internal bool HasOutput
             {
                 get
                 {
                     if (hasSetVariable)
                     {
-                        resultFragments.Clear();
+                        outputSet.resultFragments.Clear();
                     }
 
-                    return resultFragments;
+                    return outputSet.resultFragments.Count > 0;
+                }
+            }
+            internal OutputSet ResultOutput
+            {
+                get
+                {
+                    if (!HasOutput)
+                    {
+                        throw new NotSupportedException("No output");
+                    }
+
+                    return outputSet;
                 }
             }
 
@@ -150,18 +195,18 @@ namespace StoreLake.Sdk.SqlDom
             {
                 // no! do not call the base implementation : stop the visiting of the child fragments!
                 hasSetVariable = true; // => no outputs
-                resultFragments.Clear();
+                outputSet.resultFragments.Clear();
             }
 
             public override void ExplicitVisit(ColumnReferenceExpression node)
             {
                 if (hasSetVariable)
                 {
-                    resultFragments.Clear();
+                    outputSet.resultFragments.Clear();
                 }
                 else
                 {
-                    resultFragments.Add(node); // ColumnReferenceExpression : [a].[attributeid]
+                    outputSet.resultFragments.Add(node); // ColumnReferenceExpression : [a].[attributeid]
                 }
             }
 
@@ -170,11 +215,12 @@ namespace StoreLake.Sdk.SqlDom
                 // column from constant
                 if (hasSetVariable)
                 {
-                    resultFragments.Clear();
+                    outputSet.resultFragments.Clear();
                 }
                 else
                 {
-                    resultFragments.Add(node); // IdentifierOrValueExpression
+                    throw new NotSupportedException(node.AsText());
+                    //outputSet.resultFragments.Add(node); // IdentifierOrValueExpression
                 }
             }
 
@@ -183,11 +229,11 @@ namespace StoreLake.Sdk.SqlDom
                 // IIF(@limitreached = 1, 1, 0)
                 if (hasSetVariable)
                 {
-                    resultFragments.Clear();
+                    outputSet.resultFragments.Clear();
                 }
                 else
                 {
-                    resultFragments.Add(node); // SelectScalarExpression
+                    outputSet.resultFragments.Add(node); // SelectScalarExpression
                 }
             }
         }
