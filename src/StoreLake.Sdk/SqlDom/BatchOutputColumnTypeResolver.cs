@@ -113,6 +113,15 @@ namespace StoreLake.Sdk.SqlDom
                         return DbType.String;
                     }
 
+                    if (string.Equals("SMALLINT", typeName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        //SqlDataTypeReference sqlDataType = (SqlDataTypeReference)dataType;
+                        //string maxLen = sqlDataType.Parameters[0].Value;
+                        //dataType.p
+                        //return typeof(string);
+                        return DbType.Int16;
+                    }
+
                     throw new NotImplementedException("typeName:" + typeName);
                 }
                 else

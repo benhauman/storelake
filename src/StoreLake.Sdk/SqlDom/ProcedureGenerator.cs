@@ -1,7 +1,6 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,40 +14,32 @@ namespace StoreLake.Sdk.SqlDom
             TSqlFragment sqlF = ScriptDomFacade.Parse(procedure_body);
             return new ProcedureMetadata(procedure_name, sqlF);
         }
-        public static int? IsQueryProcedure(ISchemaMetadataProvider schemaMetadata, ProcedureMetadata procedure_metadata)
+        public static ProcedureOutputSet[] IsQueryProcedure(bool resolveColumnType, ISchemaMetadataProvider schemaMetadata, ProcedureMetadata procedure_metadata)
         {
             BatchOutputColumnTypeResolver columnTypeResolver = new BatchOutputColumnTypeResolver(schemaMetadata, procedure_metadata.BodyFragment);
-            StatementVisitor vstor = new StatementVisitor(columnTypeResolver, procedure_metadata.BodyFragment);
+            StatementVisitor vstor = new StatementVisitor(resolveColumnType, columnTypeResolver, procedure_metadata.BodyFragment);
             procedure_metadata.BodyFragment.Accept(vstor);
-            return vstor.resultHasOutputResultSet.Count;
-        }
-
-        class OutputSet
-        {
-            private readonly TSqlFragment initiator;
-            public OutputSet(StatementWithCtesAndXmlNamespaces initiator)
-            {
-                this.initiator = initiator;
-            }
-            internal readonly List<TSqlFragment> resultFragments = new List<TSqlFragment>();
+            return vstor.resultHasOutputResultSet.ToArray();
         }
 
         class StatementVisitor : DumpFragmentVisitor
         {
             private readonly TSqlFragment _toAnalyze;
             private readonly BatchOutputColumnTypeResolver columnTypeResolver;
+            private readonly bool resolveColumnType;
 
-            internal readonly List<OutputSet> resultHasOutputResultSet = new List<OutputSet>();
+            internal readonly List<ProcedureOutputSet> resultHasOutputResultSet = new List<ProcedureOutputSet>();
 
-            internal StatementVisitor(BatchOutputColumnTypeResolver columnTypeResolver, TSqlFragment toAnalyze) : base(false)
+            internal StatementVisitor(bool resolveColumnType, BatchOutputColumnTypeResolver columnTypeResolver, TSqlFragment toAnalyze) : base(false)
             {
+                this.resolveColumnType = resolveColumnType;
                 this.columnTypeResolver = columnTypeResolver;
                 _toAnalyze = toAnalyze;
             }
 
             private void DoHasOutputResultSet(TSqlStatement toAnalyze)
             {
-                StatementVisitor vstor = new StatementVisitor(columnTypeResolver, toAnalyze);
+                StatementVisitor vstor = new StatementVisitor(resolveColumnType, columnTypeResolver, toAnalyze);
                 toAnalyze.Accept(vstor);
                 int cnt = vstor.resultHasOutputResultSet.Count;
                 if (cnt > 0)
@@ -59,7 +50,7 @@ namespace StoreLake.Sdk.SqlDom
 
             private void DoHasOutputResultSet(StatementList toAnalyze) // try, catch
             {
-                StatementVisitor vstor = new StatementVisitor(columnTypeResolver, toAnalyze);
+                StatementVisitor vstor = new StatementVisitor(resolveColumnType, columnTypeResolver, toAnalyze);
                 toAnalyze.Accept(vstor);
                 int cnt = vstor.resultHasOutputResultSet.Count;
                 if (cnt > 0)
@@ -85,6 +76,10 @@ namespace StoreLake.Sdk.SqlDom
                         // no SELECT in ThenStatement list : maybe THROW? or RAISEERROR
                         DoHasOutputResultSet(node.ElseStatement);
                     }
+                    else
+                    {
+                        // apply column types from ELSE
+                    }
                 }
             }
 
@@ -99,6 +94,10 @@ namespace StoreLake.Sdk.SqlDom
                         // no SELECT in TryStatements list : maybe THROW? or RAISEERROR
                         DoHasOutputResultSet(node.CatchStatements);
                     }
+                    else
+                    {
+                        // apply column types from CATCH
+                    }
                 }
             }
 
@@ -107,29 +106,56 @@ namespace StoreLake.Sdk.SqlDom
                 if (node.Into != null)
                     return;
 
-                QuerySpecification qspec;
                 if (node.QueryExpression is BinaryQueryExpression bqe) // UNION?
                 {
                     // premature optimization : without visitor
-                    qspec = (QuerySpecification)bqe.FirstQueryExpression;
+                    var vstorF = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
+                    QuerySpecification qspecF = (QuerySpecification)bqe.FirstQueryExpression;
+                    foreach (var selectEl in qspecF.SelectElements)
+                    {
+                        selectEl.Accept(vstorF);
+                    }
+                    if (vstorF.HasOutput)
+                    {
+                        if (vstorF.ResultOutput.HasMissingColumnInfo())
+                        {
+                            var vstorS = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
+                            QuerySpecification qspecS = (QuerySpecification)bqe.SecondQueryExpression;
+                            foreach (var selectEl in qspecS.SelectElements)
+                            {
+                                selectEl.Accept(vstorS);
+                            }
+
+                            vstorF.ResultOutput.ApplyMissingInformation(vstorS.ResultOutput);
+                        }
+
+                        resultHasOutputResultSet.Add(vstorF.ResultOutput);
+                    }
+
                 }
                 else
                 {
-                    qspec = (QuerySpecification)node.QueryExpression;
+                    var vstor = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
+                    QuerySpecification qspec = (QuerySpecification)node.QueryExpression;
+                    foreach (var selectEl in qspec.SelectElements)
+                    {
+                        selectEl.Accept(vstor);
+                    }
+                    if (vstor.HasOutput)
+                    {
+                        resultHasOutputResultSet.Add(vstor.ResultOutput);
+                    }
                 }
-                var vstor = new SelectElementVisitor(columnTypeResolver, node);
-                qspec.Accept(vstor);
-                if (vstor.HasOutput)
-                {
-                    resultHasOutputResultSet.Add(new OutputSet(node));
-                }
+
+
             }
+
 
             public override void ExplicitVisit(UpdateStatement node)
             {
                 if (node.UpdateSpecification != null && node.UpdateSpecification.OutputClause != null)
                 {
-                    var vstor = new SelectElementVisitor(columnTypeResolver, node);
+                    var vstor = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
                     node.UpdateSpecification.OutputClause.Accept(vstor);
                     if (vstor.HasOutput)
                     {
@@ -142,7 +168,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (node.InsertSpecification != null && node.InsertSpecification.OutputClause != null)
                 {
-                    var vstor = new SelectElementVisitor(columnTypeResolver, node);
+                    var vstor = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
                     node.InsertSpecification.OutputClause.Accept(vstor);
                     if (vstor.HasOutput)
                     {
@@ -155,7 +181,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (node.DeleteSpecification != null && node.DeleteSpecification.OutputClause != null)
                 {
-                    var vstor = new SelectElementVisitor(columnTypeResolver, node);
+                    var vstor = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
                     node.DeleteSpecification.OutputClause.Accept(vstor);
                     if (vstor.HasOutput)
                     {
@@ -168,14 +194,16 @@ namespace StoreLake.Sdk.SqlDom
         class SelectElementVisitor : DumpFragmentVisitor
         {
             private bool hasSetVariable;
-            private readonly OutputSet outputSet;
+            private readonly ProcedureOutputSet outputSet;
             private readonly StatementOutputColumnTypeResolver columnTypeResolver;
             private readonly StatementWithCtesAndXmlNamespaces statement;
+            private readonly bool resolveColumnType;
 
-            public SelectElementVisitor(BatchOutputColumnTypeResolver columnTypeResolver, StatementWithCtesAndXmlNamespaces statement) : base(false)
+            public SelectElementVisitor(bool resolveColumnType, BatchOutputColumnTypeResolver columnTypeResolver, StatementWithCtesAndXmlNamespaces statement) : base(false)
             {
+                this.resolveColumnType = resolveColumnType;
                 this.columnTypeResolver = new StatementOutputColumnTypeResolver(columnTypeResolver, statement);
-                this.outputSet = new OutputSet(statement);
+                this.outputSet = new ProcedureOutputSet(statement);
                 this.statement = statement;
             }
 
@@ -185,13 +213,13 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     if (hasSetVariable)
                     {
-                        outputSet.resultFragments.Clear();
+                        outputSet.Clear();
                     }
 
-                    return outputSet.resultFragments.Count > 0;
+                    return outputSet.ColumnCount > 0;
                 }
             }
-            internal OutputSet ResultOutput
+            internal ProcedureOutputSet ResultOutput
             {
                 get
                 {
@@ -208,19 +236,30 @@ namespace StoreLake.Sdk.SqlDom
             {
                 // no! do not call the base implementation : stop the visiting of the child fragments!
                 hasSetVariable = true; // => no outputs
-                outputSet.resultFragments.Clear();
+                outputSet.Clear();
+            }
+
+            public override void ExplicitVisit(QualifiedJoin node)
+            {
+
             }
 
             public override void ExplicitVisit(ColumnReferenceExpression node)
             {
                 if (hasSetVariable)
                 {
-                    outputSet.resultFragments.Clear();
+                    outputSet.Clear();
                 }
                 else
                 {
-                    //System.Data.DbType? columnDbType = columnTypeResolver.ResolveColumnReference(node);
-                    outputSet.resultFragments.Add(node); // ColumnReferenceExpression : [a].[attributeid]
+                    OutputColumnDescriptor columnDbType = resolveColumnType
+                        ? columnTypeResolver.ResolveColumnReference(node)
+                        : null;
+                    if (columnDbType == null)
+                    {
+                        // put breakpoint here and try again
+                    }
+                    outputSet.AddColumn(new ProcedureOutputColumn(node, columnDbType)); // ColumnReferenceExpression : [a].[attributeid]
                 }
             }
             public override void ExplicitVisit(SelectScalarExpression node)
@@ -228,12 +267,14 @@ namespace StoreLake.Sdk.SqlDom
                 // IIF(@limitreached = 1, 1, 0)
                 if (hasSetVariable)
                 {
-                    outputSet.resultFragments.Clear();
+                    outputSet.Clear();
                 }
                 else
                 {
-                    //System.Data.DbType? columnDbType = columnTypeResolver.ResolveScalarExpression(node);
-                    outputSet.resultFragments.Add(node); // SelectScalarExpression
+                    OutputColumnDescriptor columnDbType = resolveColumnType
+                        ? columnTypeResolver.ResolveScalarExpression(node)
+                        : null;
+                    outputSet.AddColumn(new ProcedureOutputColumn(node, columnDbType)); // SelectScalarExpression
                 }
             }
             public override void ExplicitVisit(IdentifierOrValueExpression node)
@@ -241,7 +282,7 @@ namespace StoreLake.Sdk.SqlDom
                 // column from constant
                 if (hasSetVariable)
                 {
-                    outputSet.resultFragments.Clear();
+                    outputSet.Clear();
                 }
                 else
                 {
@@ -265,11 +306,6 @@ namespace StoreLake.Sdk.SqlDom
             {
                 result = true;
             }
-        }
-
-        internal static int? IsQueryProcedure(object schemaMetadata, ProcedureMetadata procedure_metadata)
-        {
-            throw new NotImplementedException();
         }
     }
 }

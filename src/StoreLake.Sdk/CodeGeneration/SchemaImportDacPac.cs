@@ -38,6 +38,7 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly IDictionary<string, string> referenced_assemblies = new SortedDictionary<string, string>(); // assemblyname/assemblylocation;
         internal readonly IDictionary<string, StoreLakeCheckConstraintRegistration> registered_CheckConstraints = new SortedDictionary<string, StoreLakeCheckConstraintRegistration>();
         internal readonly IDictionary<string, StoreLakeProcedureRegistration> registered_Procedures = new SortedDictionary<string, StoreLakeProcedureRegistration>();
+        internal readonly IDictionary<string, StoreLakeViewRegistration> registered_views = new SortedDictionary<string, StoreLakeViewRegistration>();
     }
 
 
@@ -56,29 +57,124 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly IDictionary<string, DacPacRegistration> procesed_files = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
         internal readonly IDictionary<string, DacPacRegistration> registered_tables = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
         internal readonly IDictionary<string, DacPacRegistration> registered_tabletypes = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
+        internal readonly IDictionary<string, DacPacRegistration> registered_views = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
         // context
         internal readonly IDictionary<string, TableTypeRow> udt_rows = new SortedDictionary<string, TableTypeRow>();
 
+        internal readonly bool DoResolveColumnType = false;
         internal ISchemaMetadataProvider SchemaMetadata()
         {
             return this;
         }
 
+        internal readonly IDictionary<string, IColumnSourceMetadata> column_sources = new SortedDictionary<string, IColumnSourceMetadata>();
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetColumnSourceMetadata(string schemaName, string objectName)
         {
             //string schema = string.IsNullOrEmpty(schemaName) ? ds.Namespace : schemaName;
             if (!string.Equals(schemaName, ds.Namespace, StringComparison.OrdinalIgnoreCase))
                 return null;
+
             string fullName = schemaName + "." + objectName;
-            if (!registered_tables.TryGetValue(objectName, out DacPacRegistration dacpac))
+            if (!column_sources.TryGetValue(fullName.ToUpperInvariant(), out IColumnSourceMetadata column_source))
             {
-                if (!registered_tables.TryGetValue(objectName.ToUpperInvariant(), out dacpac))
+                DataTable table;
+                if (!registered_tables.TryGetValue(objectName, out DacPacRegistration dacpac))
                 {
-                    //throw new NotSupportedException("Object could not be found:" + "[" + schemaName + "].[" + objectName + "]");
-                    return null;
+                    if (!registered_tables.TryGetValue(objectName.ToUpperInvariant(), out dacpac))
+                    {
+                        StoreLakeViewRegistration view_reg;
+                        if (!registered_views.TryGetValue(objectName, out dacpac))
+                        {
+                            if (!registered_views.TryGetValue(objectName.ToUpperInvariant(), out dacpac))
+                            {
+                                return null; // table/view unknown
+                            }
+                            else
+                            {
+                                view_reg = dacpac.registered_views[objectName.ToUpperInvariant()];
+                            }
+                        }
+                        else
+                        {
+                            view_reg = dacpac.registered_views[objectName];
+                        }
+                        column_source = new SourceMetadataView(objectName);
+                    }
+                    else
+                    {
+                        table = ds.Tables[objectName];
+                        if (table == null)
+                            throw new NotSupportedException("Table could not be found:" + "[" + schemaName + "].[" + objectName + "]");
+                        column_source = new SourceMetadataTable(table);
+                    }
                 }
+                else
+                {
+                    table = ds.Tables[objectName];
+                    if (table == null)
+                        throw new NotSupportedException("Table could not be found:" + "[" + schemaName + "].[" + objectName + "]");
+                    column_source = new SourceMetadataTable(table);
+                }
+
+                column_sources.Add(fullName.ToUpperInvariant(), column_source);
+                //throw new NotImplementedException(fullName);
+                //throw new NotSupportedException("Object could not be found:" + "[" + schemaName + "].[" + objectName + "]");
             }
-            throw new NotImplementedException(fullName);
+
+            return column_source;
+        }
+
+        IColumnSourceMetadata ISchemaMetadataProvider.TryGetFunctionTableMetadata(string schemaName, string objectName)
+        {
+            return null;
+        }
+    }
+
+    [DebuggerDisplay("{ViewName}")]
+    class SourceMetadataView : IColumnSourceMetadata
+    {
+        private readonly string ViewName;
+        public SourceMetadataView(string name)
+        {
+            ViewName = name;
+        }
+        DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
+        {
+            return null;
+        }
+    }
+
+    [DebuggerDisplay("{table.TableName}")]
+    class SourceMetadataTable : IColumnSourceMetadata
+    {
+        private readonly DataTable table;
+        public SourceMetadataTable(DataTable table)
+        {
+            this.table = table;
+        }
+        DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
+        {
+            DataColumn column = table.Columns[columnName];
+            if (column != null)
+            {
+                return GetColumnDbType(column.DataType);
+            }
+            return null;
+        }
+
+        private static DbType GetColumnDbType(Type dataType)
+        {
+            if (dataType == typeof(int))
+                return DbType.Int32;
+            if (dataType == typeof(string))
+                return DbType.String;
+            if (dataType == typeof(short))
+                return DbType.Int16;
+            if (dataType == typeof(byte))
+                return DbType.Byte;
+            if (dataType == typeof(bool))
+                return DbType.Boolean;
+            throw new NotImplementedException(dataType.Name);
         }
     }
 
@@ -234,6 +330,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                 // <Element Type="SqlScalarFunction" Name="[dbo].[hlsystablecfgdeskfield_validate_attribute]">
 
                                 AddUserDefinedTableTypes(ctx, dacpac, xModel);
+                                AddViews(ctx, dacpac, xModel);
 
                                 ctx.registered_dacpacs.Add(dacpac.UniqueKey, dacpac);
                             }
@@ -1022,6 +1119,55 @@ namespace StoreLake.Sdk.CodeGeneration
                 ctx.registered_tables.Add(treg.TableName, dacpac);
                 dacpac.registered_tables.Add(treg.TableName, true);
                 DatabaseRegistration.RegisterTable(ctx.ds, treg);
+            }
+        }
+
+        private static void AddViews(RegistrationResult ctx, DacPacRegistration dacpac, XElement xModel)
+        {
+            // <Element Type="SqlView" Name="[dbo].[hlcmcontactvw]">
+            foreach (var xView in xModel.Elements().Where(e => e.Attributes().Any(t => t.Name == "Type" && t.Value == "SqlView")))
+            {
+                SchemaObjectName sonView = ReadSchemaObjectName(2, xView);
+
+                StoreLakeViewRegistration vreg = new StoreLakeViewRegistration()
+                {
+                    ViewName = sonView.ObjectName,
+                    ViewSchema = sonView.SchemaName,
+                };
+
+                // QueryScript
+                var xProperty_QueryScript = xView.Elements().Single(e => e.Name.LocalName == "Property" && e.Attributes().Any(t => t.Name.LocalName == "Name" && t.Value == "QueryScript"));
+                var xProperty_QueryScript_Value = xProperty_QueryScript.Elements().Single(e => e.Name.LocalName == "Value");
+                XCData xcdata = (XCData)xProperty_QueryScript_Value.FirstNode;
+                vreg.ViewQueryScript = xcdata.Value.Trim();
+
+                // <Relationship Name="Columns">
+                var xRelationship_Columns = xView.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "Columns")).Single();
+                foreach (var xRelationship_Columns_Entry in xRelationship_Columns.Elements())
+                {
+                    var xElement_Column = xRelationship_Columns_Entry.Elements().Single(e => e.Name.LocalName == "Element" && e.Attributes().Any(a => a.Name.LocalName == "Type" && a.Value == "SqlComputedColumn"));
+
+                    var sonColumn = ReadSchemaObjectName(3, xElement_Column);
+                    StoreLakeViewColumnRegistration column = new StoreLakeViewColumnRegistration() { ColumnName = sonColumn.ItemName };
+
+                    vreg.Columns.Add(column);
+
+                    var xElement_Column_ExpressionDependencies = xElement_Column.Elements().SingleOrDefault(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "ExpressionDependencies"));
+                    if (xElement_Column_ExpressionDependencies != null)
+                    {
+                        var xElement_Column_ExpressionDependencies_Entry = xElement_Column_ExpressionDependencies.Elements().Single(e => e.Name.LocalName == "Entry");
+                        var xElement_Column_ExpressionDependencies_Entry_References = xElement_Column_ExpressionDependencies_Entry.Elements().Single(e => e.Name.LocalName == "References");
+                        //5 due to CTE var sonRefColumn = ReadSchemaObjectName(3, xElement_Column_ExpressionDependencies_Entry_References);
+                    }
+                    else
+                    {
+                        // hlbreroleassignedtouservw : // SubQuery/CTE/(column rename via view definition)
+                    }
+                }
+
+                ctx.registered_views.Add(vreg.ViewName, dacpac);
+                dacpac.registered_views.Add(vreg.ViewName, vreg);
+                //DatabaseRegistration.RegisterTable(ctx.ds, vreg);
             }
         }
 

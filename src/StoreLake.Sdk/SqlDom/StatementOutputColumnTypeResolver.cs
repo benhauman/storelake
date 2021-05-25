@@ -15,11 +15,11 @@ namespace StoreLake.Sdk.SqlDom
             this.batchResolver = batchResolver;
             this.statement = statement;
         }
-        internal DbType? ResolveColumnReference(ColumnReferenceExpression node)
+        internal OutputColumnDescriptor ResolveColumnReference(ColumnReferenceExpression node)
         {
             return ResolveColumnReferenceCore(node);
         }
-        private DbType? ResolveColumnReferenceCore(ColumnReferenceExpression node)
+        private OutputColumnDescriptor ResolveColumnReferenceCore(ColumnReferenceExpression node)
         {
             if (node.ColumnType != ColumnType.Regular)
                 throw new NotImplementedException(node.AsText());
@@ -48,17 +48,16 @@ namespace StoreLake.Sdk.SqlDom
             //return null;
         }
 
-        private DbType? TryResolveColumnReferenceCoreSN(TSqlFragment node, string sourceNameOrAlias, string columnName)
+        private OutputColumnDescriptor TryResolveColumnReferenceCoreSN(TSqlFragment node, string sourceNameOrAlias, string columnName)
         {
-            DbType resultColumnType;
+            OutputColumnDescriptor resultColumnType;
             if (statement is SelectStatement stmt_sel)
             {
-                if (TryQuerySpecification(true, stmt_sel.QueryExpression as QuerySpecification, sourceNameOrAlias, columnName, out resultColumnType))
+                if (TryQueryExpression(stmt_sel.QueryExpression, sourceNameOrAlias, columnName, out resultColumnType))
                 {
                     return resultColumnType;
                 }
-
-                throw new NotImplementedException(stmt_sel.QueryExpression.WhatIsThis());
+                return null;
             }
 
             DataModificationSpecification source_specification = null;
@@ -84,58 +83,42 @@ namespace StoreLake.Sdk.SqlDom
             //return null;
         }
 
-        private bool TrySelectStatement(bool throwOnSourceNotFound, SelectStatement selectStatement, string sourceNameOrAlias, string columnName, out DbType resultColumnType)
+        private bool TryQueryExpression(QueryExpression queryExpr, string sourceNameOrAlias, string columnName, out OutputColumnDescriptor resultColumnType)
         {
-            if (selectStatement != null && selectStatement.QueryExpression != null)
+            if (queryExpr is QuerySpecification querySpecification)
             {
-                if (TryQuerySpecification(throwOnSourceNotFound, selectStatement.QueryExpression as QuerySpecification, sourceNameOrAlias, columnName, out resultColumnType))
+                if (querySpecification.FromClause != null)
                 {
-                    return true;
+                    foreach (TableReference tableRef in querySpecification.FromClause.TableReferences)
+                    {
+                        if (TryTableReference(false, false, tableRef, sourceNameOrAlias, columnName, out resultColumnType))
+                        {
+                            return true;
+                        }
+                    }
                 }
 
-                throw new NotImplementedException(selectStatement.QueryExpression.WhatIsThis());
+                resultColumnType = null;
+                return false;
             }
 
-            resultColumnType = DbType.Object;
-            return false;
-        }
-
-        private bool TryQuerySpecification(bool throwOnSourceNotFound, QuerySpecification querySpecification, string sourceNameOrAlias, string columnName, out DbType resultColumnType)
-        {
-            if (querySpecification != null && querySpecification.FromClause != null)
+            if (queryExpr is BinaryQueryExpression bqryExpr) // UNION (ALL)
             {
-                if (TryFromClause(throwOnSourceNotFound, querySpecification.FromClause, sourceNameOrAlias, columnName, out resultColumnType))
-                {
+                if (TryQueryExpression(bqryExpr.FirstQueryExpression, sourceNameOrAlias, columnName, out resultColumnType))
                     return true;
-                }
-
-                throw new NotImplementedException(querySpecification.FromClause.WhatIsThis());
-            }
-            resultColumnType = DbType.Object;
-            return false;
-        }
-
-        private bool TryFromClause(bool throwOnSourceNotFound, FromClause fromClause, string sourceNameOrAlias, string columnName, out DbType resultColumnType)
-        {
-            foreach (TableReference tableRef in fromClause.TableReferences)
-            {
-                if (TryTableReference(false, false, tableRef, sourceNameOrAlias, columnName, out resultColumnType))
-                {
+                if (TryQueryExpression(bqryExpr.SecondQueryExpression, sourceNameOrAlias, columnName, out resultColumnType))
                     return true;
-                }
+                resultColumnType = null;
+                return false;
             }
 
-            if (throwOnSourceNotFound)
-            {
-                throw new NotImplementedException(columnName + " ## " + fromClause.WhatIsThis());
-            }
-
-            resultColumnType = DbType.Object;
-            return false;
+            throw new NotImplementedException(queryExpr.WhatIsThis());
+            //resultColumnType = null;
+            //return false;
         }
 
 
-        private bool TryTableReference(bool throwOnSourceNotFound, bool throwOnColumnNotFound, TableReference tableRef, string sourceNameOrAlias, string columnName, out DbType resultColumnType)
+        private bool TryTableReference(bool throwOnSourceNotFound, bool throwOnColumnNotFound, TableReference tableRef, string sourceNameOrAlias, string columnName, out OutputColumnDescriptor resultColumnType)
         {
             if (tableRef is NamedTableReference ntRef)
             {
@@ -174,7 +157,8 @@ namespace StoreLake.Sdk.SqlDom
                         return true;
                     }
 
-                    throw new NotImplementedException(columnName + " ## " + tableRef.WhatIsThis());
+                    //throw new NotImplementedException(columnName + " ## " + tableRef.WhatIsThis());
+                    return false;
                 }
                 else
                 {
@@ -183,7 +167,7 @@ namespace StoreLake.Sdk.SqlDom
                     {
                         throw new NotImplementedException(columnName + " ## " + tableRef.WhatIsThis());
                     }
-                    resultColumnType = DbType.Object;
+                    resultColumnType = null;
                     return false;
                 }
             }
@@ -197,7 +181,57 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     throw new NotImplementedException(columnName + " ## " + tableRef.WhatIsThis());
                 }
-                resultColumnType = DbType.Object;
+                resultColumnType = null;
+                return false;
+            }
+            else if (tableRef is QualifiedJoin qJoin)
+            {
+                if (TryTableReference(false, false, qJoin.FirstTableReference, sourceNameOrAlias, columnName, out resultColumnType))
+                {
+                    return true;
+                }
+
+                if (TryTableReference(false, false, qJoin.SecondTableReference, sourceNameOrAlias, columnName, out resultColumnType))
+                {
+                    return true;
+                }
+
+                return false;
+            }
+            else if (tableRef is UnqualifiedJoin uqJoin) // OUTER APPLY
+            {
+                /*
+                // => IBM: In qualified SQL, the creator is specified in front of the table or view name. In unqualified SQL, the creator is not specified.
+                // => SQL 2016: For SQL Server 2016 upgrade – compatibility level to 130 – we need to replace Unqualified joins with Qualified joins.
+                An example of “Unqualified join” is: select table1.col11, table2.col11 from table1, table2 where table1.col1 = table2.col1
+                // => The thing is that standard use words unmodified, but we normally use words unqualified or unmodified.
+                */
+                // [dbo].[hlsysobjectdef] AS [o]
+                if (TryTableReference(false, false, uqJoin.FirstTableReference, sourceNameOrAlias, columnName, out resultColumnType))
+                {
+                    return true;
+                }
+
+                if (TryTableReference(false, false, uqJoin.SecondTableReference, sourceNameOrAlias, columnName, out resultColumnType))
+                {
+                    return true;
+                }
+
+                return false;
+            }
+            else if (tableRef is QueryDerivedTable qdt) // 
+            {
+                if (TryQueryExpression(qdt.QueryExpression, sourceNameOrAlias, columnName, out resultColumnType))
+                {
+                    return true;
+                }
+
+                return false;
+            }
+            else if (tableRef is SchemaObjectFunctionTableReference udfTable)
+            {
+                SchemaMetadata.TryGetFunctionTableMetadata(udfTable.SchemaObject.SchemaIdentifier.Dequote(), udfTable.SchemaObject.BaseIdentifier.Dequote());
+                resultColumnType = null; // use metadata
                 return false;
             }
             else
@@ -207,7 +241,7 @@ namespace StoreLake.Sdk.SqlDom
 
         }
 
-        private bool TryNamedTable(bool throwOnColumnNotFound, NamedTableReference ntRef, string columnName, out DbType resultColumnType)
+        private bool TryNamedTable(bool throwOnColumnNotFound, NamedTableReference ntRef, string columnName, out OutputColumnDescriptor resultColumnType)
         {
             IColumnSourceMetadata sourceMetadata = SchemaMetadata.TryGetColumnSourceMetadata(ntRef.SchemaObject.SchemaIdentifier.Dequote(), ntRef.SchemaObject.BaseIdentifier.Dequote());
             if (sourceMetadata != null)
@@ -215,21 +249,24 @@ namespace StoreLake.Sdk.SqlDom
                 var coltype = sourceMetadata.TryGetColumnTypeByName(columnName);
                 if (coltype.HasValue)
                 {
-                    resultColumnType = coltype.Value;
+                    resultColumnType = new OutputColumnDescriptor(columnName, coltype.Value);
                     return true;
                 }
                 if (throwOnColumnNotFound)
                 {
-                    throw new NotImplementedException(ntRef.WhatIsThis());
+                    string object_fullname = ntRef.SchemaObject.SchemaIdentifier.Value + "." + ntRef.SchemaObject.BaseIdentifier.Value;
+                    throw new NotImplementedException("Invalid column name '" + columnName + "' for object:" + object_fullname);
                 }
-                resultColumnType = DbType.Object;
+                resultColumnType = null;
                 return false;
             }
             //ntRef.SchemaObject
-            throw new NotImplementedException(ntRef.WhatIsThis());
+            //throw new NotImplementedException(ntRef.WhatIsThis());
+            resultColumnType = null;
+            return false;
         }
 
-        private bool TryVariableTableReference(bool throwOnColumnNotFound, VariableTableReference ntRef, string columnName, out DbType resultColumnType)
+        private bool TryVariableTableReference(bool throwOnColumnNotFound, VariableTableReference ntRef, string columnName, out OutputColumnDescriptor resultColumnType)
         {
             IColumnSourceMetadata sourceMetadata = batchResolver.TryGetTableVariable(ntRef.Variable.Name);
             if (sourceMetadata != null)
@@ -237,33 +274,33 @@ namespace StoreLake.Sdk.SqlDom
                 var coltype = sourceMetadata.TryGetColumnTypeByName(columnName);
                 if (coltype.HasValue)
                 {
-                    resultColumnType = coltype.Value;
+                    resultColumnType = new OutputColumnDescriptor(columnName, coltype.Value);
                     return true;
                 }
                 if (throwOnColumnNotFound)
                 {
                     throw new NotImplementedException(ntRef.WhatIsThis());
                 }
-                resultColumnType = DbType.Object;
+                resultColumnType = null;
                 return false;
             }
             //ntRef.SchemaObject
             throw new NotImplementedException(ntRef.WhatIsThis());
         }
 
-        internal DbType? ResolveScalarExpression(SelectScalarExpression node)
+        internal OutputColumnDescriptor ResolveScalarExpression(SelectScalarExpression node)
         {
-            if (TryResolveScalarExpression(node.Expression, out DbType? columnDbType))
-                return columnDbType;
+            if (TryResolveScalarExpression(node.Expression, out OutputColumnDescriptor columnDbType))
+                return columnDbType.SetOutputColumnName(node.ColumnName);
             return null; // nullliteral?
         }
 
-        private bool TryResolveScalarExpression(ScalarExpression scalarExpr, out DbType? columnDbType)
+        private bool TryResolveScalarExpression(ScalarExpression scalarExpr, out OutputColumnDescriptor columnDbType)
         {
             if (scalarExpr is ColumnReferenceExpression columnRef)
             {
                 columnDbType = ResolveColumnReferenceCore(columnRef);
-                return columnDbType.HasValue;
+                return columnDbType != null;
             }
             if (scalarExpr is NullLiteral nullLit)
             {
@@ -272,16 +309,97 @@ namespace StoreLake.Sdk.SqlDom
             }
             if (scalarExpr is IntegerLiteral intLit)
             {
-                columnDbType = DbType.Int32;
+                columnDbType = new OutputColumnDescriptor(DbType.Int32);
                 return true;
             }
             if (scalarExpr is IIfCall iif)
                 return TryIIfCall(iif, out columnDbType);
 
+            if (scalarExpr is CoalesceExpression coalesceExpr)
+            {
+                return TryCoalesce(coalesceExpr, out columnDbType);
+            }
+
+            if (scalarExpr is NullIfExpression nullIf)
+            {
+                return TryNullIf(nullIf, out columnDbType);
+            }
+
+            if (scalarExpr is StringLiteral stringLit)
+            {
+                columnDbType = new OutputColumnDescriptor(DbType.String);
+                return true;
+            }
+
+            if (scalarExpr is SimpleCaseExpression simpleCaseExpr)
+            {
+                return TrySimpleCaseExpr(simpleCaseExpr, out columnDbType);
+            }
+
+            if (scalarExpr is FunctionCall fCall) // ? ISNULL
+            {
+                return TryFunctionCall(fCall, out columnDbType);
+            }
+            if (scalarExpr is UnaryExpression unaryExpr) // ? ISNULL
+            {
+                return TryResolveScalarExpression(unaryExpr.Expression, out columnDbType);
+            }
             throw new NotImplementedException(scalarExpr.WhatIsThis() + "   ## " + statement.WhatIsThis());
         }
 
-        private bool TryIIfCall(IIfCall iif, out DbType? columnDbType)
+        private bool TryFunctionCall(FunctionCall fCall, out OutputColumnDescriptor columnDbType)
+        {
+            if (string.Equals(fCall.FunctionName.Value, "ISNULL", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var parameter in fCall.Parameters)
+                {
+                    if (TryResolveScalarExpression(parameter, out columnDbType))
+                        return true;
+                }
+                columnDbType = null;
+                return false;
+            }
+
+            columnDbType = null;
+            return false;
+        }
+
+        private bool TrySimpleCaseExpr(SimpleCaseExpression simpleCaseExpr, out OutputColumnDescriptor columnDbType)
+        {
+
+            foreach (SimpleWhenClause whenClause in simpleCaseExpr.WhenClauses)
+            {
+                if (TryResolveScalarExpression(whenClause.ThenExpression, out columnDbType))
+                    return true;
+            }
+            if (simpleCaseExpr.ElseExpression != null)
+            {
+                if (TryResolveScalarExpression(simpleCaseExpr.ElseExpression, out columnDbType))
+                    return true;
+            }
+            columnDbType = null;
+            return false;
+        }
+
+        private bool TryNullIf(NullIfExpression nullIf, out OutputColumnDescriptor columnDbType)
+        {
+            if (TryResolveScalarExpression(nullIf.FirstExpression, out columnDbType))
+                return true;
+            return TryResolveScalarExpression(nullIf.SecondExpression, out columnDbType);
+        }
+
+        private bool TryCoalesce(CoalesceExpression coalesceExpr, out OutputColumnDescriptor columnDbType)
+        {
+            foreach (ScalarExpression scalarExpr in coalesceExpr.Expressions)
+            {
+                if (TryResolveScalarExpression(scalarExpr, out columnDbType))
+                    return true;
+            }
+            columnDbType = null;
+            return false;
+        }
+
+        private bool TryIIfCall(IIfCall iif, out OutputColumnDescriptor columnDbType)
         {
             if (TryResolveScalarExpression(iif.ThenExpression, out columnDbType))
                 return true;
