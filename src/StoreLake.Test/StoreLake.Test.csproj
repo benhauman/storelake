@@ -11,6 +11,32 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="SQL\Procedures\hlsys_query_historydetails.sql" />
+    <None Remove="SQL\Tables\hlsysactioncontext.sql" />
+    <None Remove="SQL\Tables\hlsysassociation.sql" />
+    <None Remove="SQL\Tables\hlsysassociationdef.sql" />
+    <None Remove="SQL\Tables\hlsysassociationhistory.sql" />
+    <None Remove="SQL\Tables\hlsyscasehistory.sql" />
+    <None Remove="SQL\Tables\hlsyscontracthistory.sql" />
+    <None Remove="SQL\Tables\hlsysorgunithistory.sql" />
+    <None Remove="SQL\Tables\hlsyspersonhistory.sql" />
+    <None Remove="SQL\Tables\hlsysproducthistory.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="SQL\Procedures\hlsys_query_historydetails.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysactioncontext.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysassociation.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysassociationdef.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysassociationhistory.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyscasehistory.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyscontracthistory.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysorgunithistory.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyspersonhistory.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysproducthistory.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.7.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="2.1.1" />
     <PackageReference Include="MSTest.TestFramework" Version="2.1.1" />

@@ -29,17 +29,6 @@ namespace StoreLake.Sdk.SqlDom
                 // no source only column name => traverse all source and find t
                 throw new NotImplementedException(node.AsText() + "   ## " + statement.AsText());
             }
-
-
-            //return null;
-        }
-
-        internal DbType? ResolveScalarExpression(StatementWithCtesAndXmlNamespaces statement, SelectScalarExpression node)
-        {
-            //if (node.ColumnType != ColumnType.Regular)
-            throw new NotImplementedException(node.AsText() + "   ## " + statement.AsText());
-            //node.MultiPartIdentifier
-            //return null;
         }
 
         internal IColumnSourceMetadata TryGetTableVariable(string variableName)
@@ -73,7 +62,7 @@ namespace StoreLake.Sdk.SqlDom
 
                 foreach (ColumnDefinition colDef in variableDefinition.ColumnDefinitions)
                 {
-                    cache_columns.Add(colDef.ColumnIdentifier.Value.ToUpperInvariant(), ResolveToDbDataType(colDef.DataType));
+                    cache_columns.Add(colDef.ColumnIdentifier.Value.ToUpperInvariant(), ProcedureGenerator.ResolveToDbDataType(colDef.DataType));
                 }
             }
 
@@ -87,48 +76,6 @@ namespace StoreLake.Sdk.SqlDom
                 return null;
             }
 
-            internal static DbType ResolveToDbDataType(DataTypeReference dataType)
-            {
-                if (dataType.Name.Count == 1)
-                {
-                    string typeName = dataType.Name[0].Value;
-                    if (string.Equals("INT", typeName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        //return typeof(int);
-                        return DbType.Int32;
-                    }
-
-                    if (string.Equals("BIT", typeName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        //return typeof(bool);
-                        return DbType.Boolean;
-                    }
-
-                    if (string.Equals("NVARCHAR", typeName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        SqlDataTypeReference sqlDataType = (SqlDataTypeReference)dataType;
-                        string maxLen = sqlDataType.Parameters[0].Value;
-                        //dataType.p
-                        //return typeof(string);
-                        return DbType.String;
-                    }
-
-                    if (string.Equals("SMALLINT", typeName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        //SqlDataTypeReference sqlDataType = (SqlDataTypeReference)dataType;
-                        //string maxLen = sqlDataType.Parameters[0].Value;
-                        //dataType.p
-                        //return typeof(string);
-                        return DbType.Int16;
-                    }
-
-                    throw new NotImplementedException("typeName:" + typeName);
-                }
-                else
-                {
-                    throw new NotImplementedException("Name.Count:" + dataType.Name.Count);
-                }
-            }
         }
 
         class TableVariableDeclarionVisitor : DumpFragmentVisitor

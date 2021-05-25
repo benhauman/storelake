@@ -70,11 +70,11 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly IDictionary<string, IColumnSourceMetadata> column_sources = new SortedDictionary<string, IColumnSourceMetadata>();
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetColumnSourceMetadata(string schemaName, string objectName)
         {
-            //string schema = string.IsNullOrEmpty(schemaName) ? ds.Namespace : schemaName;
-            if (!string.Equals(schemaName, ds.Namespace, StringComparison.OrdinalIgnoreCase))
+            string schemaNameSafe = string.IsNullOrEmpty(schemaName) ? ds.Namespace : schemaName;
+            if (!string.Equals(schemaNameSafe, ds.Namespace, StringComparison.OrdinalIgnoreCase))
                 return null;
 
-            string fullName = schemaName + "." + objectName;
+            string fullName = schemaNameSafe + "." + objectName;
             if (!column_sources.TryGetValue(fullName.ToUpperInvariant(), out IColumnSourceMetadata column_source))
             {
                 DataTable table;
@@ -104,7 +104,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         table = ds.Tables[objectName];
                         if (table == null)
-                            throw new NotSupportedException("Table could not be found:" + "[" + schemaName + "].[" + objectName + "]");
+                            throw new NotSupportedException("Table could not be found:" + "[" + schemaNameSafe + "].[" + objectName + "]");
                         column_source = new SourceMetadataTable(table);
                     }
                 }
@@ -112,7 +112,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 {
                     table = ds.Tables[objectName];
                     if (table == null)
-                        throw new NotSupportedException("Table could not be found:" + "[" + schemaName + "].[" + objectName + "]");
+                        throw new NotSupportedException("Table could not be found:" + "[" + schemaNameSafe + "].[" + objectName + "]");
                     column_source = new SourceMetadataTable(table);
                 }
 
@@ -174,6 +174,12 @@ namespace StoreLake.Sdk.CodeGeneration
                 return DbType.Byte;
             if (dataType == typeof(bool))
                 return DbType.Boolean;
+            if (dataType == typeof(Guid))
+                return DbType.Guid;
+            if (dataType == typeof(Int64))
+                return DbType.Int64;
+            if (dataType == typeof(DateTime))
+                return DbType.DateTime;
             throw new NotImplementedException(dataType.Name);
         }
     }

@@ -34,7 +34,7 @@ namespace StoreLake.Sdk.SqlDom
             return text;
         }
 
-        internal static string Dequote(this Identifier id)
+        public static string Dequote(this Identifier id)
         {
             if (id.QuoteType == QuoteType.NotQuoted)
                 return id.Value;

@@ -53,60 +53,137 @@ namespace StoreLake.Sdk.SqlDom
             OutputColumnDescriptor resultColumnType;
             if (statement is SelectStatement stmt_sel)
             {
-                if (TryQueryExpression(stmt_sel.QueryExpression, sourceNameOrAlias, columnName, out resultColumnType))
+                if (TryQueryExpression(stmt_sel.QueryExpression, stmt_sel.WithCtesAndXmlNamespaces, sourceNameOrAlias, columnName, out resultColumnType))
                 {
                     return resultColumnType;
                 }
-                return null;
+
+                return null; // resolved failed!!!
             }
 
-            DataModificationSpecification source_specification = null;
-            if (statement is InsertStatement stmt_ins && string.Equals(sourceNameOrAlias, "INSERTED", StringComparison.OrdinalIgnoreCase))
-                source_specification = stmt_ins.InsertSpecification;
-            else if (statement is UpdateStatement stmt_upd)
-                source_specification = stmt_upd.UpdateSpecification;
-            else if (statement is DeleteStatement stmt_del)
-                source_specification = stmt_del.DeleteSpecification;
-            else if (statement is MergeStatement stmt_mrg)
-                source_specification = stmt_mrg.MergeSpecification;
-
-            if (source_specification != null && source_specification.OutputClause != null)
+            if (statement is DataModificationStatement stmt_mod)
             {
-                if (TryTableReference(true, true, source_specification.Target, null, columnName, out resultColumnType))
+                WithCtesAndXmlNamespaces source_ctes = stmt_mod.WithCtesAndXmlNamespaces;
+                DataModificationSpecification source_specification = null;
+                if (statement is InsertStatement stmt_ins && string.Equals(sourceNameOrAlias, "INSERTED", StringComparison.OrdinalIgnoreCase))
                 {
-                    return resultColumnType;
+                    source_specification = stmt_ins.InsertSpecification;
+                }
+                else if (statement is UpdateStatement stmt_upd)
+                {
+                    source_specification = stmt_upd.UpdateSpecification;
+                }
+                else if (statement is DeleteStatement stmt_del)
+                {
+                    source_specification = stmt_del.DeleteSpecification;
+                }
+                else if (statement is MergeStatement stmt_mrg)
+                {
+                    source_specification = stmt_mrg.MergeSpecification;
                 }
 
-                throw new NotImplementedException("Target could not be found." + statement.WhatIsThis());
+                if (source_specification != null && source_specification.OutputClause != null)
+                {
+                    if (TryTableReference(true, true, source_specification.Target, source_ctes, null, columnName, out resultColumnType))
+                    {
+                        return resultColumnType;
+                    }
+
+                    throw new NotImplementedException("Target could not be found." + statement.WhatIsThis());
+                }
             }
             throw new NotImplementedException(node.WhatIsThis());
             //return null;
         }
 
-        private bool TryQueryExpression(QueryExpression queryExpr, string sourceNameOrAlias, string columnName, out OutputColumnDescriptor resultColumnType)
+        private CommonTableExpression TryGetCTEByName(WithCtesAndXmlNamespaces ctes, string sourceName)
+        {
+            foreach (CommonTableExpression cte in ctes.CommonTableExpressions)
+            {
+                string cteName = cte.ExpressionName.Dequote();
+
+                //if (ShouldTrySourceOrAlias(sourceNameOrAlias, cte.ExpressionName))
+                if (string.Equals(sourceName, cteName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return cte;
+                }
+            }
+
+            return null;
+        }
+
+        private bool TryCTE(CommonTableExpression cte, WithCtesAndXmlNamespaces ctes, string sourceNameOrAlias, string columnName, out OutputColumnDescriptor resultColumnType)
+        {
+            // column rename (cte-query output column => cte-outputcolumn)
+            string columnNameNew = columnName;
+            foreach (Identifier col in cte.Columns)
+            {
+                if (string.Equals(columnName, col.Dequote(), StringComparison.OrdinalIgnoreCase))
+                {
+                    // ?? 
+                    columnNameNew = columnName;
+                }
+            }
+
+            if (TryQueryExpression(cte.QueryExpression, ctes, sourceNameOrAlias, columnNameNew, out resultColumnType))
+            {
+                return true;
+            }
+            resultColumnType = null; // ? otherobjectid see [finalresult] 2nd SELECT
+            return false;
+        }
+
+        private bool TryQueryExpression(QueryExpression queryExpr, WithCtesAndXmlNamespaces ctes, string sourceNameOrAlias, string columnName, out OutputColumnDescriptor resultColumnType)
         {
             if (queryExpr is QuerySpecification querySpecification)
             {
                 if (querySpecification.FromClause != null)
                 {
-                    foreach (TableReference tableRef in querySpecification.FromClause.TableReferences)
+                    if (querySpecification.FromClause.TableReferences.Count == 1)
                     {
-                        if (TryTableReference(false, false, tableRef, sourceNameOrAlias, columnName, out resultColumnType))
+                        var tableRef = querySpecification.FromClause.TableReferences[0];
+                        if (TryTableReference(false, false, tableRef, ctes, sourceNameOrAlias, columnName, out resultColumnType))
                         {
                             return true;
+                        }
+                        else
+                        {
+                            // not in this table reference : resolve failed. may be CTE?
+                        }
+
+                    }
+                    else
+                    {
+                        foreach (TableReference tableRef in querySpecification.FromClause.TableReferences)
+                        {
+                            if (TryTableReference(false, false, tableRef, ctes, sourceNameOrAlias, columnName, out resultColumnType))
+                            {
+                                return true;
+                            }
+                            else
+                            {
+                                // not in this table reference check the others
+                            }
                         }
                     }
                 }
 
+                //if (ctes != null)
+                //{
+                //    if (TryCTEs(ctes, sourceNameOrAlias, columnName, out resultColumnType))
+                //    {
+                //        return true;
+                //    }
+                //}
                 resultColumnType = null;
                 return false;
             }
 
             if (queryExpr is BinaryQueryExpression bqryExpr) // UNION (ALL)
             {
-                if (TryQueryExpression(bqryExpr.FirstQueryExpression, sourceNameOrAlias, columnName, out resultColumnType))
+                if (TryQueryExpression(bqryExpr.FirstQueryExpression, ctes, sourceNameOrAlias, columnName, out resultColumnType))
                     return true;
-                if (TryQueryExpression(bqryExpr.SecondQueryExpression, sourceNameOrAlias, columnName, out resultColumnType))
+                if (TryQueryExpression(bqryExpr.SecondQueryExpression, ctes, sourceNameOrAlias, columnName, out resultColumnType))
                     return true;
                 resultColumnType = null;
                 return false;
@@ -117,44 +194,62 @@ namespace StoreLake.Sdk.SqlDom
             //return false;
         }
 
-
-        private bool TryTableReference(bool throwOnSourceNotFound, bool throwOnColumnNotFound, TableReference tableRef, string sourceNameOrAlias, string columnName, out OutputColumnDescriptor resultColumnType)
+        private static bool ShouldTrySourceOrAlias(string sourceNameOrAlias, TableReferenceWithAlias ntRef, SchemaObjectName ntRef_SchemaObject, string variableName)
         {
-            if (tableRef is NamedTableReference ntRef)
+            bool useIt;
+            if (!string.IsNullOrEmpty(sourceNameOrAlias))
             {
-                bool useIt;
-                if (!string.IsNullOrEmpty(sourceNameOrAlias))
+                if ((ntRef.Alias != null) && string.Equals(sourceNameOrAlias, ntRef.Alias.Dequote(), StringComparison.OrdinalIgnoreCase))
                 {
-                    if ((ntRef.Alias != null) && string.Equals(sourceNameOrAlias, ntRef.Alias.Dequote(), StringComparison.OrdinalIgnoreCase))
+                    // this is the alias
+                    useIt = true;
+                }
+                else
+                {
+
+                    if ((ntRef_SchemaObject != null && string.Equals(sourceNameOrAlias, ntRef_SchemaObject.BaseIdentifier.Dequote(), StringComparison.OrdinalIgnoreCase))
+                     || (!string.IsNullOrEmpty(variableName) && string.Equals(sourceNameOrAlias, variableName, StringComparison.OrdinalIgnoreCase))
+                     )
                     {
-                        // this is the alias
+                        // this is the source
                         useIt = true;
                     }
                     else
                     {
-                        //var lastId = ntRef.iden
-                        if (string.Equals(sourceNameOrAlias, ntRef.SchemaObject.BaseIdentifier.Dequote(), StringComparison.OrdinalIgnoreCase))
-                        {
-                            // this is the source
-                            useIt = true;
-                        }
-                        else
-                        {
-                            // not the requested source/alias
-                            useIt = false;
-                        }
+                        // not the requested source/alias
+                        useIt = false;
                     }
                 }
-                else
-                {
-                    useIt = true;
-                }
+            }
+            else
+            {
+                useIt = true;
+            }
 
+            return useIt;
+        }
+
+        private bool TryTableReference(bool throwOnSourceNotFound, bool throwOnColumnNotFound, TableReference tableRef, WithCtesAndXmlNamespaces ctes, string sourceNameOrAlias, string columnName, out OutputColumnDescriptor resultColumnType)
+        {
+            if (tableRef is NamedTableReference ntRef)
+            {
+                bool useIt = ShouldTrySourceOrAlias(sourceNameOrAlias, ntRef, ntRef.SchemaObject, null);
                 if (useIt)
                 {
                     if (TryNamedTable(throwOnColumnNotFound, ntRef, columnName, out resultColumnType))
                     {
                         return true;
+                    }
+
+                    // alias checked => find the cte
+                    var cte = TryGetCTEByName(ctes, ntRef.SchemaObject.BaseIdentifier.Dequote());
+                    if (cte != null)
+                    {
+                        // alias used to find the cte => subalias => Subquery : start over?
+                        if (TryCTE(cte, ctes, null, columnName, out resultColumnType))
+                        {
+                            return true;
+                        }
                     }
 
                     //throw new NotImplementedException(columnName + " ## " + tableRef.WhatIsThis());
@@ -167,31 +262,40 @@ namespace StoreLake.Sdk.SqlDom
                     {
                         throw new NotImplementedException(columnName + " ## " + tableRef.WhatIsThis());
                     }
-                    resultColumnType = null;
+
+                    Console.WriteLine("--- Entry (" + sourceNameOrAlias + ":" + columnName + ") not found in NT(" + ntRef.SchemaObject.AsText() + ")");
+                    resultColumnType = null; // ?WithCtesAndXmlNamespaces
                     return false;
                 }
             }
             else if (tableRef is VariableTableReference varTable)
             {
-                if (TryVariableTableReference(true, varTable, columnName, out resultColumnType))
+                if (ShouldTrySourceOrAlias(sourceNameOrAlias, varTable, null, varTable.Variable.Name))
                 {
-                    return true;
+                    if (TryVariableTableReference(true, varTable, columnName, out resultColumnType))
+                    {
+                        return true;
+                    }
+
+                    if (throwOnSourceNotFound)
+                    {
+                        throw new NotImplementedException(columnName + " ## " + tableRef.WhatIsThis());
+                    }
+
                 }
-                if (throwOnSourceNotFound)
-                {
-                    throw new NotImplementedException(columnName + " ## " + tableRef.WhatIsThis());
-                }
+
+                Console.WriteLine("--- Entry (" + sourceNameOrAlias + ":" + columnName + ") not found in TV(" + varTable.Variable.Name + ")");
                 resultColumnType = null;
                 return false;
             }
             else if (tableRef is QualifiedJoin qJoin)
             {
-                if (TryTableReference(false, false, qJoin.FirstTableReference, sourceNameOrAlias, columnName, out resultColumnType))
+                if (TryTableReference(false, false, qJoin.FirstTableReference, ctes, sourceNameOrAlias, columnName, out resultColumnType))
                 {
                     return true;
                 }
 
-                if (TryTableReference(false, false, qJoin.SecondTableReference, sourceNameOrAlias, columnName, out resultColumnType))
+                if (TryTableReference(false, false, qJoin.SecondTableReference, ctes, sourceNameOrAlias, columnName, out resultColumnType))
                 {
                     return true;
                 }
@@ -207,12 +311,12 @@ namespace StoreLake.Sdk.SqlDom
                 // => The thing is that standard use words unmodified, but we normally use words unqualified or unmodified.
                 */
                 // [dbo].[hlsysobjectdef] AS [o]
-                if (TryTableReference(false, false, uqJoin.FirstTableReference, sourceNameOrAlias, columnName, out resultColumnType))
+                if (TryTableReference(false, false, uqJoin.FirstTableReference, ctes, sourceNameOrAlias, columnName, out resultColumnType))
                 {
                     return true;
                 }
 
-                if (TryTableReference(false, false, uqJoin.SecondTableReference, sourceNameOrAlias, columnName, out resultColumnType))
+                if (TryTableReference(false, false, uqJoin.SecondTableReference, ctes, sourceNameOrAlias, columnName, out resultColumnType))
                 {
                     return true;
                 }
@@ -221,7 +325,7 @@ namespace StoreLake.Sdk.SqlDom
             }
             else if (tableRef is QueryDerivedTable qdt) // 
             {
-                if (TryQueryExpression(qdt.QueryExpression, sourceNameOrAlias, columnName, out resultColumnType))
+                if (TryQueryExpression(qdt.QueryExpression, ctes, sourceNameOrAlias, columnName, out resultColumnType))
                 {
                     return true;
                 }
@@ -243,7 +347,15 @@ namespace StoreLake.Sdk.SqlDom
 
         private bool TryNamedTable(bool throwOnColumnNotFound, NamedTableReference ntRef, string columnName, out OutputColumnDescriptor resultColumnType)
         {
-            IColumnSourceMetadata sourceMetadata = SchemaMetadata.TryGetColumnSourceMetadata(ntRef.SchemaObject.SchemaIdentifier.Dequote(), ntRef.SchemaObject.BaseIdentifier.Dequote());
+            if (ntRef.SchemaObject.SchemaIdentifier == null)
+            {
+                Console.WriteLine("No schema for: " + ntRef.SchemaObject.AsText());
+            }
+
+            string schemaNameOrNull = (ntRef.SchemaObject.SchemaIdentifier != null) ? ntRef.SchemaObject.SchemaIdentifier.Dequote() : null;
+
+
+            IColumnSourceMetadata sourceMetadata = SchemaMetadata.TryGetColumnSourceMetadata(schemaNameOrNull, ntRef.SchemaObject.BaseIdentifier.Dequote());
             if (sourceMetadata != null)
             {
                 var coltype = sourceMetadata.TryGetColumnTypeByName(columnName);
@@ -268,6 +380,7 @@ namespace StoreLake.Sdk.SqlDom
 
         private bool TryVariableTableReference(bool throwOnColumnNotFound, VariableTableReference ntRef, string columnName, out OutputColumnDescriptor resultColumnType)
         {
+            // if alias specified check it 
             IColumnSourceMetadata sourceMetadata = batchResolver.TryGetTableVariable(ntRef.Variable.Name);
             if (sourceMetadata != null)
             {

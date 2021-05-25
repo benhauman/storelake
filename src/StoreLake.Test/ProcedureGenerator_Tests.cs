@@ -1,7 +1,6 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using StoreLake.Sdk.SqlDom;
-using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -10,102 +9,16 @@ using System.Threading.Tasks;
 
 namespace StoreLake.Test
 {
+
     [TestClass]
     public class ProcedureGenerator_Tests
     {
         public TestContext TestContext { get; set; }
 
-        class TestSchema : ISchemaMetadataProvider
-        {
-            internal readonly IDictionary<string, IColumnSourceMetadata> sources = new SortedDictionary<string, IColumnSourceMetadata>();
-            IColumnSourceMetadata ISchemaMetadataProvider.TryGetColumnSourceMetadata(string schemaName, string objectName)
-            {
-                string key;
-                if (string.IsNullOrEmpty(schemaName) && objectName[0] == '@')
-                {
-                    key = objectName.ToUpperInvariant();
-                }
-                else
-                {
-                    key = TestSource.CreateKey(schemaName, objectName).ToUpperInvariant();
-                }
-                if (sources.TryGetValue(key, out IColumnSourceMetadata source))
-                    return source;
 
-                throw new NotImplementedException(key);
-                //return null;
-
-            }
-
-            IColumnSourceMetadata ISchemaMetadataProvider.TryGetFunctionTableMetadata(string schemaName, string objectName)
-            {
-                return null;
-            }
-
-            internal TestSchema AddSource(TestSource source)
-            {
-                string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]").ToUpperInvariant();
-                sources.Add(key, source);
-                return this;
-            }
-
-
-        }
-
-        class TestSource : IColumnSourceMetadata
-        {
-            internal readonly string Key;
-            internal readonly string SchemaName;
-            internal readonly string ObjectName;
-            public TestSource(string schemaName, string objectName)
-            {
-                Key = CreateKey(schemaName, objectName);
-                SchemaName = schemaName;
-                ObjectName = objectName;
-            }
-            public TestSource(string objectName)
-            {
-                Key = objectName.ToUpperInvariant();
-                ObjectName = objectName;
-            }
-
-            internal static string CreateKey(string schemaName, string objectName)
-            {
-                return ("[" + schemaName + "].[" + objectName + "]").ToUpperInvariant();
-            }
-
-            internal readonly IDictionary<string, TestColumn> columns = new SortedDictionary<string, TestColumn>();
-
-
-            DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
-            {
-                string key = columnName.ToUpperInvariant();
-                return columns.TryGetValue(key, out TestColumn column)
-                    ? column.ColumnDbType
-                    : null;
-            }
-
-            internal TestSource AddColumn(string name, DbType columnDbType)
-            {
-                columns.Add(name.ToUpperInvariant(), new TestColumn(name, columnDbType));
-                return this;
-            }
-        }
-
-        class TestColumn
-        {
-            internal readonly string ColumnName;
-            internal readonly DbType ColumnDbType;
-
-            public TestColumn(string columnName, DbType columnDbType)
-            {
-                ColumnName = columnName;
-                ColumnDbType = columnDbType;
-
-            }
-        }
 
         private static TestSchema s_metadata_1 = new TestSchema()
+                    .LoadTables()
                     .AddSource(new TestSource("dbo", "hlsysagent")
                         .AddColumn("agentid", DbType.Int32)
                         .AddColumn("name", DbType.String)
@@ -143,9 +56,6 @@ namespace StoreLake.Test
                         .AddColumn("country", DbType.String)
                         .AddColumn("email", DbType.String)
                         .AddColumn("phonenumber", DbType.String)
-                    )
-                    .AddSource(new TestSource("dbo", "hlsysactioncontext")
-                        .AddColumn("actioncontextid", DbType.Int64)
                     )
                     .AddSource(new TestSource("dbo", "hlsysobjectdef")
                         .AddColumn("objectdefid", DbType.Int32)
@@ -208,6 +118,21 @@ namespace StoreLake.Test
                         .AddColumn("version", DbType.Int32)
                         .AddColumn("lcid", DbType.Int32)
                         .AddColumn("name", DbType.String)
+                    )
+                    .AddSource(new TestSource("dbo", "hlsyscasedata")
+                        .AddColumn("caseid", DbType.Int32)
+                        .AddColumn("casedefid", DbType.Int32)
+                        .AddColumn("currenthistorystep", DbType.Int32)
+                        .AddColumn("sourceobjectversion", DbType.Int32)
+                        .AddColumn("internalstate", DbType.Int32)
+                        .AddColumn("promisedsolutiontime", DbType.DateTime)
+                        .AddColumn("dataformat", DbType.Byte)
+                        .AddColumn("suid_first", DbType.Int32)
+                        .AddColumn("suid_last", DbType.Int32)
+                        .AddColumn("su_attachmentcount", DbType.Int32)
+                        .AddColumn("subject", DbType.String)
+                        .AddColumn("description", DbType.String)
+                        .AddColumn("solution", DbType.String)
                     )
         ;
 
@@ -576,5 +501,95 @@ END";
                 Assert.IsNotNull(column.ColumnDbType, "(" + ix + ") ");
             }
         }
+
+        [TestMethod]
+        public void hlpm_ssp_casetable_query()
+        {
+            string sql = @"
+BEGIN
+    -- Query case page first, otherwise large data is loaded for all cases and will be ordered and paged afterwards
+    DECLARE @cases TABLE ([caseid] INT NOT NULL, [creationtime] DATETIME NOT NULL, [referencenumber] NVARCHAR(50) NOT NULL, PRIMARY KEY([caseid]))
+    INSERT INTO @cases ([caseid], [creationtime], [referencenumber])
+    SELECT [c].[caseid], [cs].[creationtime], [cs].[referencenumber]
+    FROM [dbo].[hlsyssuassociation] AS [ac]
+    INNER JOIN [dbo].[hlsysagenttoobject] AS [ato] ON [ac].[associationdefid] = 130
+                                                  AND [ac].[objecttypeb]      = 3
+                                                  AND [ac].[objectdefidb]     = [ato].[objectdefid]
+                                                  AND [ac].[objectidb]        = [ato].[objectid]
+                                                  AND [ato].[agentid]         = @agentid
+    INNER JOIN [dbo].[hlsyscasedata] AS [c] ON [c].[suid_first] <> 0 AND [ac].[suid] = [c].[suid_first]
+    INNER JOIN [dbo].[hlsyscasesystem] AS [cs] ON [c].[caseid] = [cs].[caseid]
+    CROSS APPLY [dbo].[hlsyssec_query_agentcaseprmread](@agentid, [c].[caseid], [c].[casedefid]) AS [sec]
+    WHERE [sec].[canread] = 1
+    ORDER BY [cs].[creationtime]
+    OFFSET     @skip ROWS 
+    FETCH NEXT @take ROWS ONLY
+
+    SELECT [caseid]          = [c].[caseid]
+         , [referencenumber] = [ci].[referencenumber]
+         , [casedefid]       = [c].[casedefid]
+         , [casedefname]     = ISNULL([od].[displayname], [o].[name])
+         , [internalstate]   = [c].[internalstate]
+         , [status]          = ISNULL([id].[displayname], [i].[name])
+         , [created]         = [ci].[creationtime]
+         , [subject]         = [c].[subject]
+         , [description]     = [c].[description]
+    FROM @cases AS [ci]
+    INNER JOIN [dbo].[hlsyscasedata] AS [c] ON [ci].[caseid] = [c].[caseid]
+    INNER JOIN [dbo].[hlsysobjectdef] AS [o] ON [c].[casedefid] = [o].[objectdefid]
+    INNER JOIN [dbo].[hlsyslistitem] AS [i] ON [c].[internalstate] = [i].[listitemid]
+    LEFT JOIN [dbo].[hlsysdisplayname] AS [od] ON [c].[casedefid] = [od].[reposid] AND [od].[languageid] = @languageid
+    LEFT JOIN [dbo].[hlsysdisplayname] AS [id] ON [c].[internalstate] = [id].[reposid] AND [id].[languageid] = @languageid
+    ORDER BY [ci].[creationtime]
+END";
+
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+            var schemaMetadata = CreateTestMetadata();
+            var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
+            Assert.AreEqual(1, res.Length, "OutputSet.Count");
+
+            var outputSet = res[0];
+            // use: SELECT * FROM sys.dm_exec_describe_first_result_set('dbo.hlomobjectinfo_query', NULL, 0)
+            Assert.AreEqual(9, outputSet.ColumnCount, "ColumnCount");
+            for (int ix = 0; ix < outputSet.ColumnCount; ix++)
+            {
+                var column = outputSet.ColumnAt(ix);
+                Assert.IsNotNull(column, "ix:" + ix);
+
+                Assert.IsNotNull(column.ColumnDbType, "(" + ix + ") ");
+            }
+        }
+        private void TestProcedureOutput(int outputSetCount = 1, int outputSetIndex = 0, int columnCount = 99)
+        {
+            string sql = TestResources.LoadProcedureBody(TestContext.TestName);
+
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+
+            procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor(true));
+
+            var schemaMetadata = CreateTestMetadata();
+            var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
+            Assert.AreEqual(outputSetCount, res.Length, "OutputSet.Count");
+
+            var outputSet = res[0];
+            // use: SELECT * FROM sys.dm_exec_describe_first_result_set('dbo.hlomobjectinfo_query', NULL, 0)
+            Assert.AreEqual(columnCount, outputSet.ColumnCount, "ColumnCount");
+            for (int ix = 0; ix < outputSet.ColumnCount; ix++)
+            {
+                var column = outputSet.ColumnAt(ix);
+                Assert.IsNotNull(column, "ix:" + ix);
+
+                Assert.IsNotNull(column.ColumnDbType, "(" + ix + ") ");
+            }
+
+        }
+
+        [TestMethod]
+        public void hlsys_query_historydetails()
+        {
+            // [finalresult] is a CTE and not a NamedTableReference
+            TestProcedureOutput(1, 0, 12);
+        }
+
     }
 }

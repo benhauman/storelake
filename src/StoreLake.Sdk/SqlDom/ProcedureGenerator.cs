@@ -1,6 +1,7 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -22,6 +23,68 @@ namespace StoreLake.Sdk.SqlDom
             return vstor.resultHasOutputResultSet.ToArray();
         }
 
+
+        public static DbType ResolveToDbDataType(DataTypeReference dataType)
+        {
+            if (dataType.Name.Count == 1)
+            {
+                string typeName = dataType.Name[0].Value;
+                if (string.Equals("INT", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    //return typeof(int);
+                    return DbType.Int32;
+                }
+
+                if (string.Equals("BIT", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    //return typeof(bool);
+                    return DbType.Boolean;
+                }
+
+                if (string.Equals("NVARCHAR", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    SqlDataTypeReference sqlDataType = (SqlDataTypeReference)dataType;
+                    string maxLen = sqlDataType.Parameters[0].Value;
+                    //dataType.p
+                    //return typeof(string);
+                    return DbType.String;
+                }
+
+                if (string.Equals("SMALLINT", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    //SqlDataTypeReference sqlDataType = (SqlDataTypeReference)dataType;
+                    //string maxLen = sqlDataType.Parameters[0].Value;
+                    //dataType.p
+                    //return typeof(string);
+                    return DbType.Int16;
+                }
+
+                if (string.Equals("DATETIME", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    //SqlDataTypeReference sqlDataType = (SqlDataTypeReference)dataType;
+                    //string maxLen = sqlDataType.Parameters[0].Value;
+                    //dataType.p
+                    //return typeof(string);
+                    return DbType.DateTime;
+                }
+
+                if (string.Equals("BIGINT", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return DbType.Int64;
+                }
+
+                if (string.Equals("TINYINT", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return DbType.Byte;
+                }
+
+                throw new NotImplementedException("typeName:" + typeName);
+            }
+            else
+            {
+                throw new NotImplementedException("Name.Count:" + dataType.Name.Count);
+            }
+        }
         class StatementVisitor : DumpFragmentVisitor
         {
             private readonly TSqlFragment _toAnalyze;
@@ -252,12 +315,14 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
+                    //Console.WriteLine("Resolve type for reference:" + node.AsText());
                     OutputColumnDescriptor columnDbType = resolveColumnType
                         ? columnTypeResolver.ResolveColumnReference(node)
                         : null;
                     if (columnDbType == null)
                     {
                         // put breakpoint here and try again
+                        //Console.WriteLine("Type resolve failed for reference:" + node.AsText());
                     }
                     outputSet.AddColumn(new ProcedureOutputColumn(node, columnDbType)); // ColumnReferenceExpression : [a].[attributeid]
                 }
@@ -271,9 +336,14 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
+                    //Console.WriteLine("Resolve type for scalar:" + node.AsText());
                     OutputColumnDescriptor columnDbType = resolveColumnType
                         ? columnTypeResolver.ResolveScalarExpression(node)
                         : null;
+                    if (columnDbType == null)
+                    {
+                        //Console.WriteLine("Type resolve failed for scalar:" + node.AsText());
+                    }
                     outputSet.AddColumn(new ProcedureOutputColumn(node, columnDbType)); // SelectScalarExpression
                 }
             }
