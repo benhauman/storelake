@@ -4,12 +4,12 @@ using System.Data;
 
 namespace StoreLake.Sdk.SqlDom
 {
-    internal class StatementOutputColumnTypeResolver
+    internal class StatementOutputColumnTypeResolverV1
     {
         internal readonly ISchemaMetadataProvider SchemaMetadata;
         BatchOutputColumnTypeResolver batchResolver;
         StatementWithCtesAndXmlNamespaces statement;
-        public StatementOutputColumnTypeResolver(BatchOutputColumnTypeResolver batchResolver, StatementWithCtesAndXmlNamespaces statement)
+        public StatementOutputColumnTypeResolverV1(BatchOutputColumnTypeResolver batchResolver, StatementWithCtesAndXmlNamespaces statement)
         {
             SchemaMetadata = batchResolver.SchemaMetadata;
             this.batchResolver = batchResolver;

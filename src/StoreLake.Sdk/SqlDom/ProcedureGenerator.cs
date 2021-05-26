@@ -258,14 +258,14 @@ namespace StoreLake.Sdk.SqlDom
         {
             private bool hasSetVariable;
             private readonly ProcedureOutputSet outputSet;
-            private readonly StatementOutputColumnTypeResolver columnTypeResolver;
+            private readonly StatementOutputColumnTypeResolverV2 columnTypeResolver;
             private readonly StatementWithCtesAndXmlNamespaces statement;
             private readonly bool resolveColumnType;
 
             public SelectElementVisitor(bool resolveColumnType, BatchOutputColumnTypeResolver columnTypeResolver, StatementWithCtesAndXmlNamespaces statement) : base(false)
             {
                 this.resolveColumnType = resolveColumnType;
-                this.columnTypeResolver = new StatementOutputColumnTypeResolver(columnTypeResolver, statement);
+                this.columnTypeResolver = new StatementOutputColumnTypeResolverV2(columnTypeResolver, statement);
                 this.outputSet = new ProcedureOutputSet(statement);
                 this.statement = statement;
             }
