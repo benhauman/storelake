@@ -8,6 +8,7 @@ namespace StoreLake.Test
     class TestSchema : ISchemaMetadataProvider
     {
         internal readonly IDictionary<string, IColumnSourceMetadata> sources = new SortedDictionary<string, IColumnSourceMetadata>();
+        internal readonly IDictionary<string, IColumnSourceMetadata> functions = new SortedDictionary<string, IColumnSourceMetadata>();
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetColumnSourceMetadata(string schemaName, string objectName)
         {
             string key;
@@ -32,7 +33,13 @@ namespace StoreLake.Test
 
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetFunctionTableMetadata(string schemaName, string objectName)
         {
-            return null;
+            string key = TestSource.CreateKey(schemaName, objectName).ToUpperInvariant();
+
+            if (functions.TryGetValue(key, out IColumnSourceMetadata source))
+                return source;
+
+            throw new NotImplementedException(key);
+
         }
 
         internal TestSchema AddSource(TestSource source)
@@ -42,6 +49,12 @@ namespace StoreLake.Test
             return this;
         }
 
+        internal TestSchema AddFunction(TestSource source)
+        {
+            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]").ToUpperInvariant();
+            sources.Add(key, source);
+            return this;
+        }
 
     }
 
