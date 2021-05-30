@@ -41,7 +41,7 @@ namespace StoreLake.Sdk.SqlDom
             return Identifier.DecodeIdentifier(id.Value, out QuoteType _);
         }
 
-        internal static string WhatIsThis(this TSqlFragment fragment)
+        public static string WhatIsThis(this TSqlFragment fragment)
         {
             return fragment.GetType().Name + " # " + fragment.AsText();
         }

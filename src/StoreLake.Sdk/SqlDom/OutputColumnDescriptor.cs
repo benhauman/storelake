@@ -2,11 +2,11 @@
 
 namespace StoreLake.Sdk.SqlDom
 {
-    internal sealed class OutputColumnDescriptor
+    public sealed class OutputColumnDescriptor
     {
-        internal string OutputColumnName { get; private set; }
+        public string OutputColumnName { get; private set; }
         internal readonly string SourceColumnName;
-        internal readonly System.Data.DbType ColumnDbType;
+        public readonly System.Data.DbType ColumnDbType;
         public OutputColumnDescriptor(System.Data.DbType columnDbType)
         {
             this.ColumnDbType = columnDbType;

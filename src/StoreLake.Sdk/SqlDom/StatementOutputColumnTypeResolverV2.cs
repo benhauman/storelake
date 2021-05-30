@@ -14,11 +14,10 @@ namespace StoreLake.Sdk.SqlDom
     internal sealed class StatementModel
     {
         // root: ColumnSource query = 
-        // ColumnSource types(table-view, subquery, udtf:tablefunctions, tablevariablaes, parameters) (Alias, Named, ?)
-        internal QueryColumnSourceBase Root;
+        internal QueryColumnSourceMQE Root;
     }
 
-    internal class StatementOutputColumnTypeResolverV2
+    public sealed class StatementOutputColumnTypeResolverV2
     {
         internal readonly ISchemaMetadataProvider SchemaMetadata;
         BatchOutputColumnTypeResolver batchResolver;
@@ -38,7 +37,7 @@ namespace StoreLake.Sdk.SqlDom
                 : null;
         }
 
-        internal OutputColumnDescriptor ResolveColumnReference(ColumnReferenceExpression node)
+        public OutputColumnDescriptor ResolveColumnReference(ColumnReferenceExpression node)
         {
             StatementModel model = EnsureModel();
 
@@ -50,7 +49,7 @@ namespace StoreLake.Sdk.SqlDom
         }
 
 
-        internal OutputColumnDescriptor ResolveScalarExpression(SelectScalarExpression node)
+        public OutputColumnDescriptor ResolveScalarExpression(SelectScalarExpression node)
         {
             StatementModel model = EnsureModel();
 
@@ -65,9 +64,30 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     return ColumnModelToDescriptor(cm);
                 }
-            }
 
-            throw new NotImplementedException(node.Expression.WhatIsThis());
+                throw new NotImplementedException(node.Expression.WhatIsThis());
+            }
+            else if (node.Expression is CastCall castExpr)
+            {
+                var columnDbType = ProcedureGenerator.ResolveToDbDataType(castExpr.DataType);
+
+                if (TryGetOutputColumnName(node, out string outputColumnName))
+                {
+                    return new OutputColumnDescriptor(outputColumnName, columnDbType);
+                }
+                else
+                {
+                    return new OutputColumnDescriptor(columnDbType);
+                }
+            }
+            else if (node.Expression is ScalarExpression scalarExpr)
+            {
+                throw new NotImplementedException(node.Expression.WhatIsThis());
+            }
+            else
+            {
+                throw new NotImplementedException(node.Expression.WhatIsThis());
+            }
         }
 
         internal static bool TryGetOutputColumnName(SelectScalarExpression node, out string columnName)
@@ -114,13 +134,33 @@ namespace StoreLake.Sdk.SqlDom
                 string sourceNameOrAlias = node.MultiPartIdentifier[0].Dequote();
                 string columnName = node.MultiPartIdentifier[1].Dequote();
 
-                return model.Root.TryFindColumnSC(this.batchResolver, sourceNameOrAlias, columnName, cm);
+                if (model.Root.TryFindSource(sourceNameOrAlias, out QueryColumnSourceBase source))
+                {
+                    if (model.Root.TryFindColumnSC(this.batchResolver, sourceNameOrAlias, columnName, out QueryColumnBase col))
+                    {
+                        cm.ColumnName = col.OutputColumnName;
+                        cm.ColumnDbType = col.ColumnDbType.Value;
+                        return true;
+                    }
+                    return false;
+                }
+                else
+                {
+                    throw new NotImplementedException(node.WhatIsThis()); // not resolved?
+                }
             }
             else if (node.MultiPartIdentifier.Count == 1)
             {
                 // no source only column name => traverse all source and find t
-                string columnName = node.MultiPartIdentifier[0].Dequote();
-                return model.Root.TryFindColumnC(model, columnName, cm);
+                //string columnName = node.MultiPartIdentifier[0].Dequote();
+                //if (model.Root.TryFindColumnC(model, columnName, out QueryColumnBase col))
+                //{
+                //    cm.ColumnName = col.OutputColumnName;
+                //    cm.ColumnDbType = col.ColumnDbType.Value;
+                //    return true;
+                //}
+                //return false;
+                throw new NotImplementedException(node.WhatIsThis());
             }
             else
             {
@@ -174,7 +214,7 @@ namespace StoreLake.Sdk.SqlDom
     internal class QueryOrUnion
     {
         internal readonly List<QueryColumnSourceMQE> queries = new List<QueryColumnSourceMQE>();
-        private readonly IDictionary<string, QueryColumnSourceBase> keys = new SortedDictionary<string, QueryColumnSourceBase>();
+        private readonly IDictionary<string, QueryColumnSourceMQE> keys = new SortedDictionary<string, QueryColumnSourceMQE>();
         internal void AddQuery(QueryColumnSourceMQE source)
         {
             keys.Add(source.Key, source);
@@ -187,7 +227,7 @@ namespace StoreLake.Sdk.SqlDom
                 return queries.Count;
             }
         }
-        internal QueryColumnSourceBase SingleOne
+        internal QueryColumnSourceMQE SingleOne
         {
             get
             {
@@ -205,24 +245,82 @@ namespace StoreLake.Sdk.SqlDom
 
             //Func<QueryColumnSourceMQE> sourceCreator = () => new QueryColumnSourceMQE(false, "$$$_root_$$$", "rooooot");
 
-            IQueryColumnSourceFactory sourceFactory = new QueryColumnSourceFactory();
+            QueryColumnSourceFactory sourceFactory = new QueryColumnSourceFactory();
             QueryOrUnion qu = new QueryOrUnion();
             var qspecs = new List<QuerySpecification>();
             CollectQuerySpecifications(qspecs, qryExpr);
             foreach (var qspec in qspecs)
             {
-                QueryColumnSourceMQE source = sourceFactory.NewQueryColumnSourceMQE(qspec, "q" + (qu.Count + 1));
+                QueryColumnSourceMQE source = sourceFactory.NewRoot(qspec, "q" + (qu.Count + 1));
                 CollectQuerySpecification(sourceFactory, source, ctes);
                 qu.AddQuery(source);
             }
 
-            foreach (var source in qu.queries)
+            // resolving
+            List<QueryColumnSourceMQE> toResolve = new List<QueryColumnSourceMQE>(); // BOTTOM->UP IN->OUT
+            foreach (QueryColumnSourceMQE root_query in qu.queries)
             {
-                ResolveSelectedElements(batchResolver, source);
-
-                foreach (var qry in source.union_queries)
+                root_query.CollectSubQueries(mqe =>
                 {
-                    ResolveSelectedElements(batchResolver, source);
+                    toResolve.Add(mqe);
+                });
+            }
+
+            // in-select column resolving
+            List<QueryColumnSourceMQE> nullsToResolve = new List<QueryColumnSourceMQE>();
+            foreach (QueryColumnSourceMQE mqe in toResolve)
+            {
+                if (mqe.IsQueryOutputResolved)
+                {
+                    // cte?
+                }
+                else
+                {
+                    ResolveSelectedElements(batchResolver, mqe);
+
+                    if (mqe.QrySpec.SelectElements.Count != mqe.ResolvedOutputColumnsCount)
+                    {
+                        // for 'in-union' resolving
+                        nullsToResolve.Add(mqe);
+                    }
+                    else
+                    {
+                        if (mqe.HasResolvedOutputColumnWithoutType() != null)
+                        {
+                            // for 'in-union' resolving
+                            nullsToResolve.Add(mqe);
+                        }
+                        else
+                        {
+                            mqe.SetAsOutputResolved();
+                        }
+                    }
+                }
+            }
+
+            // in-union column resolving
+            foreach (QueryColumnSourceMQE mqe in nullsToResolve)
+            {
+                if (mqe.IsQueryOutputResolved && (mqe.HasResolvedOutputColumnWithoutType() == null))
+                {
+                    // cte?
+                }
+                else
+                {
+                    if (TryResolveUnionNullColumns(batchResolver, mqe))
+                    {
+
+                        if (mqe.QrySpec.SelectElements.Count != mqe.ResolvedOutputColumnsCount)
+                        {
+                            throw new NotImplementedException("Not all selected output column has been resolved. Selected:" + mqe.QrySpec.SelectElements.Count + ", Resolved:" + mqe.ResolvedOutputColumnsCount);
+                        }
+
+                        mqe.SetAsOutputResolved();
+                    }
+                    else
+                    {
+                        // still not resolved due to NULL columns
+                    }
                 }
             }
 
@@ -233,15 +331,21 @@ namespace StoreLake.Sdk.SqlDom
             }
             else
             {
-                throw new NotImplementedException();
+                model.Root = qu.queries[0];
+                //throw new NotImplementedException();
                 //var source = new QueryColumnSourceMQE(false, "$$$_root_$$$", "rooooot");
                 //root_sources.ForEach(ts => source.AddMqeColumnSource(ts));
                 //
                 //model.Root = source;
             }
+
+            if (model.Root.QrySpec.SelectElements.Count != model.Root.ResolvedOutputColumnsCount)
+            {
+                throw new NotImplementedException("Not all root selected output column has been resolved. Selected:" + model.Root.QrySpec.SelectElements.Count + ", Resolved:" + model.Root.ResolvedOutputColumnsCount);
+            }
+
             return model;
         }
-
 
         private static void CollectQuerySpecifications(List<QuerySpecification> qspecs, QueryExpression qryExpr)
         {
@@ -265,36 +369,40 @@ namespace StoreLake.Sdk.SqlDom
             //QueryColumnSourceMQE source = new QueryColumnSourceMQE(false, key, "qspec");
             foreach (TableReference tableRef in source.QrySpec.FromClause.TableReferences)
             {
-                CollectTableRef(sourceFactory, tableRef, ctes, (ts) =>
+                CollectTableRef(sourceFactory, source, tableRef, ctes, (ts) =>
                 {
                     source.AddMqeColumnSource(ts);
                 });
             }
         }
 
-        private static void CollectTableRef(IQueryColumnSourceFactory sourceFactory, TableReference tableRef, WithCtesAndXmlNamespaces ctes, Action<QueryColumnSourceBase> collector)
+        private static void CollectTableRef(IQueryColumnSourceFactory sourceFactory, QueryColumnSourceMQE parent, TableReference tableRef, WithCtesAndXmlNamespaces ctes, Action<QueryColumnSourceBase> collector)
         {
             if (tableRef is QualifiedJoin qJoin)
             {
-                CollectTableRef(sourceFactory, qJoin.FirstTableReference, ctes, collector);
-                CollectTableRef(sourceFactory, qJoin.SecondTableReference, ctes, collector);
+                CollectTableRef(sourceFactory, parent, qJoin.FirstTableReference, ctes, collector);
+                CollectTableRef(sourceFactory, parent, qJoin.SecondTableReference, ctes, collector);
             }
             else if (tableRef is UnqualifiedJoin uqJoin)
             {
-                CollectTableRef(sourceFactory, uqJoin.FirstTableReference, ctes, collector);
-                CollectTableRef(sourceFactory, uqJoin.SecondTableReference, ctes, collector);
+                CollectTableRef(sourceFactory, parent, uqJoin.FirstTableReference, ctes, collector);
+                CollectTableRef(sourceFactory, parent, uqJoin.SecondTableReference, ctes, collector);
             }
             else if (tableRef is NamedTableReference ntRef)
             {
-                CollectNamedTableReference(sourceFactory, ntRef, ctes, collector);
+                CollectNamedTableReference(sourceFactory, parent, ntRef, ctes, collector);
             }
             else if (tableRef is SchemaObjectFunctionTableReference udtfRef)
             {
-                collector(sourceFactory.NewQueryColumnSourceUDTF(udtfRef));
+                collector(sourceFactory.NewQueryColumnSourceUDTF(parent, udtfRef));
             }
             else if (tableRef is VariableTableReference varTableRef)
             {
-                collector(sourceFactory.NewQueryColumnSourceVarTable(varTableRef));
+                collector(sourceFactory.NewQueryColumnSourceVarTable(parent, varTableRef));
+            }
+            else if (tableRef is InlineDerivedTable derivedTable)
+            {
+                CollectInlineDerivedTable(sourceFactory, parent, derivedTable, ctes, collector);
             }
             else
             {
@@ -302,7 +410,13 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        private static void CollectNamedTableReference(IQueryColumnSourceFactory sourceFactory, NamedTableReference node, WithCtesAndXmlNamespaces ctes, Action<QueryColumnSourceBase> collector)
+        private static void CollectInlineDerivedTable(IQueryColumnSourceFactory sourceFactory, QueryColumnSourceMQE parent, InlineDerivedTable derivedTable, WithCtesAndXmlNamespaces ctes, Action<QueryColumnSourceBase> collector)
+        {
+            var sourceVALUES = sourceFactory.NewQueryColumnSourceValues(parent, derivedTable);
+            collector(sourceVALUES);
+        }
+
+        private static void CollectNamedTableReference(IQueryColumnSourceFactory sourceFactory, QueryColumnSourceMQE parent, NamedTableReference node, WithCtesAndXmlNamespaces ctes, Action<QueryColumnSourceBase> collector)
         {
             if (node.SchemaObject.SchemaIdentifier == null &&
                 ctes != null &&
@@ -326,14 +440,14 @@ namespace StoreLake.Sdk.SqlDom
                     if (ix == 0)
                     {
                         string key = node.Alias != null ? node.Alias.Dequote() : node.SchemaObject.BaseIdentifier.Dequote();
-                        QueryColumnSourceMQE cte_query = sourceFactory.NewQueryColumnSourceMQE(qspec, key);
+                        QueryColumnSourceMQE cte_query = sourceFactory.NewQueryColumnSourceCTE(parent, qspec, key);
                         first_query = cte_query;
                         CollectQuerySpecification(sourceFactory, cte_query, ctes);
                     }
                     else
                     {
                         // UNION query
-                        QueryColumnSourceMQE cte_query = sourceFactory.NewQueryColumnSourceMQE(qspec, "q" + (ix + 1));
+                        QueryColumnSourceMQE cte_query = sourceFactory.NewQueryColumnSourceCTE(parent, qspec, "q" + (ix + 1));
                         CollectQuerySpecification(sourceFactory, cte_query, ctes);
                         first_query.AddUnionQuery(cte_query);
                     }
@@ -344,7 +458,7 @@ namespace StoreLake.Sdk.SqlDom
             }
             else
             {
-                collector(sourceFactory.NewQueryColumnSourceNT(node));
+                collector(sourceFactory.NewQueryColumnSourceNT(parent, node));
             }
 
         }
@@ -374,10 +488,99 @@ namespace StoreLake.Sdk.SqlDom
                 QueryColumnBase outputColumn = null;
                 if (TryResolveSelectedElement(batchResolver, mqe, node, ref outputColumn))
                 {
-                    mqe.AddOutputColumn(outputColumn);
+                    if (!outputColumn.ColumnDbType.HasValue)
+                    {
+                        // throw new NotSupportedException("Output column type not resolved.");
+                        mqe.AddOutputColumnWithoutType(outputColumn);
+                    }
+                    else
+                    {
+                        mqe.AddOutputColumn(outputColumn);
+                    }
+                }
+                else
+                {
+                    if (outputColumn != null)
+                    {
+                        mqe.AddOutputColumnWithoutType(outputColumn);
+                    }
+                    // NullLiteral ?!?
+                    //bool throwOnError = mqe.union_queries.Count == 0; // no other queries to resolve the column
+                    //if (throwOnError)
+                    //{
+                    //    throw new NotImplementedException(node.WhatIsThis());
+                    //}
                 }
             }
         }
+
+
+        private static bool TryResolveUnionNullColumns(BatchOutputColumnTypeResolver batchResolver, QueryColumnSourceMQE mqe)
+        {
+            QueryColumnBase[] cols = mqe.CollectResolvedOutputColumnWithoutType();
+            //if (mqe.union_queries.Count == 0)
+            //{
+            //    return false;
+            //}
+            //else
+            {
+                foreach (QueryColumnBase col in cols)
+                {
+                    foreach (var qry in mqe.union_queries)
+                    {
+                        if (mqe.TryGetResolvedOutputColumn(col.OutputColumnName, out QueryColumnBase outputColumnX))
+                        {
+                            if (outputColumnX.ColumnDbType.HasValue && !col.ColumnDbType.HasValue)
+                            {
+                                col.SetColumnDbType(outputColumnX.ColumnDbType.Value);
+                            }
+
+                        }
+                        if (col.ColumnDbType.HasValue)
+                        {
+                            break;
+                        }
+                    }
+
+                    if (col.ColumnDbType.HasValue)
+                    {
+                        // cool!
+                    }
+                    else
+                    {
+                        // still not resolved => default type INT?
+                        //throw new NotSupportedException("Output column type not resolved:" + col.OutputColumnName);
+                    }
+                }
+
+                
+            }
+            //foreach (SelectElement node in mqe.QrySpec.SelectElements)
+            {
+                //QueryColumnBase outputColumn = null;
+                //if (TryResolveSelectedElement(batchResolver, mqe, node, ref outputColumn))
+                //{
+                //    if (!outputColumn.ColumnDbType.HasValue)
+                //    {
+                //        throw new NotSupportedException("Output column type not resolved.");
+                //    }
+                //}
+                //else
+                //{
+                //    throw new NotSupportedException("Output column type not resolved.");
+                //}
+            }
+
+            if (mqe.QrySpec.SelectElements.Count != mqe.ResolvedOutputColumnsCount)
+            {
+                foreach (SelectElement node in mqe.QrySpec.SelectElements)
+                {
+                }
+                throw new NotImplementedException("Not all selected output column has been resolved. Selected:" + mqe.QrySpec.SelectElements.Count + ", Resolved:" + mqe.ResolvedOutputColumnsCount);
+            }
+            throw new NotImplementedException("Not all selected output column has been resolved. Selected:" + mqe.QrySpec.SelectElements.Count + ", Resolved:" + mqe.ResolvedOutputColumnsCount);
+        }
+
 
         private static bool TryResolveSelectedElement(BatchOutputColumnTypeResolver batchResolver, QueryColumnSourceMQE mqe, SelectElement node, ref QueryColumnBase outputColumn)
         {
@@ -388,7 +591,14 @@ namespace StoreLake.Sdk.SqlDom
                     outputColumn = mqe.AddOutputColumn(outputColumnName, null, null);
                 }
 
-                return TryResolveScalarExpression(batchResolver, mqe, scalarExpr, outputColumnName, ref outputColumn);
+                if (TryResolveScalarExpression(batchResolver, mqe, scalarExpr, outputColumnName, ref outputColumn))
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;// (NullLiteral?]) maybe an UNION query after this one can resolve it 
+                }
             }
             else
             {
@@ -404,7 +614,7 @@ namespace StoreLake.Sdk.SqlDom
             }
             else if (scalarExpr.Expression is NullLiteral nullLit)
             {
-                return TryResolveSelectedColumnNullLiteral(batchResolver, mqe, scalarExpr, nullLit, ref outputColumn);
+                return TryResolveSelectedColumnNullLiteral(batchResolver, mqe, scalarExpr, outputColumnName, nullLit, ref outputColumn);
             }
             else if (scalarExpr.Expression is FunctionCall fCall)
             {
@@ -415,13 +625,42 @@ namespace StoreLake.Sdk.SqlDom
                 outputColumn = mqe.AddOutputColumn(outputColumnName, null, DbType.Int32);
                 return true;
             }
+            else if (scalarExpr.Expression is CastCall castExpr)
+            {
+                outputColumn.SetColumnDbType(ProcedureGenerator.ResolveToDbDataType(castExpr.DataType));
+                return true;
+            }
+            else if (scalarExpr.Expression is SearchedCaseExpression searchedCase)
+            {
+                return TryResolveSelectedColumnSearchedCaseExpression(batchResolver, mqe, scalarExpr, outputColumnName, searchedCase, ref outputColumn);
+            }
             else
             {
                 throw new NotImplementedException(scalarExpr.Expression.WhatIsThis());
             }
         }
 
-        private static bool TryResolveSelectedColumnNullLiteral(BatchOutputColumnTypeResolver batchResolver, QueryColumnSourceMQE mqe, SelectScalarExpression scalarExpr, NullLiteral nullLit, ref QueryColumnBase outputColumn)
+        private static bool TryResolveSelectedColumnSearchedCaseExpression(BatchOutputColumnTypeResolver batchResolver, QueryColumnSourceMQE mqe, SelectScalarExpression scalarExpr, string outputColumnName, SearchedCaseExpression searchedCase, ref QueryColumnBase outputColumn)
+        {
+            foreach (var whenExpr in searchedCase.WhenClauses)
+            {
+                if (TryResolveExpression(batchResolver, mqe, whenExpr.ThenExpression, out DbType outputColumnDbType))
+                {
+                    outputColumn.SetColumnDbType(outputColumnDbType);
+                    return true;
+                }
+            }
+
+            if (TryResolveExpression(batchResolver, mqe, searchedCase.ElseExpression, out DbType functionOutputDbType))
+            {
+                outputColumn.SetColumnDbType(functionOutputDbType);
+                return true;
+            }
+
+            throw new NotImplementedException(searchedCase.WhatIsThis());
+        }
+
+        private static bool TryResolveSelectedColumnNullLiteral(BatchOutputColumnTypeResolver batchResolver, QueryColumnSourceMQE mqe, SelectScalarExpression scalarExpr, string outputColumnName, NullLiteral nullLit, ref QueryColumnBase outputColumn)
         {
             //add as resolved?
             if (mqe.SourceCount == 1)
@@ -429,7 +668,21 @@ namespace StoreLake.Sdk.SqlDom
                 var source = mqe.SourceSingle;
                 if (source is QueryColumnSourceMQE sub_mqe)
                 {
-                    //ResolveSelectedElements(batchResolver, sub_mqe);
+                    // try all unioin_queries to find the outcolumn if possible
+                    if (!string.IsNullOrEmpty(outputColumnName))
+                    {
+                        if (sub_mqe.TryGetResolvedOutputColumn(outputColumnName, out QueryColumnBase cm))
+                        {
+                            outputColumn = cm;
+                            return true;
+
+                        }
+                        //if (sub_mqe.TryFindColumnC(batchResolver, outputColumn, out QueryColumnBase cm))
+                        //{
+
+                        //}
+                    }
+
                     return false;
                 }
                 else
@@ -440,7 +693,31 @@ namespace StoreLake.Sdk.SqlDom
             }
             else
             {
-                throw new NotImplementedException(scalarExpr.Expression.WhatIsThis());
+                if (!string.IsNullOrEmpty(outputColumnName))
+                {
+                    foreach (var source in mqe.sources.Values)
+                    {
+                        if (source is QueryColumnSourceMQE sub_mqe)
+                        {
+                            // try all unioin_queries to find the outcolumn if possible
+                            if (!string.IsNullOrEmpty(outputColumnName))
+                            {
+                                if (sub_mqe.TryGetResolvedOutputColumn(outputColumnName, out QueryColumnBase cm))
+                                {
+                                    outputColumn = cm;
+                                    return true;
+
+                                }
+                            }
+                        }
+                        else
+                        {
+                        }
+                    }
+                }
+
+                // null is null
+                return false;
             }
         }
 
@@ -453,12 +730,12 @@ namespace StoreLake.Sdk.SqlDom
 
                 if (mqe.TryFindSource(sourceNameOrAlias, out QueryColumnSourceBase source))
                 {
-                    if (source is QueryColumnSourceMQE sub_mqe)
-                    {
-                        //??? TryResolveSelectedElement(batchResolver, sub_mqe, );
-                        return false;
-                    }
-                    else
+                    //if (source is QueryColumnSourceMQE sub_mqe)
+                    //{
+                    //    //??? TryResolveSelectedElement(batchResolver, sub_mqe, );
+                    //    return false;
+                    //}
+                    //else
                     {
                         var col = source.TryResolveSelectedColumn(batchResolver, outputColumnName, sourceColumnName);
                         if (col != null)
@@ -489,12 +766,12 @@ namespace StoreLake.Sdk.SqlDom
                 if (mqe.SourceCount == 1)
                 {
                     var source = mqe.SourceSingle;
-                    if (source is QueryColumnSourceMQE sub_mqe)
-                    {
-                        //???? ResolveSelectedElements(batchResolver, sub_mqe);
-                        return false;
-                    }
-                    else
+                    //if (source is QueryColumnSourceMQE sub_mqe)
+                    //{
+                    //    //???? ResolveSelectedElements(batchResolver, sub_mqe);
+                    //    //return false;
+                    //}
+                    //else
                     {
                         var col = source.TryResolveSelectedColumn(batchResolver, outputColumnName, sourceColumnName);
                         if (col != null)
@@ -512,6 +789,30 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
+                    // multiple sources
+                    foreach (var source in mqe.sources.Values)
+                    {
+                        //if (source is QueryColumnSourceMQE sub_mqe)
+                        //{
+                        //    //???? ResolveSelectedElements(batchResolver, sub_mqe);
+                        //    //return false;
+                        //}
+                        //else
+                        {
+                            var col = source.TryResolveSelectedColumn(batchResolver, outputColumnName, sourceColumnName);
+                            if (col != null)
+                            {
+                                // coool!
+                                outputColumn = col;
+                                return true;
+                            }
+                            else
+                            {
+                                // column not there?!?! wrong source
+                                //throw new NotImplementedException(colRef.WhatIsThis());
+                            }
+                        }
+                    }
                     throw new NotImplementedException(colRef.WhatIsThis());
                 }
             }
@@ -577,7 +878,7 @@ namespace StoreLake.Sdk.SqlDom
             }
             else if (node is ColumnReferenceExpression colRef)
             {
-                return TryResolveExpressionColumnReference(batchResolver , mqe, colRef, out columnDbType);
+                return TryResolveExpressionColumnReference(batchResolver, mqe, colRef, out columnDbType);
             }
             else if (node is StringLiteral strLit)
             {
@@ -600,10 +901,10 @@ namespace StoreLake.Sdk.SqlDom
                 if (mqe.TryFindSource(sourceNameOrAlias, out QueryColumnSourceBase source))
                 {
                     //if (source is QueryColumnSourceMQE sub_mqe)
-                    {
-                        //??? TryResolveSelectedElement(batchResolver, sub_mqe, );
-                        //return false;
-                    }
+                    //{
+                    //    //??? TryResolveSelectedElement(batchResolver, sub_mqe, );
+                    //    //return false;
+                    //}
                     //else
                     {
                         if (source.TryResolveSourceColumnType(batchResolver, sourceColumnName, out columnType))

@@ -49,10 +49,10 @@ namespace StoreLake.Test
             return this;
         }
 
-        internal TestSchema AddFunction(TestSource source)
+        internal TestSchema AddFunction(TestFunction source)
         {
             string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]").ToUpperInvariant();
-            sources.Add(key, source);
+            functions.Add(key, source);
             return this;
         }
 
@@ -86,6 +86,10 @@ namespace StoreLake.Test
 
         DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
         {
+            return OnTryGetColumnTypeByName(columnName);
+        }
+        protected virtual DbType? OnTryGetColumnTypeByName(string columnName)
+        {
             string key = columnName.ToUpperInvariant();
             return columns.TryGetValue(key, out TestColumn column)
                 ? column.ColumnDbType
@@ -96,6 +100,35 @@ namespace StoreLake.Test
         {
             columns.Add(name.ToUpperInvariant(), new TestColumn(name, columnDbType));
             return this;
+        }
+    }
+
+    class TestFunction : TestSource
+    {
+        private readonly Action<TestFunction> loader;
+        public TestFunction(string schemaName, string objectName, Action<TestFunction> loader)
+            : base(schemaName, objectName)
+        {
+            this.loader = loader;
+        }
+
+        private bool _loaded;
+
+
+        protected override DbType? OnTryGetColumnTypeByName(string columnName)
+        {
+            if (!_loaded)
+            {
+                loader(this);
+                _loaded = true;
+            }
+            return base.OnTryGetColumnTypeByName(columnName);
+        }
+
+        Dictionary<string, DbType> parameters = new Dictionary<string, DbType>();
+        internal void AddParameter(string parameterName, DbType parameterDbType)
+        {
+            parameters.Add(parameterName.ToUpperInvariant(), parameterDbType);
         }
     }
 

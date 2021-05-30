@@ -5,7 +5,7 @@ using System.Data;
 
 namespace StoreLake.Sdk.SqlDom
 {
-    internal class BatchOutputColumnTypeResolver
+    public sealed class BatchOutputColumnTypeResolver
     {
         internal readonly ISchemaMetadataProvider SchemaMetadata;
         private readonly TSqlFragment BodyFragment;

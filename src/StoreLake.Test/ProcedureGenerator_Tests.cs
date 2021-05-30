@@ -19,6 +19,7 @@ namespace StoreLake.Test
 
         private static TestSchema s_metadata_1 = new TestSchema()
                     .LoadTables()
+                    .LoadFunctionsMetadata()
                     .AddSource(new TestSource("dbo", "hlsysagent")
                         .AddColumn("agentid", DbType.Int32)
                         .AddColumn("name", DbType.String)
