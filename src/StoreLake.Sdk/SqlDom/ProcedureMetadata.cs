@@ -1,10 +1,11 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
+using System.Data;
 
 namespace StoreLake.Sdk.SqlDom
 {
-    public sealed class ProcedureMetadata
+    public sealed class ProcedureMetadata : IBatchParameterMetadata
     {
         public ProcedureMetadata(string procedureName, TSqlFragment bodyFragment)
         {
@@ -16,6 +17,23 @@ namespace StoreLake.Sdk.SqlDom
         public TSqlFragment BodyFragment { get; private set; }
 
         internal readonly IDictionary<string, ProcedureCodeParameter> parameters = new SortedDictionary<string, ProcedureCodeParameter>();
+
+        DbType? IBatchParameterMetadata.TryGetParameterType(string parameterName)
+        {
+            if (parameters.TryGetValue(parameterName, out ProcedureCodeParameter prm))
+            {
+                if (prm.TypeNotNull == typeof(int))
+                {
+                    return DbType.Int32;
+                }
+
+                throw new NotImplementedException(prm.TypeNotNull.Name);
+            }
+            else
+            {
+                return null;
+            }
+        }
     }
 
     sealed class ProcedureCodeParameter

@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
 
 [assembly: DebuggerDisplay(@"\{Bzz = {BaseIdentifier.Value}}", Target = typeof(SchemaObjectName))]
@@ -12,151 +11,9 @@ using System.Text;
 // see [DebuggerTypeProxy(typeof(HashtableDebugView))]
 namespace StoreLake.Sdk.SqlDom
 {
-    internal abstract class QueryColumnBase
-    {
-        public abstract string OutputColumnName { get; }
-        public abstract string SourceColumnName { get; }
-        public abstract DbType? ColumnDbType { get; }
-
-        public abstract void SetColumnDbType(DbType columnDbType);
-        public abstract void SetSourceColumnName(string sourceColumnName, DbType columnDbType);
-
-        internal readonly int SourceId;
-        protected QueryColumnBase(int sourceId)
-        {
-            SourceId = sourceId;
-        }
-    }
-
-    class ColumnModel
-    {
-        internal string ColumnName;
-        internal System.Data.DbType? ColumnDbType;
-        internal bool IsOk { get { return ColumnDbType.HasValue; } }
-    }
-
-    [DebuggerDisplay("{DebuggerText}")]
-    internal sealed class QueryColumnE : QueryColumnBase
-    {
-        private readonly string outputColumnName;
-        private string _sourceColumnName;
-        private DbType? _columnDbType;
-
-        private readonly QueryColumnSourceBase source;
-
-        public QueryColumnE(QueryColumnSourceBase source, string outputColumnName, string sourceColumnName, DbType? columnDbType)
-            : base(source.Id)
-        {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            if (string.IsNullOrEmpty(outputColumnName))
-                throw new ArgumentNullException(nameof(outputColumnName));
-
-            this.source = source;
-            this.outputColumnName = outputColumnName;
-            this._sourceColumnName = sourceColumnName;
-            this._columnDbType = columnDbType;
-        }
-        private string DebuggerText
-        {
-            get
-            {
-                return (OutputColumnName ?? "?")
-                    + " (" + (ColumnDbType.HasValue ? "" + ColumnDbType.Value : "?") + ")"
-                    + " : " + (SourceColumnName ?? "?")
-                    + " Source:" + SourceId
-                    ;
-            }
-        }
-
-        public override string OutputColumnName => outputColumnName;
-
-        public override string SourceColumnName => _sourceColumnName;
-
-        public override DbType? ColumnDbType => _columnDbType;
-
-        public override void SetColumnDbType(DbType columnDbType)
-        {
-            if (ColumnDbType.HasValue)
-                throw new InvalidOperationException("Column type already resolved.");
-            this._columnDbType = columnDbType;
-        }
-        public override void SetSourceColumnName(string sourceColumnName, DbType columnDbType)
-        {
-            if (string.IsNullOrEmpty(sourceColumnName))
-                throw new ArgumentNullException("sourceColumnName");
-
-            if (string.IsNullOrEmpty(SourceColumnName))
-                throw new InvalidOperationException("Column type already resolved.");
-
-            if (ColumnDbType.HasValue)
-                throw new InvalidOperationException("Column type already resolved.");
-
-            this._sourceColumnName = sourceColumnName;
-            this._columnDbType = columnDbType;
-        }
-    }
-
-    internal interface IQueryColumnSourceFactory
-    {
-        QueryColumnSourceUDTF NewQueryColumnSourceUDTF(QueryColumnSourceMQE parent, SchemaObjectFunctionTableReference udtfRef);
-        QueryColumnSourceVarTable NewQueryColumnSourceVarTable(QueryColumnSourceMQE parent, VariableTableReference varTableRef);
-        QueryColumnSourceMQE NewQueryColumnSourceCTE(QueryColumnSourceMQE parent, QuerySpecification qspec, string key);
-        QueryColumnSourceNT NewQueryColumnSourceNT(QueryColumnSourceMQE parent, NamedTableReference ntRef);
-        QueryColumnSourceVALUES NewQueryColumnSourceValues(QueryColumnSourceMQE parent, InlineDerivedTable derivedTable);
-    }
-    internal sealed class QueryColumnSourceFactory : IQueryColumnSourceFactory
-    {
-        int lastid = 0;
-        public QueryColumnSourceFactory()
-        {
-
-        }
-        private int NewId(QueryColumnSourceBase parent)
-        {
-            lastid++;
-            return lastid;
-        }
-
-        public QueryColumnSourceMQE NewRoot(QuerySpecification qspec, string key)
-        {
-            lastid++;
-            return new QueryColumnSourceMQE(lastid, qspec, key);
-        }
-
-        public QueryColumnSourceUDTF NewQueryColumnSourceUDTF(QueryColumnSourceMQE parent, SchemaObjectFunctionTableReference udtfRef)
-        {
-            return new QueryColumnSourceUDTF(NewId(parent), udtfRef);
-        }
-
-        public QueryColumnSourceVarTable NewQueryColumnSourceVarTable(QueryColumnSourceMQE parent, VariableTableReference varTableRef)
-        {
-            return new QueryColumnSourceVarTable(NewId(parent), varTableRef);
-        }
-
-        public QueryColumnSourceMQE NewQueryColumnSourceCTE(QueryColumnSourceMQE parent, QuerySpecification qspec, string key)
-        {
-            return new QueryColumnSourceMQE(NewId(parent), qspec, key);
-        }
-
-        public QueryColumnSourceNT NewQueryColumnSourceNT(QueryColumnSourceMQE parent, NamedTableReference ntRef)
-        {
-            return new QueryColumnSourceNT(NewId(parent), ntRef);
-        }
-
-        public QueryColumnSourceVALUES NewQueryColumnSourceValues(QueryColumnSourceMQE parent, InlineDerivedTable derivedTable)
-        {
-            return new QueryColumnSourceVALUES(NewId(parent), derivedTable);
-        }
-    }
-
-
     internal abstract class QueryColumnSourceBase
     {
         protected string Alias;
-
-        internal readonly IDictionary<string, QueryColumnSourceBase> sources = new SortedDictionary<string, QueryColumnSourceBase>();
 
         private readonly string _key;
         internal readonly int Id; // unique in the whole batch
@@ -169,16 +26,6 @@ namespace StoreLake.Sdk.SqlDom
         }
 
         internal string Key => _key;
-
-        internal int SourceCount => sources.Count;
-        internal QueryColumnSourceBase SourceSingle
-        {
-            get
-            {
-                return sources.Values.Single();
-            }
-        }
-
 
         internal static string BuildKey(SchemaObjectName schemaObject, Identifier alias)
         {
@@ -199,22 +46,6 @@ namespace StoreLake.Sdk.SqlDom
                 }
             }
         }
-        internal static string BuildKey(Identifier itemName, Identifier alias)
-        {
-            if (alias != null)
-            {
-                return alias.Dequote();
-            }
-            else
-            {
-                return itemName.Dequote();
-            }
-        }
-
-        protected void AddColumnSource(QueryColumnSourceBase source)
-        {
-            sources.Add(source.Key, source);
-        }
 
         public QueryColumnSourceBase SetAlias(Identifier alias)
         {
@@ -222,298 +53,7 @@ namespace StoreLake.Sdk.SqlDom
             return this;
         }
 
-        internal bool TryFindSource(string sourceNameOrAlias, out QueryColumnSourceBase source)
-        {
-            if (this.sources.TryGetValue(sourceNameOrAlias, out source))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-
-
-        internal bool TryFindColumnC(StatementModel model, string columnName, out QueryColumnBase cm)
-        {
-            throw new NotImplementedException();
-        }
-
-
-        internal readonly Dictionary<string, QueryColumnBase> resolved_OutputColumns = new Dictionary<string, QueryColumnBase>();
-
-        protected bool IsOutputColumnResolved(string outputColumnName, out QueryColumnBase col)
-        {
-            return resolved_OutputColumns.TryGetValue(outputColumnName.ToUpperInvariant(), out col);
-        }
-
-        protected QueryColumnBase AddResolveOutputdColumn(QueryColumnBase resolved_column)
-        {
-            resolved_OutputColumns.Add(resolved_column.OutputColumnName.ToUpperInvariant(), resolved_column);
-            return resolved_column;
-        }
-
-        protected abstract bool TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string columnName);
-
-        internal abstract QueryColumnBase TryResolveSelectedColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, string sourceColumnName);
-
         internal abstract bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType);
-    }
-
-    [DebuggerDisplay("Mqe Id:{Id}, Key:{_key}")]
-    internal sealed class QueryColumnSourceMQE : QueryColumnSourceBase
-    {
-        internal readonly QuerySpecification QrySpec;
-        internal readonly List<QueryColumnSourceMQE> union_queries = new List<QueryColumnSourceMQE>(); // UNION(s)
-        // ??? SelectElements => from first + UNION the others
-        public QueryColumnSourceMQE(int id, QuerySpecification qspec, string key)
-            : base(id, key)
-        //: base(alias == null ? "$$$_mque_$$$" : alias.Dequote())
-        {
-            QrySpec = qspec;
-        }
-        internal void AddMqeColumnSource(QueryColumnSourceBase ts)
-        {
-            base.AddColumnSource(ts);
-        }
-
-
-
-        internal void AddUnionQuery(QueryColumnSourceMQE query)
-        {
-            union_queries.Add(query);
-        }
-
-        internal override QueryColumnBase TryResolveSelectedColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, string sourceColumnName)
-        {
-            string outputColumnNameSafe = outputColumnName ?? sourceColumnName;
-            if (IsOutputColumnResolved(outputColumnNameSafe, out QueryColumnBase col))
-            {
-                return col;
-            }
-            throw new NotImplementedException(Key + "." + sourceColumnName + " => " + outputColumnName);
-        }
-
-        internal QueryColumnBase AddOutputColumn(string outputColumnName, string sourceColumnName, DbType? columnDbType)
-        {
-            if (IsOutputColumnResolved(outputColumnName, out QueryColumnBase col))
-            {
-                if (columnDbType.HasValue && !col.ColumnDbType.HasValue)
-                {
-                    col.SetColumnDbType(columnDbType.Value);
-                }
-
-                if (col.SourceColumnName == null && sourceColumnName != null)
-                {
-                    col.SetSourceColumnName(sourceColumnName, columnDbType.Value); // both (source) properties must be there
-                }
-                return col;
-            }
-            else
-            {
-                return base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumnName, sourceColumnName, columnDbType));
-            }
-        }
-
-
-        internal void AddOutputColumnWithoutType(QueryColumnBase outputColumn)
-        {
-            if (!IsOutputColumnResolved(outputColumn.OutputColumnName.ToUpperInvariant(), out QueryColumnBase col))
-            {
-                if (ContainsSourceId(outputColumn.SourceId))
-                {
-                    col = base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumn.OutputColumnName, outputColumn.SourceColumnName, outputColumn.ColumnDbType));
-                }
-                else
-                {
-                    throw new NotSupportedException("Output column not registered.");
-                }
-            }
-        }
-
-        internal void AddOutputColumn(QueryColumnBase outputColumn)
-        {
-            if (!IsOutputColumnResolved(outputColumn.OutputColumnName.ToUpperInvariant(), out QueryColumnBase col))
-            {
-                if (ContainsSourceId(outputColumn.SourceId))
-                {
-                    col = base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumn.OutputColumnName, outputColumn.SourceColumnName, outputColumn.ColumnDbType));
-                }
-                else
-                {
-                    throw new NotSupportedException("Output column not registered.");
-                }
-            }
-
-
-            if (!col.ColumnDbType.HasValue)
-            {
-                if (outputColumn.ColumnDbType.HasValue)
-                {
-                    col.SetColumnDbType(outputColumn.ColumnDbType.Value); // mismatched output queries?!?!
-                }
-                else
-                {
-                    throw new NotSupportedException("Output column type not resolved.");
-                }
-            }
-
-            if (!outputColumn.ColumnDbType.HasValue)
-            {
-                throw new ArgumentException("Output column type not resolved.", nameof(outputColumn));
-            }
-        }
-
-        private bool ContainsSourceId(int sourceId)
-        {
-            if (this.Id == sourceId)
-                return true;
-            foreach (var source in this.sources.Values)
-            {
-                if (source.Id == sourceId)
-                    return true;
-            }
-            return false;
-        }
-
-        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal bool TryFindColumnSC(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string outputColumnName, out QueryColumnBase col)
-        {
-            if (base_TryFindColumnSC(batchResolver, sourceNameOrAlias, outputColumnName, out col))
-                return true;
-
-            foreach (QueryColumnSourceMQE union_query in union_queries)
-            {
-                if (union_query.TryFindColumnSC(batchResolver, sourceNameOrAlias, outputColumnName, out col))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        private bool base_TryFindColumnSC(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string outputColumnName, out QueryColumnBase col)
-        {
-            if (this.sources.TryGetValue(sourceNameOrAlias, out QueryColumnSourceBase source))
-            {
-                if (TryGetOutputColumnByName(source, batchResolver, sourceNameOrAlias, outputColumnName, out col))
-                {
-                    return true;
-                }
-
-                //throw new NotImplementedException(Key + "." + outputColumnName);
-                return false;
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-        }
-        private static bool TryGetOutputColumnByName(QueryColumnSourceBase that, BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string columnName, out QueryColumnBase col)
-        {
-            string columnKey = columnName.ToUpperInvariant();
-            if (that.resolved_OutputColumns.TryGetValue(columnKey, out col))
-            {
-                return true;
-            }
-            //??? if (that.TryResolveOutputColumn(batchResolver, sourceNameOrAlias, columnName))
-            //??? {
-            //???     if (that.resolved_OutputColumns.TryGetValue(columnKey, out col))
-            //???     {
-            //???         return true;
-            //???     }
-            //??? }
-
-            return false;
-        }
-        protected override bool TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string sourceColumnName)
-        {
-            return false;
-        }
-
-        internal void CollectSubQueries(Action<QueryColumnSourceMQE> collector)
-        {
-            foreach (var source in sources.Values)
-            {
-                if (source is QueryColumnSourceMQE subQuery)
-                {
-                    subQuery.CollectSubQueries(collector);
-                    collector(subQuery);
-                }
-            }
-
-            // BOTTOM-UP (from the last in the union to the first one.) The first selected in the union is the output column information provider
-            for (int ix = union_queries.Count; ix > 0; ix--)
-            {
-                QueryColumnSourceMQE qry = union_queries[ix - 1];
-                qry.CollectSubQueries(collector);
-            }
-
-            collector(this);
-        }
-
-        private bool _queryOutputResolved;
-        internal bool IsQueryOutputResolved => _queryOutputResolved;
-
-        internal int ResolvedOutputColumnsCount => resolved_OutputColumns.Count;
-
-        internal QueryColumnBase[] CollectResolvedOutputColumnWithoutType()
-        {
-            return resolved_OutputColumns.Values.Where(x => !x.ColumnDbType.HasValue).ToArray();
-        }
-
-        internal QueryColumnBase HasResolvedOutputColumnWithoutType()
-        {
-            foreach (var col in resolved_OutputColumns.Values)
-            {
-                if (!col.ColumnDbType.HasValue)
-                {
-                    return col;
-                }
-            }
-
-            return null;
-        }
-        internal void SetAsOutputResolved()
-        {
-            if (_queryOutputResolved)
-                throw new NotImplementedException("query already resolved.");
-
-            if (QrySpec.SelectElements.Count != resolved_OutputColumns.Count)
-            {
-                throw new NotImplementedException("Not all selected output column has been resolved. Selected:" + QrySpec.SelectElements.Count + ", Resolved:" + resolved_OutputColumns.Count);
-            }
-
-            QueryColumnBase resolvedOutputColumnWithoutType = HasResolvedOutputColumnWithoutType();
-            if (resolvedOutputColumnWithoutType != null)
-            {
-                throw new NotImplementedException("A selected output column without type. Name:" + resolvedOutputColumnWithoutType.OutputColumnName);
-            }
-
-            foreach (var union_query in union_queries)
-            {
-                if (!union_query.IsQueryOutputResolved)
-                {
-                    throw new NotImplementedException("An UNION query not resolved");
-                }
-            }
-            _queryOutputResolved = true;
-        }
-        internal bool TryGetResolvedOutputColumn(string outputColumnName, out QueryColumnBase outputColumn)
-        {
-            if (IsOutputColumnResolved(outputColumnName, out outputColumn))
-                return true;
-            foreach (var union_query in union_queries)
-            {
-                if (union_query.IsOutputColumnResolved(outputColumnName, out outputColumn))
-                    return true;
-            }
-            return false;
-        }
     }
 
 
@@ -544,44 +84,44 @@ namespace StoreLake.Sdk.SqlDom
         }
 
         IColumnSourceMetadata resolved_table;
-        internal override QueryColumnBase TryResolveSelectedColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, string sourceColumnName)
-        {
-            if (resolved_table == null)
-            {
-                resolved_table = batchResolver.SchemaMetadata.TryGetColumnSourceMetadata(SchemaName, TableName);
-                if (resolved_table == null)
-                {
-                    // table not exists???
-                    throw new NotImplementedException(Key + "." + sourceColumnName + " => " + outputColumnName);
+        //internal QueryColumnBase override_TryResolveSelectedColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, string sourceColumnName)
+        //{
+        //    if (resolved_table == null)
+        //    {
+        //        resolved_table = batchResolver.SchemaMetadata.TryGetColumnSourceMetadata(SchemaName, TableName);
+        //        if (resolved_table == null)
+        //        {
+        //            // table not exists???
+        //            throw new NotImplementedException(Key + "." + sourceColumnName + " => " + outputColumnName);
 
-                }
-            }
+        //        }
+        //    }
 
-            string outputColumnNameSafe = outputColumnName ?? sourceColumnName;
+        //    string outputColumnNameSafe = outputColumnName ?? sourceColumnName;
 
-            if (IsOutputColumnResolved(outputColumnNameSafe, out QueryColumnBase col))
-            {
-                if (col.ColumnDbType.HasValue)
-                {
-                    return col;
-                }
-            }
+        //    if (IsOutputColumnResolved(outputColumnNameSafe, out QueryColumnBase col))
+        //    {
+        //        if (col.ColumnDbType.HasValue)
+        //        {
+        //            return col;
+        //        }
+        //    }
 
-            DbType? columnDbType = resolved_table.TryGetColumnTypeByName(sourceColumnName);
-            if (columnDbType == null)
-            {
-                return null;
-            }
-            if (col != null)
-            {
-                col.SetColumnDbType(columnDbType.Value);
-                return col;
-            }
-            else
-            {
-                return base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumnNameSafe, sourceColumnName, columnDbType.Value));
-            }
-        }
+        //    DbType? columnDbType = resolved_table.TryGetColumnTypeByName(sourceColumnName);
+        //    if (columnDbType == null)
+        //    {
+        //        return null;
+        //    }
+        //    if (col != null)
+        //    {
+        //        col.SetColumnDbType(columnDbType.Value);
+        //        return col;
+        //    }
+        //    else
+        //    {
+        //        return base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumnNameSafe, sourceColumnName, columnDbType.Value));
+        //    }
+        //}
 
         internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnDbType)
         {
@@ -605,30 +145,30 @@ namespace StoreLake.Sdk.SqlDom
             throw new NotImplementedException();
         }
 
-        protected override bool TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string sourceColumnName)
-        {
-            if (resolved_table == null)
-            {
-                resolved_table = batchResolver.SchemaMetadata.TryGetColumnSourceMetadata(SchemaName, TableName);
-                if (resolved_table == null)
-                {
-                    // table not exists???
-                    throw new NotImplementedException(Key + "." + sourceColumnName);
+        //private bool override_TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string sourceColumnName)
+        //{
+        //    if (resolved_table == null)
+        //    {
+        //        resolved_table = batchResolver.SchemaMetadata.TryGetColumnSourceMetadata(SchemaName, TableName);
+        //        if (resolved_table == null)
+        //        {
+        //            // table not exists???
+        //            throw new NotImplementedException(Key + "." + sourceColumnName);
 
-                }
-            }
+        //        }
+        //    }
 
-            string outputColumnNameSafe = sourceColumnName;
+        //    string outputColumnNameSafe = sourceColumnName;
 
-            DbType? columnDbType = resolved_table.TryGetColumnTypeByName(sourceColumnName);
-            if (columnDbType == null)
-            {
-                return false;
-            }
+        //    DbType? columnDbType = resolved_table.TryGetColumnTypeByName(sourceColumnName);
+        //    if (columnDbType == null)
+        //    {
+        //        return false;
+        //    }
 
-            base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumnNameSafe, sourceColumnName, columnDbType.Value));
-            return true;
-        }
+        //    base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumnNameSafe, sourceColumnName, columnDbType.Value));
+        //    return true;
+        //}
     }
 
     [DebuggerDisplay("UDTF:{DebuggerText}")]
@@ -659,36 +199,54 @@ namespace StoreLake.Sdk.SqlDom
         }
 
         private IColumnSourceMetadata resolved_source_metadata;
-        internal override QueryColumnBase TryResolveSelectedColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, string sourceColumnName)
+        //internal QueryColumnBase override_TryResolveSelectedColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, string sourceColumnName)
+        //{
+        //    if (resolved_source_metadata == null)
+        //    {
+        //        resolved_source_metadata = batchResolver.SchemaMetadata.TryGetFunctionTableMetadata(SchemaName, FunctionName);
+        //        if (resolved_source_metadata == null)
+        //        {
+        //            throw new NotImplementedException(SchemaName + "." + FunctionName + "  => " + outputColumnName);
+        //        }
+        //    }
+
+        //    DbType? columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
+        //    if (columnDbType == null)
+        //    {
+        //        return null;
+        //    }
+
+        //    string outputColumnNameSafe = outputColumnName ?? sourceColumnName;
+
+        //    return base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumnNameSafe, sourceColumnName, columnDbType.Value));
+        //}
+
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
         {
             if (resolved_source_metadata == null)
             {
                 resolved_source_metadata = batchResolver.SchemaMetadata.TryGetFunctionTableMetadata(SchemaName, FunctionName);
                 if (resolved_source_metadata == null)
                 {
-                    throw new NotImplementedException(SchemaName + "." + FunctionName + "  => " + outputColumnName);
+                    throw new NotImplementedException(SchemaName + "." + FunctionName + "  : " + sourceColumnName);
                 }
             }
 
+
             DbType? columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
-            if (columnDbType == null)
+            if (columnDbType.HasValue)
             {
-                return null;
+                columnType = columnDbType.Value;
+                return true;
             }
 
-            string outputColumnNameSafe = outputColumnName ?? sourceColumnName;
-
-            return base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumnNameSafe, sourceColumnName, columnDbType.Value));
+            columnType = DbType.Object;
+            return false;
         }
-
-        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
-        {
-            throw new NotImplementedException();
-        }
-        protected override bool TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string sourceColumnName)
-        {
-            throw new NotImplementedException();
-        }
+        //???private bool override_TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string sourceColumnName)
+        //???{
+        //???    throw new NotImplementedException();
+        //???}
 
     }
 
@@ -715,32 +273,23 @@ namespace StoreLake.Sdk.SqlDom
         }
 
         IColumnSourceMetadata resolved_source_metadata;
-        internal override QueryColumnBase TryResolveSelectedColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, string sourceColumnName)
-        {
-            if (resolved_source_metadata == null)
-            {
-                resolved_source_metadata = batchResolver.TryGetTableVariable(VarTableRef.Variable.Name);
-                if (resolved_source_metadata == null)
-                {
-                    throw new NotImplementedException(VarTableRef.WhatIsThis());
-                }
-            }
+        //private QueryColumnBase override_TryResolveSelectedColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, string sourceColumnName)
+        //{
+        //    if (resolved_source_metadata == null)
+        //    {
+        //        resolved_source_metadata = batchResolver.TryGetTableVariable(VarTableRef.Variable.Name);
+        //        if (resolved_source_metadata == null)
+        //        {
+        //            throw new NotImplementedException(VarTableRef.WhatIsThis());
+        //        }
+        //    }
 
-            DbType? columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
-            if (columnDbType == null)
-            {
-                return null;
-            }
-            return base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumnName, sourceColumnName, columnDbType.Value));
+        //    return base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumnName, sourceColumnName, columnDbType.Value));
 
-        }
+        //}
 
         internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
         {
-            throw new NotImplementedException();
-        }
-        protected override bool TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string sourceColumnName)
-        {
             if (resolved_source_metadata == null)
             {
                 resolved_source_metadata = batchResolver.TryGetTableVariable(VarTableRef.Variable.Name);
@@ -751,14 +300,35 @@ namespace StoreLake.Sdk.SqlDom
             }
 
             DbType? columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
-            if (columnDbType == null)
+            if (columnDbType.HasValue)
             {
-                return false;
+                columnType = columnDbType.Value;
+                return true;
             }
-            base.AddResolveOutputdColumn(new QueryColumnE(this, sourceColumnName, sourceColumnName, columnDbType.Value));
-            return true;
 
+            columnType = DbType.Object;
+            return false;
         }
+        //private bool override_TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string sourceColumnName)
+        //{
+        //    if (resolved_source_metadata == null)
+        //    {
+        //        resolved_source_metadata = batchResolver.TryGetTableVariable(VarTableRef.Variable.Name);
+        //        if (resolved_source_metadata == null)
+        //        {
+        //            throw new NotImplementedException(VarTableRef.WhatIsThis());
+        //        }
+        //    }
+
+        //    DbType? columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
+        //    if (columnDbType == null)
+        //    {
+        //        return false;
+        //    }
+        //    base.AddResolveOutputdColumn(new QueryColumnE(this, sourceColumnName, sourceColumnName, columnDbType.Value));
+        //    return true;
+
+        //}
 
     }
 
@@ -783,27 +353,100 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        internal override QueryColumnBase TryResolveSelectedColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, string sourceColumnName)
+        private readonly IDictionary<string, DbType> columns = new SortedDictionary<string, DbType>();
+        internal void AddValueColumn(string columnName, DbType columnDbType)
         {
-            throw new NotImplementedException(_derivedTable.WhatIsThis());
-            //DbType? columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
-            //if (columnDbType == null)
-            //{
-            //    return null;
-            //}
-            //return base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumnName, sourceColumnName, columnDbType.Value));
-
+            columns.Add(columnName.ToUpperInvariant(), columnDbType);
         }
 
         internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
         {
-            throw new NotImplementedException();
+            if (columns.TryGetValue(sourceColumnName.ToUpperInvariant(), out columnType))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
-
-        protected override bool TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string sourceColumnName)
-        {
-            throw new NotImplementedException();
-        }
-
     }
+
+
+    [DebuggerDisplay("NSQ: {DebuggerText}")] // NamedSubCueryOrCte
+    internal sealed class QuerySourceOnQuery : QueryColumnSourceBase
+    {
+        private readonly IQueryModel query;
+        public QuerySourceOnQuery(int id, string alias, IQueryModel query)
+            : base(id, alias)
+        {
+            this.query = query;
+        }
+
+        private string DebuggerText
+        {
+            get
+            {
+                return "(...)"
+                    + (Alias == null ? "" : " AS [" + Alias + "]");
+            }
+        }
+
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        {
+            if (this.query.TryGetQueryOutputColumn(batchResolver, sourceColumnName, out QueryColumnBase outputColumn))
+            {
+                columnType = outputColumn.ColumnDbType.Value;
+                return true;
+            }
+            columnType = DbType.Object;
+            return false;
+        }
+    }
+
+    internal sealed class QuerySourceOnConstant : QueryColumnSourceBase
+    {
+        private readonly DbType constantType;
+
+        public QuerySourceOnConstant(int id, string key, DbType constantType) : base(id, key)
+        {
+            this.constantType = constantType;
+        }
+
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        {
+            columnType = constantType;
+            return true;
+        }
+    }
+
+    internal sealed class QuerySourceOnNull : QueryColumnSourceBase
+    {
+        public QuerySourceOnNull(int id, string key) : base(id, key)
+        {
+        }
+
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        {
+            columnType = DbType.Object;
+            return false;
+        }
+    }
+
+    internal sealed class QuerySourceOnVariable : QueryColumnSourceBase
+    {
+        private readonly DbType variableType;
+
+        public QuerySourceOnVariable(int id, VariableReference varRef, DbType variableType) : base(id, varRef.Name)
+        {
+            this.variableType = variableType;
+        }
+
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        {
+            columnType = variableType;
+            return true;
+        }
+    }
+
 }

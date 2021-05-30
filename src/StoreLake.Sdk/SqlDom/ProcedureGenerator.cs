@@ -17,7 +17,7 @@ namespace StoreLake.Sdk.SqlDom
         }
         public static ProcedureOutputSet[] IsQueryProcedure(bool resolveColumnType, ISchemaMetadataProvider schemaMetadata, ProcedureMetadata procedure_metadata)
         {
-            BatchOutputColumnTypeResolver columnTypeResolver = new BatchOutputColumnTypeResolver(schemaMetadata, procedure_metadata.BodyFragment);
+            BatchOutputColumnTypeResolver columnTypeResolver = new BatchOutputColumnTypeResolver(schemaMetadata, procedure_metadata.BodyFragment, procedure_metadata);
             StatementVisitor vstor = new StatementVisitor(resolveColumnType, columnTypeResolver, procedure_metadata.BodyFragment);
             procedure_metadata.BodyFragment.Accept(vstor);
             return vstor.resultHasOutputResultSet.ToArray();
@@ -338,7 +338,7 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     //Console.WriteLine("Resolve type for scalar:" + node.AsText());
                     OutputColumnDescriptor columnDbType = resolveColumnType
-                        ? columnTypeResolver.ResolveScalarExpression(node)
+                        ? columnTypeResolver.ResolveSelectScalarExpression(node)
                         : null;
                     if (columnDbType == null)
                     {

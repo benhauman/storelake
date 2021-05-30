@@ -103,7 +103,7 @@ namespace StoreLake.Test
         }
     }
 
-    class TestFunction : TestSource
+    class TestFunction : TestSource, IBatchParameterMetadata
     {
         private readonly Action<TestFunction> loader;
         public TestFunction(string schemaName, string objectName, Action<TestFunction> loader)
@@ -129,6 +129,18 @@ namespace StoreLake.Test
         internal void AddParameter(string parameterName, DbType parameterDbType)
         {
             parameters.Add(parameterName.ToUpperInvariant(), parameterDbType);
+        }
+
+        DbType? IBatchParameterMetadata.TryGetParameterType(string parameterName)
+        {
+            if (parameters.TryGetValue(parameterName.ToUpperInvariant(), out DbType parameterType))
+            {
+                return parameterType;
+            }
+            else
+            {
+                return null;
+            }
         }
     }
 

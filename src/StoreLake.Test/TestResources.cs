@@ -98,7 +98,7 @@ namespace StoreLake.Test
 
         private static void LoadFunctionOutputColumns(TestSchema schema, TestFunction function_source, CreateFunctionStatement stmt_CreateFunction)
         {
-            BatchOutputColumnTypeResolver batchResolver = new BatchOutputColumnTypeResolver(schema, stmt_CreateFunction);
+            BatchOutputColumnTypeResolver batchResolver = new BatchOutputColumnTypeResolver(schema, stmt_CreateFunction, function_source);
             if (stmt_CreateFunction.ReturnType is SelectFunctionReturnType fn_sel)
             {
                 StatementOutputColumnTypeResolverV2 resolver = new StatementOutputColumnTypeResolverV2(batchResolver, fn_sel.SelectStatement);
@@ -108,7 +108,7 @@ namespace StoreLake.Test
                 {
                     if (se is SelectScalarExpression scalarExpr)
                     {
-                        var col = resolver.ResolveScalarExpression(scalarExpr);
+                        var col = resolver.ResolveSelectScalarExpression(scalarExpr);
                         function_source.AddColumn(col.OutputColumnName, col.ColumnDbType);
                     }
                     else

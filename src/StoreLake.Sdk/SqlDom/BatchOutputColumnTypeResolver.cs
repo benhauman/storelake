@@ -5,14 +5,20 @@ using System.Data;
 
 namespace StoreLake.Sdk.SqlDom
 {
+    public interface IBatchParameterMetadata
+    {
+        System.Data.DbType? TryGetParameterType(string parameterName);
+    }
     public sealed class BatchOutputColumnTypeResolver
     {
         internal readonly ISchemaMetadataProvider SchemaMetadata;
+        private readonly IBatchParameterMetadata parameters;
         private readonly TSqlFragment BodyFragment;
-        public BatchOutputColumnTypeResolver(ISchemaMetadataProvider schemaMetadata, TSqlFragment bodyFragment)
+        public BatchOutputColumnTypeResolver(ISchemaMetadataProvider schemaMetadata, TSqlFragment bodyFragment, IBatchParameterMetadata parametersMetadata)
         {
             SchemaMetadata = schemaMetadata;
             BodyFragment = bodyFragment;
+            parameters = parametersMetadata;
         }
         internal DbType? ResolveColumnReference(StatementWithCtesAndXmlNamespaces statement, ColumnReferenceExpression node)
         {
@@ -94,6 +100,18 @@ namespace StoreLake.Sdk.SqlDom
                     variableDefinition = node.Definition;
                 }
             }
+        }
+
+        internal DbType? TryGetScalarVariableType(string name)
+        {
+            DbType? parameterDbType = parameters.TryGetParameterType(name);
+            if (parameterDbType.HasValue)
+            {
+                return parameterDbType.Value;
+            }
+
+            // scan for variable declaration
+            throw new NotImplementedException(name);
         }
     }
 }
