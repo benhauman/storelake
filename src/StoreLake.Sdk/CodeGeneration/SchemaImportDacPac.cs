@@ -63,7 +63,7 @@ namespace StoreLake.Sdk.CodeGeneration
         // context
         internal readonly IDictionary<string, TableTypeRow> udt_rows = new SortedDictionary<string, TableTypeRow>();
 
-        internal readonly bool DoResolveColumnType = true;
+        internal readonly bool DoResolveColumnType = false;
         internal ISchemaMetadataProvider SchemaMetadata()
         {
             return this;
