@@ -42,26 +42,29 @@ namespace StoreLake.Sdk.SqlDom
         internal readonly string UserDefinedTableTypeSqlFullName;
         internal readonly Type TypeNotNull;
         internal readonly Type TypeNull;
-        public ProcedureCodeParameter(Type typeNotNull, Type typeNull)
+        internal readonly DbType ParameterDbType;
+        public ProcedureCodeParameter(Type typeNotNull, Type typeNull, DbType parameterDbType)
         {
             TypeNotNull = typeNotNull;
             TypeNull = typeNull;
+            ParameterDbType = parameterDbType;
         }
-        public ProcedureCodeParameter(string userDefinedTybleTypeFullName)
+        public ProcedureCodeParameter(string userDefinedTybleTypeFullName, DbType parameterDbType)
         {
             IsUserDefinedTableType = true;
             UserDefinedTableTypeSqlFullName = userDefinedTybleTypeFullName;
+            ParameterDbType = parameterDbType;
         }
 
         internal string ParameterCodeName { get;  set; }
 
-        internal static ProcedureCodeParameter Create<TNotNull, TNull>()
+        internal static ProcedureCodeParameter Create<TNotNull, TNull>(DbType parameterDbType)
         {
-            return new ProcedureCodeParameter(typeof(TNotNull), typeof(TNull));
+            return new ProcedureCodeParameter(typeof(TNotNull), typeof(TNull), parameterDbType);
         }
         internal static ProcedureCodeParameter CreateUdt(string userDefinedTybleTypeFullName)
         {
-            return new ProcedureCodeParameter(userDefinedTybleTypeFullName);
+            return new ProcedureCodeParameter(userDefinedTybleTypeFullName, DbType.Object);
         }
 
     }

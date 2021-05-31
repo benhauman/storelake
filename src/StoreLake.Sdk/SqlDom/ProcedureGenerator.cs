@@ -78,6 +78,10 @@ namespace StoreLake.Sdk.SqlDom
                     return DbType.Byte;
                 }
 
+                if (string.Equals("UNIQUEIDENTIFIER", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return DbType.Guid;
+                }
                 throw new NotImplementedException("typeName:" + typeName);
             }
             else
@@ -254,6 +258,83 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
+        public static void LoadFunctionOutputColumns(ISchemaMetadataProvider schemaMetadata, IBatchParameterMetadata parameterMetadata, string functionBodyScript, Action<OutputColumnDescriptor> collector)
+        {
+            if (functionBodyScript.Trim()[0] == '(')
+            {
+                int idx = functionBodyScript.IndexOf('(');
+                int lastix = functionBodyScript.LastIndexOf(')');
+
+                functionBodyScript = functionBodyScript.Substring(idx + 1, lastix - idx - 2);
+                functionBodyScript = functionBodyScript.Trim();
+            }
+            TSqlFragment sqlF = ScriptDomFacade.Parse(functionBodyScript);
+            SelectStatement stmt_sel = (SelectStatement)((TSqlScript)sqlF).Batches[0].Statements[0];
+
+            BatchOutputColumnTypeResolver batchResolver = new BatchOutputColumnTypeResolver(schemaMetadata, sqlF, parameterMetadata);
+            StatementOutputColumnTypeResolverV2 resolver = new StatementOutputColumnTypeResolverV2(batchResolver, stmt_sel);
+
+            QuerySpecification first = TopQuerySpecification(stmt_sel.QueryExpression);
+            foreach (SelectElement se in first.SelectElements)
+            {
+                if (se is SelectScalarExpression scalarExpr)
+                {
+                    var col = resolver.ResolveSelectScalarExpression(scalarExpr);
+                    collector(col);
+                }
+                else
+                {
+                    throw new NotImplementedException(se.WhatIsThis());
+                }
+            }
+        }
+
+        internal static void ParseViewDefinition()
+        {
+            throw new NotImplementedException();
+        }
+
+        private static QuerySpecification TopQuerySpecification(QueryExpression expr)
+        {
+            if (expr is QuerySpecification qspec)
+                return qspec;
+            BinaryQueryExpression bqExpr = (BinaryQueryExpression)expr;
+            return TopQuerySpecification(bqExpr.FirstQueryExpression);
+        }
+
+        sealed class BatchWithoutParameters : IBatchParameterMetadata
+        {
+            DbType? IBatchParameterMetadata.TryGetParameterType(string parameterName)
+            {
+                return null;
+            }
+        }
+
+
+        public static void LoadViewOutputColumns(ISchemaMetadataProvider schemaMetadata, string ddl, Action<OutputColumnDescriptor> collector)
+        {
+            TSqlFragment sqlF = ScriptDomFacade.Parse(ddl);
+            //CreateViewStatement stmt_CreateView = (CreateViewStatement)((TSqlScript)sqlF).Batches[0].Statements[0];
+            SelectStatement stmt_sel = (SelectStatement)((TSqlScript)sqlF).Batches[0].Statements[0];
+
+            BatchOutputColumnTypeResolver batchResolver = new BatchOutputColumnTypeResolver(schemaMetadata, stmt_sel, new BatchWithoutParameters());
+
+            StatementOutputColumnTypeResolverV2 resolver = new StatementOutputColumnTypeResolverV2(batchResolver, stmt_sel);
+
+            QuerySpecification first = TopQuerySpecification(stmt_sel.QueryExpression);
+            foreach (SelectElement se in first.SelectElements)
+            {
+                if (se is SelectScalarExpression scalarExpr)
+                {
+                    var col = resolver.ResolveSelectScalarExpression(scalarExpr);
+                    collector(col);
+                }
+                else
+                {
+                    throw new NotImplementedException(se.WhatIsThis());
+                }
+            }
+        }
         class SelectElementVisitor : DumpFragmentVisitor
         {
             private bool hasSetVariable;

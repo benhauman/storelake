@@ -39,6 +39,7 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly IDictionary<string, StoreLakeCheckConstraintRegistration> registered_CheckConstraints = new SortedDictionary<string, StoreLakeCheckConstraintRegistration>();
         internal readonly IDictionary<string, StoreLakeProcedureRegistration> registered_Procedures = new SortedDictionary<string, StoreLakeProcedureRegistration>();
         internal readonly IDictionary<string, StoreLakeViewRegistration> registered_views = new SortedDictionary<string, StoreLakeViewRegistration>();
+        internal readonly IDictionary<string, StoreLakeInlineTableValuedFunctionRegistration> registered_InlineTableValuedFunctions = new SortedDictionary<string, StoreLakeInlineTableValuedFunctionRegistration>();
     }
 
 
@@ -58,16 +59,18 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly IDictionary<string, DacPacRegistration> registered_tables = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
         internal readonly IDictionary<string, DacPacRegistration> registered_tabletypes = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
         internal readonly IDictionary<string, DacPacRegistration> registered_views = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
+        internal readonly IDictionary<string, DacPacRegistration> registered_functions = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
         // context
         internal readonly IDictionary<string, TableTypeRow> udt_rows = new SortedDictionary<string, TableTypeRow>();
 
-        internal readonly bool DoResolveColumnType = false;
+        internal readonly bool DoResolveColumnType = true;
         internal ISchemaMetadataProvider SchemaMetadata()
         {
             return this;
         }
 
         internal readonly IDictionary<string, IColumnSourceMetadata> column_sources = new SortedDictionary<string, IColumnSourceMetadata>();
+        internal readonly IDictionary<string, IColumnSourceMetadata> function_sources = new SortedDictionary<string, IColumnSourceMetadata>();
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetColumnSourceMetadata(string schemaName, string objectName)
         {
             string schemaNameSafe = string.IsNullOrEmpty(schemaName) ? ds.Namespace : schemaName;
@@ -98,7 +101,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         {
                             view_reg = dacpac.registered_views[objectName];
                         }
-                        column_source = new SourceMetadataView(objectName);
+                        column_source = new SourceMetadataView(SchemaMetadata(), view_reg);
                     }
                     else
                     {
@@ -126,6 +129,98 @@ namespace StoreLake.Sdk.CodeGeneration
 
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetFunctionTableMetadata(string schemaName, string objectName)
         {
+            string schemaNameSafe = string.IsNullOrEmpty(schemaName) ? ds.Namespace : schemaName;
+            if (!string.Equals(schemaNameSafe, ds.Namespace, StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            string fullName = schemaNameSafe + "." + objectName;
+            if (!function_sources.TryGetValue(fullName.ToUpperInvariant(), out IColumnSourceMetadata column_source))
+            {
+                if (!registered_functions.TryGetValue(objectName, out DacPacRegistration dacpac))
+                {
+                    if (!registered_functions.TryGetValue(objectName.ToUpperInvariant(), out dacpac))
+                    {
+                        return null; // function unknown
+                    }
+                    else
+                    {
+                        if (!dacpac.registered_InlineTableValuedFunctions.TryGetValue(objectName, out StoreLakeInlineTableValuedFunctionRegistration function_reg))
+                            throw new NotSupportedException("Function could not be found:" + "[" + schemaNameSafe + "].[" + objectName + "]");
+                        column_source = new SourceMetadataFunction(SchemaMetadata(), function_reg);
+                    }
+                }
+                else
+                {
+                    if (!dacpac.registered_InlineTableValuedFunctions.TryGetValue(objectName, out StoreLakeInlineTableValuedFunctionRegistration function_reg))
+                        throw new NotSupportedException("Function could not be found:" + "[" + schemaNameSafe + "].[" + objectName + "]");
+                    column_source = new SourceMetadataFunction(SchemaMetadata(), function_reg);
+                }
+
+                function_sources.Add(fullName.ToUpperInvariant(), column_source);
+            }
+
+            return column_source;
+        }
+    }
+
+    [DebuggerDisplay("{FunctionName}")]
+    class SourceMetadataFunction : IColumnSourceMetadata
+    {
+        private readonly StoreLakeInlineTableValuedFunctionRegistration function_reg;
+        private readonly string FunctionName;
+        private readonly ISchemaMetadataProvider SchemaMetadata;
+        public SourceMetadataFunction(ISchemaMetadataProvider schemaMetadata, StoreLakeInlineTableValuedFunctionRegistration fn)
+        {
+            SchemaMetadata = schemaMetadata;
+            function_reg = fn;
+            FunctionName = fn.FunctionName;
+        }
+
+        class FunctionParameters : IBatchParameterMetadata
+        {
+            private StoreLakeInlineTableValuedFunctionRegistration function_reg;
+
+            public FunctionParameters(StoreLakeInlineTableValuedFunctionRegistration function_reg)
+            {
+                this.function_reg = function_reg;
+            }
+
+            DbType? IBatchParameterMetadata.TryGetParameterType(string parameterName)
+            {
+                var prm = function_reg.Parameters.FirstOrDefault(x => string.Equals(x.ParameterName, parameterName, StringComparison.OrdinalIgnoreCase));
+                if (prm != null)
+                {
+                    var prmType = SchemaExportCode.GetParameterClrType(prm);
+                    //SourceMetadataTable.GetColumnDbType
+                    //ProcedureGenerator.ResolveToDbDataType()
+                    if (prmType.IsUserDefinedTableType || prmType.ParameterDbType == DbType.Object)
+                    {
+                        throw new NotImplementedException();
+                    }
+                    else
+                    {
+                        return prmType.ParameterDbType;
+                    }
+                }
+                return null;
+            }
+        }
+
+        private readonly IDictionary<string, OutputColumnDescriptor> output_columns = new SortedDictionary<string, OutputColumnDescriptor>();
+        DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
+        {
+            if (output_columns.Count == 0)
+            {
+                ProcedureGenerator.LoadFunctionOutputColumns(SchemaMetadata, new FunctionParameters(function_reg), function_reg.FunctionBodyScript, (col) =>
+                {
+                    output_columns.Add(col.OutputColumnName.ToUpperInvariant(), col);
+                });
+            }
+            if (output_columns.TryGetValue(columnName.ToUpperInvariant(), out OutputColumnDescriptor coldesc))
+            {
+                return coldesc.ColumnDbType;
+            }
+
             return null;
         }
     }
@@ -133,13 +228,31 @@ namespace StoreLake.Sdk.CodeGeneration
     [DebuggerDisplay("{ViewName}")]
     class SourceMetadataView : IColumnSourceMetadata
     {
+        private readonly StoreLakeViewRegistration view_reg;
         private readonly string ViewName;
-        public SourceMetadataView(string name)
+        private readonly ISchemaMetadataProvider SchemaMetadata;
+        public SourceMetadataView(ISchemaMetadataProvider schemaMetadata, StoreLakeViewRegistration vw)
         {
-            ViewName = name;
+            SchemaMetadata = schemaMetadata;
+            view_reg = vw;
+            ViewName = vw.ViewName;
         }
+
+        private readonly IDictionary<string, OutputColumnDescriptor> output_columns = new SortedDictionary<string, OutputColumnDescriptor>();
         DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
         {
+            if (output_columns.Count == 0)
+            {
+                ProcedureGenerator.LoadViewOutputColumns(SchemaMetadata, view_reg.ViewQueryScript, (col) =>
+                {
+                    output_columns.Add(col.OutputColumnName.ToUpperInvariant(), col);
+                });
+            }
+            if (output_columns.TryGetValue(columnName.ToUpperInvariant(), out OutputColumnDescriptor coldesc))
+            {
+                return coldesc.ColumnDbType;
+            }
+
             return null;
         }
     }
@@ -162,7 +275,7 @@ namespace StoreLake.Sdk.CodeGeneration
             return null;
         }
 
-        private static DbType GetColumnDbType(Type dataType)
+        internal static DbType GetColumnDbType(Type dataType)
         {
             if (dataType == typeof(int))
                 return DbType.Int32;
@@ -180,6 +293,8 @@ namespace StoreLake.Sdk.CodeGeneration
                 return DbType.Int64;
             if (dataType == typeof(DateTime))
                 return DbType.DateTime;
+            if (dataType == typeof(decimal))
+                return DbType.Decimal;
             throw new NotImplementedException(dataType.Name);
         }
     }
@@ -331,7 +446,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                 AddForeignKeys(ctx.ds, xModel);
                                 AddCheckConstraints(ctx.ds, dacpac, xModel);
                                 AddProcedures(ctx.ds, dacpac, xModel);
-                                AddInlineTableValuedFunctions(ctx.ds, dacpac, xModel);
+                                AddInlineTableValuedFunctions(ctx, dacpac, xModel);
                                 // <Element Type="SqlMultiStatementTableValuedFunction" Name="[dbo].[hlsyssec_query_agentsystemacl]">
                                 // <Element Type="SqlScalarFunction" Name="[dbo].[hlsystablecfgdeskfield_validate_attribute]">
 
@@ -489,7 +604,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 StoreLakeTableTypeRegistration treg = new StoreLakeTableTypeRegistration()
                 {
-                    TableTypeSqlFullName= sonTableType.FullName,
+                    TableTypeSqlFullName = sonTableType.FullName,
                     TableTypeName = sonTableType.ObjectName,
                     TableTypeSchema = sonTableType.SchemaName,
                 };
@@ -671,15 +786,6 @@ namespace StoreLake.Sdk.CodeGeneration
                         }
                     }
                 }
-            }
-        }
-
-        private static void AddInlineTableValuedFunctions(DataSet ds, DacPacRegistration dacpac, XElement xModel)
-        {
-            // <Element Type="SqlInlineTableValuedFunction" Name="[dbo].[hlsyssec_query_agentobjectmsk]">
-            foreach (var xFunction in xModel.Elements().Where(e => e.Attributes().Any(t => t.Name == "Type" && t.Value == "SqlInlineTableValuedFunction")))
-            {
-                XAttribute xFunctionName = xFunction.Attributes().Where(x => x.Name == "Name").First();
             }
         }
 
@@ -1128,6 +1234,40 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
+        private static void AddInlineTableValuedFunctions(RegistrationResult ctx, DacPacRegistration dacpac, XElement xModel)
+        {
+            // <Element Type="SqlInlineTableValuedFunction" Name="[dbo].[hlsyssec_query_agentobjectmsk]">
+            foreach (var xFunction in xModel.Elements().Where(e => e.Attributes().Any(t => t.Name == "Type" && t.Value == "SqlInlineTableValuedFunction")))
+            {
+                SchemaObjectName sonFunction = ReadSchemaObjectName(2, xFunction);
+
+                StoreLakeInlineTableValuedFunctionRegistration function_reg = new StoreLakeInlineTableValuedFunctionRegistration()
+                {
+                    FunctionName = sonFunction.ObjectName,
+                    FunctionSchema = sonFunction.SchemaName,
+                };
+
+                //FunctionBody
+                var xRelationship_FunctionBody = xFunction.Elements().Where(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "FunctionBody")).Single();
+                var xRelationship_FunctionBody_Entry = xRelationship_FunctionBody.Elements().Single();
+                var xSqlScriptFunctionImplementation = xRelationship_FunctionBody_Entry.Elements().Single();
+                // <Property Name="BodyScript">
+                var xProperty_BodyScript = xSqlScriptFunctionImplementation.Elements().Single(e => e.Name.LocalName == "Property" && e.Attributes().Any(t => t.Name.LocalName == "Name" && t.Value == "BodyScript"));
+                var xProperty_BodyScript_Value = xProperty_BodyScript.Elements().Single(e => e.Name.LocalName == "Value");
+                XCData xcdata = (XCData)xProperty_BodyScript_Value.FirstNode;
+
+                function_reg.FunctionBodyScript = xcdata.Value.Trim();
+
+                CollectRelationParameters(sonFunction, xFunction, (StoreLakeParameterRegistration parameter) =>
+                {
+                    function_reg.Parameters.Add(parameter);
+                });
+
+                ctx.registered_functions.Add(function_reg.FunctionName, dacpac);
+                dacpac.registered_InlineTableValuedFunctions.Add(function_reg.FunctionName, function_reg);
+            }
+        }
+
         private static void AddViews(RegistrationResult ctx, DacPacRegistration dacpac, XElement xModel)
         {
             // <Element Type="SqlView" Name="[dbo].[hlcmcontactvw]">
@@ -1173,7 +1313,6 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 ctx.registered_views.Add(vreg.ViewName, dacpac);
                 dacpac.registered_views.Add(vreg.ViewName, vreg);
-                //DatabaseRegistration.RegisterTable(ctx.ds, vreg);
             }
         }
 

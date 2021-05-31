@@ -1267,40 +1267,41 @@ namespace StoreLake.Sdk.CodeGeneration
             return fm;
         }
 
-        private static ProcedureCodeParameter GetParameterClrType(StoreLakeParameterRegistration parameter)
+        internal static ProcedureCodeParameter GetParameterClrType(StoreLakeParameterRegistration parameter)
         {
             return GetParameterClrType(parameter.ParameterDbType, parameter.ParameterTypeFullName);
         }
         private static ProcedureCodeParameter GetParameterClrType(SqlDbType parameter_ParameterDbType, string parameter_ParameterTypeFullName)
         {
+            // https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/sql-server-data-type-mappings
             if (parameter_ParameterDbType == SqlDbType.Structured)
                 return ProcedureCodeParameter.CreateUdt(parameter_ParameterTypeFullName);
             if (parameter_ParameterDbType == SqlDbType.Bit)
-                return ProcedureCodeParameter.Create<bool, bool?>();
+                return ProcedureCodeParameter.Create<bool, bool?>(DbType.Boolean);
             if (parameter_ParameterDbType == SqlDbType.NVarChar)
-                return ProcedureCodeParameter.Create<string, string>();
+                return ProcedureCodeParameter.Create<string, string>(DbType.String);
             if (parameter_ParameterDbType == SqlDbType.Int)
-                return ProcedureCodeParameter.Create<int, int?>();
+                return ProcedureCodeParameter.Create<int, int?>(DbType.Int32);
             if (parameter_ParameterDbType == SqlDbType.BigInt)
-                return ProcedureCodeParameter.Create<long, long?>();
+                return ProcedureCodeParameter.Create<long, long?>(DbType.Int64);
             if (parameter_ParameterDbType == SqlDbType.SmallInt)
-                return ProcedureCodeParameter.Create<short, short?>();
+                return ProcedureCodeParameter.Create<short, short?>(DbType.Int16);
             if (parameter_ParameterDbType == SqlDbType.TinyInt)
-                return ProcedureCodeParameter.Create<byte, byte?>();
+                return ProcedureCodeParameter.Create<byte, byte?>(DbType.Byte);
             if (parameter_ParameterDbType == SqlDbType.UniqueIdentifier)
-                return ProcedureCodeParameter.Create<Guid, Guid?>();
+                return ProcedureCodeParameter.Create<Guid, Guid?>(DbType.Guid);
             if (parameter_ParameterDbType == SqlDbType.Xml)
-                return ProcedureCodeParameter.Create<System.Xml.Linq.XElement, System.Xml.Linq.XElement>();
+                return ProcedureCodeParameter.Create<System.Xml.Linq.XElement, System.Xml.Linq.XElement>(DbType.Xml);
             if (parameter_ParameterDbType == SqlDbType.DateTime)
-                return ProcedureCodeParameter.Create<DateTime, DateTime?>();
+                return ProcedureCodeParameter.Create<DateTime, DateTime?>(DbType.DateTime);
             if (parameter_ParameterDbType == SqlDbType.VarBinary)
-                return ProcedureCodeParameter.Create<byte[], byte[]>();
+                return ProcedureCodeParameter.Create<byte[], byte[]>(DbType.Binary);
             if (parameter_ParameterDbType == SqlDbType.Decimal)
-                return ProcedureCodeParameter.Create<decimal, decimal?>();
+                return ProcedureCodeParameter.Create<decimal, decimal?>(DbType.Decimal);
             if (parameter_ParameterDbType == SqlDbType.NChar)
-                return ProcedureCodeParameter.Create<string, string>(); // taskmanagement
+                return ProcedureCodeParameter.Create<string, string>(DbType.StringFixedLength); // taskmanagement
             if (parameter_ParameterDbType == SqlDbType.Date)
-                return ProcedureCodeParameter.Create<DateTime, DateTime?>();
+                return ProcedureCodeParameter.Create<DateTime, DateTime?>(DbType.DateTime);
 
             throw new NotImplementedException("" + parameter_ParameterDbType);
         }

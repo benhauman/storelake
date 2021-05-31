@@ -16,7 +16,8 @@ namespace StoreLake.Sdk.SqlDom
         QueryColumnSourceNT NewQueryColumnSourceNT(QuerySpecificationModel parent, NamedTableReference ntRef);
         QueryColumnSourceNT NewQueryColumnSourceNT(QueryOnModificationOutputModel parent, NamedTableReference ntRef);
         QueryColumnSourceVALUES NewQueryColumnSourceValues(QuerySpecificationModel parent, InlineDerivedTable derivedTable);
-        QuerySourceOnQuery NewSourceOnCte(QuerySpecificationModel parent, string key, IQueryModel queryModel);
+        QuerySourceOnQuery NewSourceOnCte(QuerySpecificationModel parent, string key);
+        QueryOnReqursiveCte NewSourceOnRecursiveCte(QuerySpecificationModel parent, string key, QuerySourceOnQuery cte);
         QuerySourceOnQuery NewSourceOnQueryDerivedTable(QuerySpecificationModel parent, string key, IQueryModel queryModel);
         QuerySourceOnConstant NewConstantSource(QuerySpecificationModel parent, string key, DbType constantType);
 
@@ -81,9 +82,9 @@ namespace StoreLake.Sdk.SqlDom
             return new QueryColumnSourceVALUES(NewId(parent), derivedTable);
         }
 
-        public QuerySourceOnQuery NewSourceOnCte(QuerySpecificationModel parent, string key, IQueryModel cte_qmodel)
+        public QuerySourceOnQuery NewSourceOnCte(QuerySpecificationModel parent, string key)
         {
-            return new QuerySourceOnQuery(NewId(parent), key, cte_qmodel);
+            return new QuerySourceOnQuery(NewId(parent), key);
         }
 
         public QuerySourceOnConstant NewConstantSource(QuerySpecificationModel parent, string key, DbType constantType)
@@ -108,7 +109,12 @@ namespace StoreLake.Sdk.SqlDom
 
         public QuerySourceOnQuery NewSourceOnQueryDerivedTable(QuerySpecificationModel parent, string key, IQueryModel cte_qmodel)
         {
-            return new QuerySourceOnQuery(NewId(parent), key, cte_qmodel);
+            return new QuerySourceOnQuery(NewId(parent), key).SetQuery(cte_qmodel);
+        }
+
+        public QueryOnReqursiveCte NewSourceOnRecursiveCte(QuerySpecificationModel parent, string key, QuerySourceOnQuery cte)
+        {
+            return new QueryOnReqursiveCte(NewId(parent), key, cte);
         }
     }
 }

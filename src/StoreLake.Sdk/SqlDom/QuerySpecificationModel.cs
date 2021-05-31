@@ -222,9 +222,18 @@ namespace StoreLake.Sdk.SqlDom
                     //AddOutputColumn(outputColumn);
                     return true;
                 }
+
+                if (_isRecirsive)
+                    break;
             }
 
             throw new NotImplementedException(Key + "." + outputColumnName); // source not found?!?!
+        }
+
+        private bool _isRecirsive;
+        internal void SetAsRecursive()
+        {
+            _isRecirsive = true;
         }
     }
 

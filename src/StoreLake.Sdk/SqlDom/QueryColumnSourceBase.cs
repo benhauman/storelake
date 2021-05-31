@@ -264,11 +264,18 @@ namespace StoreLake.Sdk.SqlDom
         internal readonly VariableTableReference VarTableRef;
         internal readonly string VariableName;
         public QueryColumnSourceVarTable(int id, VariableTableReference varTableRef)
-            : base(id, varTableRef.Alias.Dequote())
+            : base(id, BuildKey(varTableRef))
         {
             VarTableRef = varTableRef;
             VariableName = varTableRef.Variable.Name;
             //SetAlias(varTableRef.Alias);
+        }
+
+        private static string BuildKey(VariableTableReference varTableRef)
+        {
+            return varTableRef.Alias != null
+                ? varTableRef.Alias.Dequote()
+                : varTableRef.Variable.Name;
         }
 
         private string DebuggerText
@@ -384,11 +391,17 @@ namespace StoreLake.Sdk.SqlDom
     [DebuggerDisplay("NSQ: {DebuggerText}")] // NamedSubCueryOrCte
     internal sealed class QuerySourceOnQuery : QueryColumnSourceBase
     {
-        private readonly IQueryModel query;
-        public QuerySourceOnQuery(int id, string alias, IQueryModel query)
+        private IQueryModel query;
+        private bool _isRecursive;
+        public QuerySourceOnQuery(int id, string alias)
             : base(id, alias)
         {
+        }
+
+        internal QuerySourceOnQuery SetQuery(IQueryModel query)
+        {
             this.query = query;
+            return this;
         }
 
         private string DebuggerText
@@ -409,6 +422,16 @@ namespace StoreLake.Sdk.SqlDom
             }
             columnType = DbType.Object;
             return false;
+        }
+
+        internal void SetAsRecursive()
+        {
+            _isRecursive = true;
+        }
+
+        internal bool IsRecursive()
+        {
+            return _isRecursive;
         }
     }
 
@@ -457,4 +480,20 @@ namespace StoreLake.Sdk.SqlDom
         }
     }
 
+
+    [DebuggerDisplay("Rcs: {DebuggerText}")] // NamedSubCueryOrCte
+    internal sealed class QueryOnReqursiveCte : QueryColumnSourceBase
+    {
+        private readonly QuerySourceOnQuery Cte;
+        public QueryOnReqursiveCte(int id, string key, QuerySourceOnQuery cte)
+            : base(id, key)
+        {
+            Cte = cte;
+        }
+
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        {
+            return Cte.TryResolveSourceColumnType(batchResolver, sourceColumnName, out columnType);
+        }
+    }
 }

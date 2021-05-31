@@ -7,7 +7,8 @@ namespace StoreLake.Test
 {
     class TestSchema : ISchemaMetadataProvider
     {
-        internal readonly IDictionary<string, IColumnSourceMetadata> sources = new SortedDictionary<string, IColumnSourceMetadata>();
+        internal readonly IDictionary<string, IColumnSourceMetadata> tables = new SortedDictionary<string, IColumnSourceMetadata>();
+        internal readonly IDictionary<string, IColumnSourceMetadata> views = new SortedDictionary<string, IColumnSourceMetadata>();
         internal readonly IDictionary<string, IColumnSourceMetadata> functions = new SortedDictionary<string, IColumnSourceMetadata>();
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetColumnSourceMetadata(string schemaName, string objectName)
         {
@@ -21,10 +22,12 @@ namespace StoreLake.Test
             }
             else
             {
-                key = TestSource.CreateKey(schemaName, objectName).ToUpperInvariant();
+                key = TestTable.CreateKey(schemaName, objectName).ToUpperInvariant();
             }
-            if (sources.TryGetValue(key, out IColumnSourceMetadata source))
-                return source;
+            if (tables.TryGetValue(key, out IColumnSourceMetadata sourceT))
+                return sourceT;
+            if (views.TryGetValue(key, out IColumnSourceMetadata sourceV))
+                return sourceV;
 
             throw new NotImplementedException(key);
             //return null;
@@ -33,7 +36,7 @@ namespace StoreLake.Test
 
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetFunctionTableMetadata(string schemaName, string objectName)
         {
-            string key = TestSource.CreateKey(schemaName, objectName).ToUpperInvariant();
+            string key = TestTable.CreateKey(schemaName, objectName).ToUpperInvariant();
 
             if (functions.TryGetValue(key, out IColumnSourceMetadata source))
                 return source;
@@ -42,10 +45,17 @@ namespace StoreLake.Test
 
         }
 
-        internal TestSchema AddSource(TestSource source)
+        internal TestSchema AddTable(TestTable source)
         {
             string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]").ToUpperInvariant();
-            sources.Add(key, source);
+            tables.Add(key, source);
+            return this;
+        }
+
+        internal TestSchema AddView(TestView source)
+        {
+            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]").ToUpperInvariant();
+            views.Add(key, source);
             return this;
         }
 
@@ -59,18 +69,18 @@ namespace StoreLake.Test
     }
 
 
-    class TestSource : IColumnSourceMetadata
+    abstract class TestSourceBase : IColumnSourceMetadata
     {
         internal readonly string Key;
         internal readonly string SchemaName;
         internal readonly string ObjectName;
-        public TestSource(string schemaName, string objectName)
+        protected TestSourceBase(string schemaName, string objectName)
         {
             Key = CreateKey(schemaName, objectName);
             SchemaName = schemaName;
             ObjectName = objectName;
         }
-        public TestSource(string objectName)
+        protected TestSourceBase(string objectName)
         {
             Key = objectName.ToUpperInvariant();
             ObjectName = objectName;
@@ -99,20 +109,36 @@ namespace StoreLake.Test
                 ? column.ColumnDbType
                 : null;
         }
-
-        internal TestSource AddColumn(string name, DbType columnDbType)
+        protected void AddSourceColumn(string name, DbType columnDbType)
         {
             columns.Add(name.ToUpperInvariant(), new TestColumn(name, columnDbType));
+        }
+
+    }
+
+    sealed class TestTable : TestSourceBase
+    {
+        public TestTable(string schemaName, string objectName)
+            : base(schemaName, objectName)
+        {
+        }
+
+
+        internal TestTable AddColumn(string name, DbType columnDbType)
+        {
+            AddSourceColumn(name, columnDbType);
             return this;
         }
     }
 
-    class TestFunction : TestSource, IBatchParameterMetadata
+    sealed class TestFunction : TestSourceBase, IBatchParameterMetadata
     {
         private readonly Action<TestFunction> loader;
-        public TestFunction(string schemaName, string objectName, Action<TestFunction> loader)
+        internal readonly string FunctionBodyScript;
+        public TestFunction(string schemaName, string objectName, string functionBodyScript, Action<TestFunction> loader)
             : base(schemaName, objectName)
         {
+            FunctionBodyScript = functionBodyScript;
             this.loader = loader;
         }
 
@@ -145,6 +171,61 @@ namespace StoreLake.Test
             {
                 return null;
             }
+        }
+
+        internal void AddFunctionColumn(string name, DbType columnDbType)
+        {
+            AddSourceColumn(name, columnDbType);
+            //return this;
+        }
+    }
+
+    sealed class TestView : TestSourceBase, IBatchParameterMetadata
+    {
+        private readonly Action<TestView> loader;
+        internal readonly string Body;
+        public TestView(string schemaName, string objectName, string body, Action<TestView> loader)
+            : base(schemaName, objectName)
+        {
+            Body = body;
+            this.loader = loader;
+        }
+
+        private bool _loaded;
+
+
+        protected override DbType? OnTryGetColumnTypeByName(string columnName)
+        {
+            if (!_loaded)
+            {
+                loader(this);
+                _loaded = true;
+            }
+            return base.OnTryGetColumnTypeByName(columnName);
+        }
+
+        //Dictionary<string, DbType> parameters = new Dictionary<string, DbType>();
+        //internal void AddParameter(string parameterName, DbType parameterDbType)
+        //{
+        //    parameters.Add(parameterName.ToUpperInvariant(), parameterDbType);
+        //}
+
+        DbType? IBatchParameterMetadata.TryGetParameterType(string parameterName)
+        {
+            //if (parameters.TryGetValue(parameterName.ToUpperInvariant(), out DbType parameterType))
+            //{
+            //    return parameterType;
+            //}
+            //else
+            //{
+            //    return null;
+            //}
+            throw new NotImplementedException(parameterName);
+        }
+
+        internal void AddViewColumn(string outputColumnName, DbType columnDbType)
+        {
+            AddSourceColumn(outputColumnName, columnDbType);
         }
     }
 

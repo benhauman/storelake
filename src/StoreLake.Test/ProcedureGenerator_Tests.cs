@@ -19,58 +19,59 @@ namespace StoreLake.Test
 
         private static TestSchema s_metadata_1 = new TestSchema()
                     .LoadTables()
+                    .LoadViews()
                     .LoadFunctionsMetadata()
-                    .AddSource(new TestSource("dbo", "hlsysagent")
+                    .AddTable(new TestTable("dbo", "hlsysagent")
                         .AddColumn("agentid", DbType.Int32)
                         .AddColumn("name", DbType.String)
                         .AddColumn("fullname", DbType.String)
                         .AddColumn("description", DbType.String)
                         .AddColumn("active", DbType.Int16)
                     )
-                    .AddSource(new TestSource("dbo", "hlsysrole")
+                    .AddTable(new TestTable("dbo", "hlsysrole")
                         .AddColumn("roleid", DbType.Int32)
                         .AddColumn("name", DbType.String)
                         .AddColumn("description", DbType.String)
                     )
-                    .AddSource(new TestSource("dbo", "hlsysagenttorole")
+                    .AddTable(new TestTable("dbo", "hlsysagenttorole")
                         .AddColumn("agentid", DbType.Int32)
                         .AddColumn("roleid", DbType.Int32)
                         .AddColumn("inherited", DbType.Boolean)
                         .AddColumn("rank", DbType.Byte)
                     )
-                    .AddSource(new TestSource("dbo", "hlsysagenttoobject")
+                    .AddTable(new TestTable("dbo", "hlsysagenttoobject")
                         .AddColumn("agentid", DbType.Int32)
                         .AddColumn("objectid", DbType.Int32)
                         .AddColumn("objectdefid", DbType.Int32)
                     )
-                    .AddSource(new TestSource("dbo", "hlcmcontactvw")
-                        .AddColumn("personid", DbType.Int32)
-                        .AddColumn("persondefid", DbType.Int32)
-                        .AddColumn("surname", DbType.String)
-                        .AddColumn("name", DbType.String)
-                        .AddColumn("language", DbType.Int32)
-                        .AddColumn("title", DbType.String)
-                        .AddColumn("street", DbType.String)
-                        .AddColumn("city", DbType.String)
-                        .AddColumn("region", DbType.String)
-                        .AddColumn("zipcode", DbType.String)
-                        .AddColumn("country", DbType.String)
-                        .AddColumn("email", DbType.String)
-                        .AddColumn("phonenumber", DbType.String)
-                    )
-                    .AddSource(new TestSource("dbo", "hlsysobjectdef")
+                    //.AddSource(new TestSource("dbo", "hlcmcontactvw")
+                    //    .AddColumn("personid", DbType.Int32)
+                    //    .AddColumn("persondefid", DbType.Int32)
+                    //    .AddColumn("surname", DbType.String)
+                    //    .AddColumn("name", DbType.String)
+                    //    .AddColumn("language", DbType.Int32)
+                    //    .AddColumn("title", DbType.String)
+                    //    .AddColumn("street", DbType.String)
+                    //    .AddColumn("city", DbType.String)
+                    //    .AddColumn("region", DbType.String)
+                    //    .AddColumn("zipcode", DbType.String)
+                    //    .AddColumn("country", DbType.String)
+                    //    .AddColumn("email", DbType.String)
+                    //    .AddColumn("phonenumber", DbType.String)
+                    //)
+                    .AddTable(new TestTable("dbo", "hlsysobjectdef")
                         .AddColumn("objectdefid", DbType.Int32)
                         .AddColumn("name", DbType.String)
                         .AddColumn("objecttype", DbType.Int32)
                         .AddColumn("isfrozen", DbType.Boolean)
                     )
-                    .AddSource(new TestSource("dbo", "hlsysdisplayname")
+                    .AddTable(new TestTable("dbo", "hlsysdisplayname")
                         .AddColumn("reposid", DbType.Int32)
                         .AddColumn("languageid", DbType.Int32)
                         .AddColumn("displayname", DbType.String)
                         .AddColumn("type", DbType.Int16)
                     )
-                    .AddSource(new TestSource("dbo", "hlsysadhocprocessdefinition")
+                    .AddTable(new TestTable("dbo", "hlsysadhocprocessdefinition")
                         .AddColumn("id", DbType.Guid)
                         .AddColumn("version", DbType.Int32)
                         .AddColumn("fileversion", DbType.Int32)
@@ -90,7 +91,7 @@ namespace StoreLake.Test
                         .AddColumn("allowdefaultserviceusage", DbType.Boolean)
                         .AddColumn("prioritymatrixpath", DbType.String)
                     )
-            .AddSource(new TestSource("dbo", "hlwfworkflowdefinition")
+            .AddTable(new TestTable("dbo", "hlwfworkflowdefinition")
                         .AddColumn("rootworkflowid", DbType.Int32)
                         .AddColumn("version", DbType.Int32)
                         .AddColumn("fileversion", DbType.Int32)
@@ -114,13 +115,13 @@ namespace StoreLake.Test
                         .AddColumn("prioritymatrixpath", DbType.String)
                         .AddColumn("lastmodifiedby", DbType.Int32)
                     )
-                    .AddSource(new TestSource("dbo", "hlwfdisplayname")
+                    .AddTable(new TestTable("dbo", "hlwfdisplayname")
                         .AddColumn("rootworkflowid", DbType.Int32)
                         .AddColumn("version", DbType.Int32)
                         .AddColumn("lcid", DbType.Int32)
                         .AddColumn("name", DbType.String)
                     )
-                    .AddSource(new TestSource("dbo", "hlsyscasedata")
+                    .AddTable(new TestTable("dbo", "hlsyscasedata")
                         .AddColumn("caseid", DbType.Int32)
                         .AddColumn("casedefid", DbType.Int32)
                         .AddColumn("currenthistorystep", DbType.Int32)
@@ -190,7 +191,7 @@ END
 ";
             var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
             var schemaMetadata = CreateTestMetadata()
-                .AddSource(new TestSource(null, "@table"))
+                .AddTable(new TestTable(null, "@table"))
                 ;
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
             //Assert.IsTrue(vstor.HasSelectStatements(), "HasSelectStatements");
@@ -233,24 +234,24 @@ END
             Assert.AreEqual(1, res.Length);
         }
 
-        [TestMethod]
-        public void hlcmgetcontact()
-        {
-            string sql = @"BEGIN
-SET NOCOUNT ON;
-SELECT 
- personid, persondefid, surname, name, language, title,
- street, city, region, zipcode,country, email, phonenumber
-FROM dbo.hlcmcontactvw
-WHERE personid=@PersonId AND persondefid=@PersonDefId
-END
-";
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
-            //procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor());
-            var schemaMetadata = CreateTestMetadata();
-            var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
-            Assert.AreEqual(1, res.Length);
-        }
+        //        [TestMethod]
+        //        public void hlcmgetcontact()
+        //        {
+        //            string sql = @"BEGIN
+        //SET NOCOUNT ON;
+        //SELECT 
+        // personid, persondefid, surname, name, language, title,
+        // street, city, region, zipcode,country, email, phonenumber
+        //FROM dbo.hlcmcontactvw
+        //WHERE personid=@PersonId AND persondefid=@PersonDefId
+        //END
+        //";
+        //            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+        //            //procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor());
+        //            var schemaMetadata = CreateTestMetadata();
+        //            var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
+        //            Assert.AreEqual(1, res.Length);
+        //        }
 
 
         [TestMethod]
@@ -590,6 +591,37 @@ END";
         {
             // [finalresult] is a CTE and not a NamedTableReference
             TestProcedureOutput(1, 0, 12);
+        }
+
+        [TestMethod]
+        public void hlcmgetcontact()
+        {
+            TestProcedureOutput(1, 0, 13);
+        }
+
+        [TestMethod]
+        public void hlom_query_possibleactions()
+        {
+            TestProcedureOutput(1, 0, 1);
+        }
+        [TestMethod]
+        public void hlsyssession_getdisconnectedsessions()
+        {
+            TestProcedureOutput(1, 0, 1);
+        }
+
+        [TestMethod]
+        public void hlsys_query_agentcounters_sp()
+        {
+            TestProcedureOutput(1, 0, 5);
+        }
+
+        
+        [TestMethod]
+        public void hlsys_query_templates()
+        {
+            // cte recursion 'grouprecursion'
+            TestProcedureOutput(1, 0, 7);
         }
 
     }
