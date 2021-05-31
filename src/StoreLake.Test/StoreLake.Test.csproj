@@ -18,16 +18,24 @@
     <None Remove="SQL\Functions\hlsysdefaultattr_query_person.sql" />
     <None Remove="SQL\Functions\hlsysdefaultattr_query_product.sql" />
     <None Remove="SQL\Functions\hlsysdetail_query_case.sql" />
+    <None Remove="SQL\Functions\hlsyssec_query_agentobjectdefprmsearch.sql" />
+    <None Remove="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
     <None Remove="SQL\Procedures\hlsys_query_historydetails.sql" />
     <None Remove="SQL\Tables\hlsysactioncontext.sql" />
+    <None Remove="SQL\Tables\hlsysagenttogroup.sql" />
     <None Remove="SQL\Tables\hlsysassociation.sql" />
     <None Remove="SQL\Tables\hlsysassociationdef.sql" />
     <None Remove="SQL\Tables\hlsysassociationhistory.sql" />
     <None Remove="SQL\Tables\hlsyscasehistory.sql" />
     <None Remove="SQL\Tables\hlsyscontracthistory.sql" />
+    <None Remove="SQL\Tables\hlsysglobalacl.sql" />
+    <None Remove="SQL\Tables\hlsysimage.sql" />
+    <None Remove="SQL\Tables\hlsyslistitem.sql" />
+    <None Remove="SQL\Tables\hlsysobjectdefacl.sql" />
     <None Remove="SQL\Tables\hlsysorgunithistory.sql" />
     <None Remove="SQL\Tables\hlsyspersonhistory.sql" />
     <None Remove="SQL\Tables\hlsysproducthistory.sql" />
+    <None Remove="SQL\Tables\hlwfdefrights.sql" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,17 +45,25 @@
     <EmbeddedResource Include="SQL\Functions\hlsysdefaultattr_query_orgunit.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsysdefaultattr_query_person.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsysdefaultattr_query_product.sql" />
+    <EmbeddedResource Include="SQL\Functions\hlsyssec_query_agentobjectdefprmsearch.sql" />
+    <EmbeddedResource Include="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysdetail_query_case.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsys_query_historydetails.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysactioncontext.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysagenttogroup.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysassociation.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysassociationdef.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysassociationhistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyscasehistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyscontracthistory.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysglobalacl.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysimage.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyslistitem.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysobjectdefacl.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysorgunithistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyspersonhistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysproducthistory.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlwfdefrights.sql" />
   </ItemGroup>
 
   <ItemGroup>

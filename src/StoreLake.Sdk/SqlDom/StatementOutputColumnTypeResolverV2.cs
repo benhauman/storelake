@@ -1,5 +1,6 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
+using System.Data;
 using System.Diagnostics;
 using System.Linq;
 
@@ -28,6 +29,11 @@ namespace StoreLake.Sdk.SqlDom
                 ? new OutputColumnDescriptor(column.OutputColumnName, column.ColumnDbType.Value)
                 : null;
         }
+        private static OutputColumnDescriptor ColumnModelToDescriptor(DbType columnDbType)
+        {
+            string outputColumnNameAnonymous = null;
+            return new OutputColumnDescriptor(outputColumnNameAnonymous, columnDbType);
+        }
 
         public OutputColumnDescriptor ResolveColumnReference(ColumnReferenceExpression node)
         {
@@ -52,79 +58,74 @@ namespace StoreLake.Sdk.SqlDom
 
                 throw new NotImplementedException(node.Expression.WhatIsThis());
             }
+            else if (node.Expression is ColumnReferenceExpression colRef)
+            {
+                if (TryColumnReference(model, colRef, out QueryColumnBase col))
+                {
+                    return ColumnModelToDescriptor(col);
+                }
+
+                throw new NotImplementedException(node.Expression.WhatIsThis());
+            }
+            else if (node.Expression is IIfCall iif)
+            {
+                // no output name! if single column output -> use it???
+                if (TrtGetAnonymousColumnType_ScalarExpression(iif.ThenExpression, out DbType columnDbTypeT))
+                {
+                    return ColumnModelToDescriptor(columnDbTypeT);
+                }
+                if (TrtGetAnonymousColumnType_ScalarExpression(iif.ThenExpression, out DbType columnDbTypeE))
+                {
+                    return ColumnModelToDescriptor(columnDbTypeE);
+                }
+                throw new NotImplementedException(iif.ElseExpression.WhatIsThis());
+            }
             else
             {
                 throw new NotImplementedException(node.Expression.WhatIsThis());
             }
-
-            //if (node.Expression is ColumnReferenceExpression colRef)
-            //{
-            //    if (TryColumnReference(model, colRef, out QueryColumnBase col))
-            //    {
-            //        return ColumnModelToDescriptor(col);
-            //    }
-            //
-            //    throw new NotImplementedException(node.Expression.WhatIsThis());
-            //}
-            //else if (node.Expression is CastCall castExpr)
-            //{
-            //    var columnDbType = ProcedureGenerator.ResolveToDbDataType(castExpr.DataType);
-            //
-            //    if (TryGetOutputColumnName(node, out string outputColumnName))
-            //    {
-            //        return new OutputColumnDescriptor(outputColumnName, columnDbType);
-            //    }
-            //    else
-            //    {
-            //        return new OutputColumnDescriptor(columnDbType);
-            //    }
-            //}
-            //else if (node.Expression is ScalarExpression scalarExpr)
-            //{
-            //    throw new NotImplementedException(node.Expression.WhatIsThis());
-            //}
-            //else
-            //{
-            //    throw new NotImplementedException(node.Expression.WhatIsThis());
-            //}
         }
 
-        internal static bool TryGetOutputColumnName(SelectElement se, out string columnName)
+        private static bool TrtGetAnonymousColumnType_ScalarExpression(ScalarExpression scalarExpr, out DbType columnDbType)
         {
-            if (se is SelectScalarExpression node)
+            if (scalarExpr is IntegerLiteral intLit)
             {
-                if (node.ColumnName != null)
-                {
-                    if (node.ColumnName.ValueExpression != null)
-                    {
-                        throw new NotImplementedException(node.ColumnName.ValueExpression.WhatIsThis());
-                    }
-                    else if (node.ColumnName.Identifier != null)
-                    {
-                        columnName = node.ColumnName.Identifier.Dequote();
-                        return true;
-                    }
-                    else
-                    {
-                        if (!string.IsNullOrEmpty(node.ColumnName.Value))
-                        {
-                            columnName = node.ColumnName.Value;
-                            return true;
-                        }
+                columnDbType = DbType.Int32;
+                return true;
+            }
 
-                        columnName = null;
-                        return false;
-                    }
+            throw new NotImplementedException(scalarExpr.WhatIsThis());
+        }
+
+        internal static bool TryGetOutputColumnName(SelectScalarExpression sscalarExpr, out string columnName)
+        {
+            if (sscalarExpr.ColumnName != null)
+            {
+                if (sscalarExpr.ColumnName.ValueExpression != null)
+                {
+                    throw new NotImplementedException(sscalarExpr.ColumnName.ValueExpression.WhatIsThis());
+                }
+                else if (sscalarExpr.ColumnName.Identifier != null)
+                {
+                    columnName = sscalarExpr.ColumnName.Identifier.Dequote();
+                    return true;
                 }
                 else
                 {
+                    if (!string.IsNullOrEmpty(sscalarExpr.ColumnName.Value))
+                    {
+                        columnName = sscalarExpr.ColumnName.Value;
+                        return true;
+                    }
+
                     columnName = null;
                     return false;
                 }
             }
             else
             {
-                throw new NotImplementedException(se.WhatIsThis());
+                columnName = null;
+                return false;
             }
         }
 
@@ -151,15 +152,15 @@ namespace StoreLake.Sdk.SqlDom
             else if (node.MultiPartIdentifier.Count == 1)
             {
                 // no source only column name => traverse all source and find t
-                //string columnName = node.MultiPartIdentifier[0].Dequote();
-                //if (model.Root.TryFindColumnC(model, columnName, out QueryColumnBase col))
-                //{
-                //    cm.ColumnName = col.OutputColumnName;
-                //    cm.ColumnDbType = col.ColumnDbType.Value;
-                //    return true;
-                //}
-                //return false;
-                throw new NotImplementedException(node.WhatIsThis());
+                string columnName = node.MultiPartIdentifier[0].Dequote();
+                if (model.TryGetQueryOutputColumn(this.batchResolver, columnName, out col))
+                {
+                    return true;
+                }
+                else
+                {
+                    throw new NotImplementedException(node.WhatIsThis()); // not resolved?
+                }
             }
             else
             {
@@ -198,8 +199,7 @@ namespace StoreLake.Sdk.SqlDom
                         source_specification = stmt_mrg.MergeSpecification;
                     }
 
-                    //_model = QueryModelLoader.LoadModel(source_specification.OutputClause, stmt_mod.WithCtesAndXmlNamespaces);
-                    throw new NotImplementedException(statement.WhatIsThis());
+                    _model = QueryModelLoader.LoadModificationOutputModel(batchResolver, "roooot", source_specification, stmt_mod.WithCtesAndXmlNamespaces);
                 }
 
             }

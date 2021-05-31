@@ -13,15 +13,16 @@ namespace StoreLake.Sdk.SqlDom
     {
         QueryColumnSourceUDTF NewQueryColumnSourceUDTF(QuerySpecificationModel parent, SchemaObjectFunctionTableReference udtfRef);
         QueryColumnSourceVarTable NewQueryColumnSourceVarTable(QuerySpecificationModel parent, VariableTableReference varTableRef);
-        QuerySpecificationModel NewQueryColumnSourceCTE(QuerySpecificationModel parent, QuerySpecification qspec, string key);
         QueryColumnSourceNT NewQueryColumnSourceNT(QuerySpecificationModel parent, NamedTableReference ntRef);
+        QueryColumnSourceNT NewQueryColumnSourceNT(QueryOnModificationOutputModel parent, NamedTableReference ntRef);
         QueryColumnSourceVALUES NewQueryColumnSourceValues(QuerySpecificationModel parent, InlineDerivedTable derivedTable);
-        QuerySourceOnQuery NewSourceOnCte(QuerySpecificationModel parent, string key, IQueryModel cte_qmodel);
-
+        QuerySourceOnQuery NewSourceOnCte(QuerySpecificationModel parent, string key, IQueryModel queryModel);
+        QuerySourceOnQuery NewSourceOnQueryDerivedTable(QuerySpecificationModel parent, string key, IQueryModel queryModel);
         QuerySourceOnConstant NewConstantSource(QuerySpecificationModel parent, string key, DbType constantType);
 
         QuerySourceOnNull NewNullSource(QuerySpecificationModel parent, string key);
         QuerySourceOnVariable NewVariableSource(QuerySpecificationModel mqe, VariableReference varRef, DbType variableDbType);
+        string NewNameForColumn(QuerySpecificationModel parent, Literal lit);
     }
 
     internal sealed class QueryColumnSourceFactory : IQueryColumnSourceFactory
@@ -31,12 +32,8 @@ namespace StoreLake.Sdk.SqlDom
         {
 
         }
-        private int NewId(QueryColumnSourceBase parent)
-        {
-            lastid++;
-            return lastid;
-        }
-        private int NewId(QuerySpecificationModel parent)
+
+        private int NewId(QueryModelBase parent)
         {
             lastid++;
             return lastid;
@@ -53,6 +50,12 @@ namespace StoreLake.Sdk.SqlDom
             return new QueryUnionModel(lastid, qspecs, key);
         }
 
+        public QueryOnModificationOutputModel NewRootOnModificationOutput(DataModificationSpecification mspec, string key)
+        {
+            lastid++;
+            return new QueryOnModificationOutputModel(lastid, mspec, key);
+        }
+
         public QueryColumnSourceUDTF NewQueryColumnSourceUDTF(QuerySpecificationModel parent, SchemaObjectFunctionTableReference udtfRef)
         {
             return new QueryColumnSourceUDTF(NewId(parent), udtfRef);
@@ -63,9 +66,9 @@ namespace StoreLake.Sdk.SqlDom
             return new QueryColumnSourceVarTable(NewId(parent), varTableRef);
         }
 
-        public QuerySpecificationModel NewQueryColumnSourceCTE(QuerySpecificationModel parent, QuerySpecification qspec, string key)
+        public QueryColumnSourceNT NewQueryColumnSourceNT(QueryOnModificationOutputModel parent, NamedTableReference ntRef)
         {
-            return new QuerySpecificationModel(NewId(parent), qspec, key);
+            return new QueryColumnSourceNT(NewId(parent), ntRef);
         }
 
         public QueryColumnSourceNT NewQueryColumnSourceNT(QuerySpecificationModel parent, NamedTableReference ntRef)
@@ -96,6 +99,16 @@ namespace StoreLake.Sdk.SqlDom
         public QuerySourceOnVariable NewVariableSource(QuerySpecificationModel parent, VariableReference varRef, DbType variableDbType)
         {
             return new QuerySourceOnVariable(NewId(parent), varRef, variableDbType);
+        }
+
+        public string NewNameForColumn(QuerySpecificationModel parent, Literal lit)
+        {
+            return "?" + NewId(parent) + "?";
+        }
+
+        public QuerySourceOnQuery NewSourceOnQueryDerivedTable(QuerySpecificationModel parent, string key, IQueryModel cte_qmodel)
+        {
+            return new QuerySourceOnQuery(NewId(parent), key, cte_qmodel);
         }
     }
 }

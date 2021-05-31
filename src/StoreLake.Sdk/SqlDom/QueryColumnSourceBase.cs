@@ -125,6 +125,9 @@ namespace StoreLake.Sdk.SqlDom
 
         internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnDbType)
         {
+            if (string.IsNullOrEmpty(sourceColumnName))
+                throw new ArgumentNullException(nameof(sourceColumnName));
+
             if (resolved_table == null)
             {
                 resolved_table = batchResolver.SchemaMetadata.TryGetColumnSourceMetadata(SchemaName, TableName);
@@ -142,7 +145,12 @@ namespace StoreLake.Sdk.SqlDom
                 columnDbType = sourcColumnDbType.Value;
                 return true;
             }
-            throw new NotImplementedException();
+            else
+            {
+                //throw new NotImplementedException(Key + "." + sourceColumnName + "   Table: [" + SchemaName + "].[" + TableName + "]");
+                columnDbType = DbType.Object; // column 'personid' without alias => source traversion
+                return false;
+            }
         }
 
         //private bool override_TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string sourceColumnName)

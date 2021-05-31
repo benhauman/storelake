@@ -227,4 +227,41 @@ namespace StoreLake.Sdk.SqlDom
             throw new NotImplementedException(Key + "." + outputColumnName); // source not found?!?!
         }
     }
+
+    [DebuggerDisplay("OUTPUT Id:{Id}, Key:{Key}")]
+    internal sealed class QueryOnModificationOutputModel : QueryModelBase
+    {
+        private readonly DataModificationSpecification MSpec;
+
+        public QueryOnModificationOutputModel(int id, DataModificationSpecification mspec, string key)
+            : base(id, key)
+        {
+            MSpec = mspec;
+        }
+
+        private readonly IDictionary<string, QueryColumnBase> _outputColumns = new SortedDictionary<string, QueryColumnBase>();
+        internal void AddOutputColumn(QueryColumnBase column)
+        {
+            _outputColumns.Add(column.OutputColumnName.ToUpperInvariant(), column);
+        }
+
+        protected override bool IQueryModel_TryGetQueryOutputColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn)
+        {
+            if (_outputColumns.TryGetValue(outputColumnName.ToUpperInvariant(), out outputColumn))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+
+        }
+
+        private QueryColumnSourceBase _source;
+        internal void SetTargetAsSource(QueryColumnSourceBase source)
+        {
+            _source = source;
+        }
+    }
 }

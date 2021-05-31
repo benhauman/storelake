@@ -86,10 +86,14 @@ namespace StoreLake.Test
 
         DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
         {
+            if (string.IsNullOrEmpty(columnName))
+                throw new ArgumentNullException(nameof(columnName));
             return OnTryGetColumnTypeByName(columnName);
         }
         protected virtual DbType? OnTryGetColumnTypeByName(string columnName)
         {
+            if (string.IsNullOrEmpty(columnName))
+                throw new ArgumentNullException(nameof(columnName));
             string key = columnName.ToUpperInvariant();
             return columns.TryGetValue(key, out TestColumn column)
                 ? column.ColumnDbType
