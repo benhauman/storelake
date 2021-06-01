@@ -1090,7 +1090,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt64(mqe, 0);
                 var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64);
-                outputColumn = new SourceColumn(source, outputColumnName, DbType.Int64);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64);
                 return true;
             }
 
@@ -1099,7 +1099,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt64(mqe, 0);
                 var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64);
-                outputColumn = new SourceColumn(source, outputColumnName, DbType.Int64);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64);
                 return true;
             }
 
@@ -1108,7 +1108,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt32(mqe, 0);
                 var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int32);
-                outputColumn = new SourceColumn(source, outputColumnName, DbType.Int32);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int32);
                 return true;
             }
             throw new NotImplementedException(fCall.WhatIsThis());

@@ -91,6 +91,16 @@ namespace StoreLake.Sdk.SqlDom
                     return ColumnModelToDescriptor(columnDbType);
                 throw new NotImplementedException(varRefExpr.Name);
             }
+            else if (node.Expression is FunctionCall fCall)
+            {
+                string functionName = fCall.FunctionName.Dequote();
+                if (string.Equals(functionName, "COUNT", StringComparison.OrdinalIgnoreCase))
+                {
+                    return ColumnModelToDescriptor(DbType.Int32);
+                }
+
+                throw new NotImplementedException(fCall.WhatIsThis());
+            }
             else
             {
                 throw new NotImplementedException(node.Expression.WhatIsThis());

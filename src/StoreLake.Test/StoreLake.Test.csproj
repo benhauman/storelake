@@ -23,6 +23,7 @@
     <None Remove="SQL\Functions\hlsysportal_query_casetable_fieldvalue.sql" />
     <None Remove="SQL\Functions\hlsysportal_query_casetable_ids_user.sql" />
     <None Remove="SQL\Functions\hlsyssec_query_agentobjectdefprmsearch.sql" />
+    <None Remove="SQL\Functions\hlsyssec_query_agentsystemacl_udf.sql" />
     <None Remove="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
     <None Remove="SQL\Functions\hlsys_query_agentcounters.sql" />
     <None Remove="SQL\Procedures\hlcmgetcontact.sql" />
@@ -34,7 +35,9 @@
     <None Remove="SQL\Procedures\hlsysdetail_query_su.sql" />
     <None Remove="SQL\Procedures\hlsyslic_getpendingbooklicenserequest.sql" />
     <None Remove="SQL\Procedures\hlsysportal_query_casetable_data_user.sql" />
+    <None Remove="SQL\Procedures\hlsyssec_qyery_agentdynamicsystemaccessacl.sql" />
     <None Remove="SQL\Procedures\hlsyssession_getdisconnectedsessions.sql" />
+    <None Remove="SQL\Procedures\hlsyssession_query_countportaluser.sql" />
     <None Remove="SQL\Procedures\hlsys_query_agentcounters_sp.sql" />
     <None Remove="SQL\Procedures\hlsys_query_historydetails.sql" />
     <None Remove="SQL\Procedures\hlsys_query_templates.sql" />
@@ -100,6 +103,7 @@
     <EmbeddedResource Include="SQL\Functions\hlsysportal_query_casetable_fieldvalue.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsysportal_query_casetable_ids_user.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsyssec_query_agentobjectdefprmsearch.sql" />
+    <EmbeddedResource Include="SQL\Functions\hlsyssec_query_agentsystemacl_udf.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsys_query_agentcounters.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlcmgetcontact.sql" />
@@ -112,7 +116,9 @@
     <EmbeddedResource Include="SQL\Procedures\hlsysdetail_query_su.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyslic_getpendingbooklicenserequest.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysportal_query_casetable_data_user.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsyssec_qyery_agentdynamicsystemaccessacl.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssession_getdisconnectedsessions.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsyssession_query_countportaluser.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsys_query_agentcounters_sp.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsys_query_historydetails.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsys_query_templates.sql" />

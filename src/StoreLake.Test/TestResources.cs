@@ -58,7 +58,7 @@ namespace StoreLake.Test
 
             // eliminate enclosing '(' & ')'
             idx = body.IndexOf('(');
-            if (idx >= 0 && idx<20)
+            if (idx >= 0 && idx < 20)
             {
                 var txt = body.Substring(0, idx);
                 if (txt.Trim() == "")
@@ -161,15 +161,22 @@ namespace StoreLake.Test
             return schema;
         }
 
-        private static TestFunction LoadFunctionMetatadaFromDDL(TestSchema schema, string ddl)
+        internal static TestFunction LoadFunctionMetatadaFromDDL(TestSchema schema, string ddl)
         {
-            string functionBody = ExtractFunctionBody(ddl);
-
             TSqlFragment sqlF = ScriptDomFacade.Parse(ddl);
             CreateFunctionStatement stmt_CreateFunction = (CreateFunctionStatement)((TSqlScript)sqlF).Batches[0].Statements[0];
 
             string schemaName = stmt_CreateFunction.Name.SchemaIdentifier.Dequote();
             string functionName = stmt_CreateFunction.Name.BaseIdentifier.Dequote();
+
+            if (stmt_CreateFunction.ReturnType != null && stmt_CreateFunction.StatementList != null)
+            {
+                return LoadMultiStatementTableValuedFunction(schemaName, functionName, stmt_CreateFunction);
+            }
+
+            string functionBody = ExtractFunctionBody(ddl);
+            TSqlFragment sqlFB = ScriptDomFacade.Parse(functionBody);
+
             var function = new TestFunction(schemaName, functionName, functionBody, f => LoadFunctionOutputColumns(schema, f, stmt_CreateFunction));
             foreach (ProcedureParameter prm in stmt_CreateFunction.Parameters)
             {
@@ -181,6 +188,30 @@ namespace StoreLake.Test
 
             return function;
 
+        }
+
+        private static TestFunction LoadMultiStatementTableValuedFunction(string schemaName, string functionName, CreateFunctionStatement stmt_CreateFunction)
+        {
+            if (stmt_CreateFunction.ReturnType is TableValuedFunctionReturnType tvfReturnType)
+            {
+                TestFunction function = new TestFunction(schemaName, functionName, "", (x) =>
+                {
+                });
+
+                //tvfReturnType.DeclareTableVariableBody.VariableName
+                var tableBody = tvfReturnType.DeclareTableVariableBody;
+
+                foreach (ColumnDefinition col in tableBody.Definition.ColumnDefinitions)
+                {
+                    string columnName = col.ColumnIdentifier.Dequote();
+                    var columnDbType = ProcedureGenerator.ResolveToDbDataType(col.DataType);
+
+                    function.AddFunctionColumn(columnName, columnDbType);
+                }
+
+                return function;
+            }
+            throw new NotImplementedException(stmt_CreateFunction.ReturnType.WhatIsThis());
         }
 
         private static TestView LoadViewMetatadaFromDDL(TestSchema schema, string ddl)

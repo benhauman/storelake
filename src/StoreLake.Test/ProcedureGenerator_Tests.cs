@@ -45,21 +45,6 @@ namespace StoreLake.Test
                         .AddColumn("objectid", DbType.Int32)
                         .AddColumn("objectdefid", DbType.Int32)
                     )
-                    //.AddSource(new TestSource("dbo", "hlcmcontactvw")
-                    //    .AddColumn("personid", DbType.Int32)
-                    //    .AddColumn("persondefid", DbType.Int32)
-                    //    .AddColumn("surname", DbType.String)
-                    //    .AddColumn("name", DbType.String)
-                    //    .AddColumn("language", DbType.Int32)
-                    //    .AddColumn("title", DbType.String)
-                    //    .AddColumn("street", DbType.String)
-                    //    .AddColumn("city", DbType.String)
-                    //    .AddColumn("region", DbType.String)
-                    //    .AddColumn("zipcode", DbType.String)
-                    //    .AddColumn("country", DbType.String)
-                    //    .AddColumn("email", DbType.String)
-                    //    .AddColumn("phonenumber", DbType.String)
-                    //)
                     .AddTable(new TestTable("dbo", "hlsysobjectdef")
                         .AddColumn("objectdefid", DbType.Int32)
                         .AddColumn("name", DbType.String)
@@ -769,6 +754,20 @@ END";
             // ParenthesisExpression
             TestProcedureOutput(1, 0, 17);
         }
-        // 
+
+        [TestMethod]
+        public void hlsyssec_qyery_agentdynamicsystemaccessacl() // hlsyssec_qyery_agentsystemitemacl
+        {
+            // SqlMultiStatementTableValuedFunction : hlsyssec_query_agentsystemacl
+            TestProcedureOutput(1, 0, 1);
+        }
+
+        [TestMethod]
+        public void hlsyssession_query_countportaluser()
+        {
+            TestProcedureOutput(1, 0, 1);
+        }
+
+        ///hlaiwebrequestsolution_run
     }
 }
