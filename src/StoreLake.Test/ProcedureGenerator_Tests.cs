@@ -768,6 +768,12 @@ END";
             TestProcedureOutput(1, 0, 1);
         }
 
-        ///hlaiwebrequestsolution_run
+        ///
+        [TestMethod]
+        public void hlaiwebrequestsolution_run()
+        {
+            TestProcedureOutput(1, 0, 5);
+        }
+
     }
 }

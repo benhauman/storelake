@@ -86,6 +86,10 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     return DbType.DateTimeOffset;
                 }
+                if (string.Equals("NCHAR", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return DbType.String;
+                }
                 throw new NotImplementedException("typeName:" + typeName);
             }
             else

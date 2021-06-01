@@ -776,6 +776,10 @@ namespace StoreLake.Sdk.SqlDom
             {
                 return TryResolveScalarExpression(ctx, sourceFactory, mqe, unaryExpr.Expression, outputColumnName, out column);
             }
+            else if (scalarExpr is LeftFunctionCall leftCall)
+            {
+                return TryResolveLeftFunctionCall(ctx, sourceFactory, mqe, leftCall, outputColumnName, out column);
+            }
             else
             {
                 throw new NotImplementedException(scalarExpr.WhatIsThis());
@@ -1111,6 +1115,52 @@ namespace StoreLake.Sdk.SqlDom
                 outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int32);
                 return true;
             }
+            throw new NotImplementedException(fCall.WhatIsThis());
+        }
+        private static bool TryResolveLeftFunctionCall(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, LeftFunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)
+        {
+            //string functionName = fCall.FunctionName.Dequote();
+            {
+                SourceColumn functionOutputType = null;
+                for (int ix = 0; ix < fCall.Parameters.Count; ix++)
+                {
+                    var prm = fCall.Parameters[0];
+
+                    if (TryResolveScalarExpression(ctx, sourceFactory, mqe, prm, outputColumnName, out SourceColumn outputColumn1))
+                    {
+                        if (functionOutputType == null)
+                        {
+                            functionOutputType = outputColumn1;
+                        }
+                    }
+
+                    if ((ix + 1) == fCall.Parameters.Count)
+                    {
+                        // last parameter
+                        if (functionOutputType == null)
+                        {
+                            throw new NotImplementedException(fCall.WhatIsThis());
+                        }
+                    }
+                }
+
+                if (functionOutputType != null)
+                {
+                    if (functionOutputType.ColumnDbType != DbType.String)
+                    {
+                        outputColumn = new SourceColumn(functionOutputType.Source, functionOutputType.SourceColumnName, DbType.String);
+                        return true;
+                    }
+                    else
+                    {
+                        outputColumn = functionOutputType;
+                        return true;
+                    }
+                }
+
+                throw new NotImplementedException(fCall.WhatIsThis());
+            }
+
             throw new NotImplementedException(fCall.WhatIsThis());
         }
     }

@@ -26,6 +26,7 @@
     <None Remove="SQL\Functions\hlsyssec_query_agentsystemacl_udf.sql" />
     <None Remove="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
     <None Remove="SQL\Functions\hlsys_query_agentcounters.sql" />
+    <None Remove="SQL\Procedures\hlaiwebrequestsolution_run.sql" />
     <None Remove="SQL\Procedures\hlcmgetcontact.sql" />
     <None Remove="SQL\Procedures\hlom_query_possibleactions.sql" />
     <None Remove="SQL\Procedures\hlsysadhocinstanceaction_targetqueue_receive.sql" />
@@ -42,6 +43,8 @@
     <None Remove="SQL\Procedures\hlsys_query_historydetails.sql" />
     <None Remove="SQL\Procedures\hlsys_query_templates.sql" />
     <None Remove="SQL\Procedures\hlsys_store_objectqueue.sql" />
+    <None Remove="SQL\Tables\hlaiwebrequestsolutionresponse.sql" />
+    <None Remove="SQL\Tables\hlaiwebrequestsolutionresponsesuggestion.sql" />
     <None Remove="SQL\Tables\hlsysactioncontext.sql" />
     <None Remove="SQL\Tables\hlsysagenttogroup.sql" />
     <None Remove="SQL\Tables\hlsysapprovements.sql" />
@@ -106,6 +109,7 @@
     <EmbeddedResource Include="SQL\Functions\hlsyssec_query_agentsystemacl_udf.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsys_query_agentcounters.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlaiwebrequestsolution_run.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlcmgetcontact.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlom_query_possibleactions.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysadhocinstanceaction_targetqueue_receive.sql" />
@@ -123,6 +127,8 @@
     <EmbeddedResource Include="SQL\Procedures\hlsys_query_historydetails.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsys_query_templates.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsys_store_objectqueue.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlaiwebrequestsolutionresponse.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlaiwebrequestsolutionresponsesuggestion.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysactioncontext.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysagenttogroup.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysapprovements.sql" />
