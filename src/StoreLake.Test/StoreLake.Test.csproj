@@ -19,6 +19,9 @@
     <None Remove="SQL\Functions\hlsysdefaultattr_query_product.sql" />
     <None Remove="SQL\Functions\hlsysdetail_query_case.sql" />
     <None Remove="SQL\Functions\hlsysdetail_query_view_case.sql" />
+    <None Remove="SQL\Functions\hlsysdetail_query_view_su.sql" />
+    <None Remove="SQL\Functions\hlsysportal_query_casetable_fieldvalue.sql" />
+    <None Remove="SQL\Functions\hlsysportal_query_casetable_ids_user.sql" />
     <None Remove="SQL\Functions\hlsyssec_query_agentobjectdefprmsearch.sql" />
     <None Remove="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
     <None Remove="SQL\Functions\hlsys_query_agentcounters.sql" />
@@ -26,7 +29,11 @@
     <None Remove="SQL\Procedures\hlom_query_possibleactions.sql" />
     <None Remove="SQL\Procedures\hlsysadhocinstanceaction_targetqueue_receive.sql" />
     <None Remove="SQL\Procedures\hlsyscal_calculate_offset.sql" />
+    <None Remove="SQL\Procedures\hlsyscfgchange_targetqueue_receive.sql" />
     <None Remove="SQL\Procedures\hlsyscontract_increment_numberofcalls.sql" />
+    <None Remove="SQL\Procedures\hlsysdetail_query_su.sql" />
+    <None Remove="SQL\Procedures\hlsyslic_getpendingbooklicenserequest.sql" />
+    <None Remove="SQL\Procedures\hlsysportal_query_casetable_data_user.sql" />
     <None Remove="SQL\Procedures\hlsyssession_getdisconnectedsessions.sql" />
     <None Remove="SQL\Procedures\hlsys_query_agentcounters_sp.sql" />
     <None Remove="SQL\Procedures\hlsys_query_historydetails.sql" />
@@ -47,13 +54,16 @@
     <None Remove="SQL\Tables\hlsysglobalsetting.sql" />
     <None Remove="SQL\Tables\hlsysimage.sql" />
     <None Remove="SQL\Tables\hlsyslistitem.sql" />
+    <None Remove="SQL\Tables\hlsyslistitemimage.sql" />
     <None Remove="SQL\Tables\hlsysobjectdefacl.sql" />
     <None Remove="SQL\Tables\hlsysobjectqueue.sql" />
     <None Remove="SQL\Tables\hlsysorgunithistory.sql" />
     <None Remove="SQL\Tables\hlsyspersonhistory.sql" />
     <None Remove="SQL\Tables\hlsysproducthistory.sql" />
     <None Remove="SQL\Tables\hlsyssession.sql" />
+    <None Remove="SQL\Tables\hlsyssessionlicense.sql" />
     <None Remove="SQL\Tables\hlsyssuassociation.sql" />
+    <None Remove="SQL\Tables\hlsyssusystem.sql" />
     <None Remove="SQL\Tables\hlsystemplatedefinition.sql" />
     <None Remove="SQL\Tables\hlsystemplategroup.sql" />
     <None Remove="SQL\Tables\hlsystranslationvalue.sql" />
@@ -62,6 +72,7 @@
     <None Remove="SQL\Types\hlsys_udt_objectqueueitemchanges.sql" />
     <None Remove="SQL\Views\hlcmcontactvw.sql" />
     <None Remove="SQL\Views\hlsyscaseattachmentvw.sql" />
+    <None Remove="SQL\Views\hlsyscasevw.sql" />
     <None Remove="SQL\Views\hlsyspersoncityvw.sql" />
     <None Remove="SQL\Views\hlsyspersoncountryvw.sql" />
     <None Remove="SQL\Views\hlsyspersonemailaddressvw.sql" />
@@ -74,6 +85,7 @@
     <None Remove="SQL\Views\hlsyspersontitlevw.sql" />
     <None Remove="SQL\Views\hlsyspersonvw.sql" />
     <None Remove="SQL\Views\hlsyspersonzipcodevw.sql" />
+    <None Remove="SQL\Views\hlsyssuattachmentvw.sql" />
   </ItemGroup>
 
   <ItemGroup>
@@ -84,6 +96,9 @@
     <EmbeddedResource Include="SQL\Functions\hlsysdefaultattr_query_person.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsysdefaultattr_query_product.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsysdetail_query_view_case.sql" />
+    <EmbeddedResource Include="SQL\Functions\hlsysdetail_query_view_su.sql" />
+    <EmbeddedResource Include="SQL\Functions\hlsysportal_query_casetable_fieldvalue.sql" />
+    <EmbeddedResource Include="SQL\Functions\hlsysportal_query_casetable_ids_user.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsyssec_query_agentobjectdefprmsearch.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsys_query_agentcounters.sql" />
@@ -91,8 +106,12 @@
     <EmbeddedResource Include="SQL\Procedures\hlom_query_possibleactions.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysadhocinstanceaction_targetqueue_receive.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyscal_calculate_offset.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsyscfgchange_targetqueue_receive.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyscontract_increment_numberofcalls.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysdetail_query_case.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsysdetail_query_su.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsyslic_getpendingbooklicenserequest.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsysportal_query_casetable_data_user.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssession_getdisconnectedsessions.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsys_query_agentcounters_sp.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsys_query_historydetails.sql" />
@@ -113,13 +132,16 @@
     <EmbeddedResource Include="SQL\Tables\hlsysglobalsetting.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysimage.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyslistitem.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyslistitemimage.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysobjectdefacl.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysobjectqueue.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysorgunithistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyspersonhistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysproducthistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyssession.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyssessionlicense.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyssuassociation.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyssusystem.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsystemplatedefinition.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsystemplategroup.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsystranslationvalue.sql" />
@@ -128,6 +150,7 @@
     <EmbeddedResource Include="SQL\Types\hlsys_udt_objectqueueitemchanges.sql" />
     <EmbeddedResource Include="SQL\Views\hlcmcontactvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyscaseattachmentvw.sql" />
+    <EmbeddedResource Include="SQL\Views\hlsyscasevw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyspersoncityvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyspersoncountryvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyspersonemailaddressvw.sql" />
@@ -140,6 +163,7 @@
     <EmbeddedResource Include="SQL\Views\hlsyspersontitlevw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyspersonvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyspersonzipcodevw.sql" />
+    <EmbeddedResource Include="SQL\Views\hlsyssuattachmentvw.sql" />
   </ItemGroup>
 
   <ItemGroup>

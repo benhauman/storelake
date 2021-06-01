@@ -358,6 +358,8 @@ namespace StoreLake.Sdk.CodeGeneration
                 return DbType.DateTime;
             if (dataType == typeof(decimal))
                 return DbType.Decimal;
+            if (dataType == typeof(byte[]))
+                return DbType.Binary;
             throw new NotImplementedException(dataType.Name);
         }
     }

@@ -53,7 +53,7 @@ namespace StoreLake.Sdk.SqlDom
             return this;
         }
 
-        internal abstract bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType);
+        internal abstract bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType);
     }
 
 
@@ -84,46 +84,8 @@ namespace StoreLake.Sdk.SqlDom
         }
 
         IColumnSourceMetadata resolved_table;
-        //internal QueryColumnBase override_TryResolveSelectedColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, string sourceColumnName)
-        //{
-        //    if (resolved_table == null)
-        //    {
-        //        resolved_table = batchResolver.SchemaMetadata.TryGetColumnSourceMetadata(SchemaName, TableName);
-        //        if (resolved_table == null)
-        //        {
-        //            // table not exists???
-        //            throw new NotImplementedException(Key + "." + sourceColumnName + " => " + outputColumnName);
 
-        //        }
-        //    }
-
-        //    string outputColumnNameSafe = outputColumnName ?? sourceColumnName;
-
-        //    if (IsOutputColumnResolved(outputColumnNameSafe, out QueryColumnBase col))
-        //    {
-        //        if (col.ColumnDbType.HasValue)
-        //        {
-        //            return col;
-        //        }
-        //    }
-
-        //    DbType? columnDbType = resolved_table.TryGetColumnTypeByName(sourceColumnName);
-        //    if (columnDbType == null)
-        //    {
-        //        return null;
-        //    }
-        //    if (col != null)
-        //    {
-        //        col.SetColumnDbType(columnDbType.Value);
-        //        return col;
-        //    }
-        //    else
-        //    {
-        //        return base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumnNameSafe, sourceColumnName, columnDbType.Value));
-        //    }
-        //}
-
-        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnDbType)
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnDbType)
         {
             if (string.IsNullOrEmpty(sourceColumnName))
                 throw new ArgumentNullException(nameof(sourceColumnName));
@@ -139,16 +101,16 @@ namespace StoreLake.Sdk.SqlDom
                 }
             }
 
-            DbType? sourcColumnDbType = resolved_table.TryGetColumnTypeByName(sourceColumnName);
-            if (sourcColumnDbType.HasValue)
+            DbType? sourceColumnDbType = resolved_table.TryGetColumnTypeByName(sourceColumnName);
+            if (sourceColumnDbType.HasValue)
             {
-                columnDbType = sourcColumnDbType.Value;
+                columnDbType = new SourceColumnType(this, sourceColumnName, sourceColumnDbType.Value);
                 return true;
             }
             else
             {
                 //throw new NotImplementedException(Key + "." + sourceColumnName + "   Table: [" + SchemaName + "].[" + TableName + "]");
-                columnDbType = DbType.Object; // column 'personid' without alias => source traversion
+                columnDbType = null;// DbType.Object; // column 'personid' without alias => source traversion
                 return false;
             }
         }
@@ -229,7 +191,7 @@ namespace StoreLake.Sdk.SqlDom
         //    return base.AddResolveOutputdColumn(new QueryColumnE(this, outputColumnNameSafe, sourceColumnName, columnDbType.Value));
         //}
 
-        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
             if (resolved_source_metadata == null)
             {
@@ -244,11 +206,11 @@ namespace StoreLake.Sdk.SqlDom
             DbType? columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
             if (columnDbType.HasValue)
             {
-                columnType = columnDbType.Value;
+                columnType = new SourceColumnType(this, sourceColumnName, columnDbType.Value);
                 return true;
             }
 
-            columnType = DbType.Object;
+            columnType = null; // DbType.Object;
             return false;
         }
         //???private bool override_TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string sourceColumnName)
@@ -303,7 +265,7 @@ namespace StoreLake.Sdk.SqlDom
 
         //}
 
-        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
             if (resolved_source_metadata == null)
             {
@@ -317,11 +279,11 @@ namespace StoreLake.Sdk.SqlDom
             DbType? columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
             if (columnDbType.HasValue)
             {
-                columnType = columnDbType.Value;
+                columnType = new SourceColumnType(this, sourceColumnName, columnDbType.Value);
                 return true;
             }
 
-            columnType = DbType.Object;
+            columnType = null;// DbType.Object;
             return false;
         }
         //private bool override_TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string sourceColumnName)
@@ -374,14 +336,16 @@ namespace StoreLake.Sdk.SqlDom
             columns.Add(columnName.ToUpperInvariant(), columnDbType);
         }
 
-        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
-            if (columns.TryGetValue(sourceColumnName.ToUpperInvariant(), out columnType))
+            if (columns.TryGetValue(sourceColumnName.ToUpperInvariant(), out DbType columnDbType))
             {
+                columnType = new SourceColumnType(this, sourceColumnName, columnDbType);
                 return true;
             }
             else
             {
+                columnType = null;
                 return false;
             }
         }
@@ -413,14 +377,22 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
             if (this.query.TryGetQueryOutputColumn(batchResolver, sourceColumnName, out QueryColumnBase outputColumn))
             {
-                columnType = outputColumn.ColumnDbType.Value;
-                return true;
+                if (outputColumn.ColumnDbType.HasValue)
+                {
+                    columnType = new SourceColumnType(this, sourceColumnName, outputColumn.ColumnDbType.Value);
+                    return true;
+                }
+                else
+                {
+                    columnType = new SourceColumnType(this, sourceColumnName);//  DbType.Object;
+                    return true;
+                }
             }
-            columnType = DbType.Object;
+            columnType = null;// DbType.Object;
             return false;
         }
 
@@ -444,9 +416,9 @@ namespace StoreLake.Sdk.SqlDom
             this.constantType = constantType;
         }
 
-        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
-            columnType = constantType;
+            columnType = new SourceColumnType(this, sourceColumnName, constantType);
             return true;
         }
     }
@@ -457,9 +429,9 @@ namespace StoreLake.Sdk.SqlDom
         {
         }
 
-        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
-            columnType = DbType.Object;
+            columnType = null;// DbType.Object;
             return false;
         }
     }
@@ -473,9 +445,9 @@ namespace StoreLake.Sdk.SqlDom
             this.variableType = variableType;
         }
 
-        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
-            columnType = variableType;
+            columnType = new SourceColumnType(this, sourceColumnName, variableType);
             return true;
         }
     }
@@ -491,9 +463,40 @@ namespace StoreLake.Sdk.SqlDom
             Cte = cte;
         }
 
-        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out DbType columnType)
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
             return Cte.TryResolveSourceColumnType(batchResolver, sourceColumnName, out columnType);
+        }
+    }
+
+    [DebuggerDisplay("CONTAINSTANLE() as {Key}")] // NamedSubCueryOrCte
+    internal sealed class QuerySourceFullTextTable : QueryColumnSourceBase
+    {
+        public QuerySourceFullTextTable(int id, FullTextTableReference fttRef)
+            : base(id, fttRef.Alias.Dequote())
+        {
+
+        }
+
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
+        {
+            // KEY: int
+            // RANK: int
+
+            if (string.Equals("KEY", sourceColumnName, StringComparison.OrdinalIgnoreCase))
+            {
+                columnType = new SourceColumnType(this, sourceColumnName, DbType.Int32);
+                return true;
+            }
+
+            if (string.Equals("RANK", sourceColumnName, StringComparison.OrdinalIgnoreCase))
+            {
+                columnType = new SourceColumnType(this, sourceColumnName, DbType.Int32);
+                return true;
+            }
+
+            columnType = null;
+            return false;
         }
     }
 }

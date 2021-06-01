@@ -114,9 +114,9 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     if (StatementOutputColumnTypeResolverV2.TryGetOutputColumnName(sscalarExpr, out string sourceColumnName))
                     {
-                        if (source.TryResolveSourceColumnType(ctx.BatchResolver, sourceColumnName, out DbType columnDbType))
+                        if (source.TryResolveSourceColumnType(ctx.BatchResolver, sourceColumnName, out SourceColumnType columnDbType))
                         {
-                            qmodel.AddOutputColumn(new QueryColumnE(source, sourceColumnName, sourceColumnName, columnDbType));
+                            qmodel.AddOutputColumn(new QueryColumnE(source, sourceColumnName, sourceColumnName, columnDbType.ColumnDbType));
                         }
                         else
                         {
@@ -130,9 +130,9 @@ namespace StoreLake.Sdk.SqlDom
                         {
                             var colId = colRef.MultiPartIdentifier[colRef.MultiPartIdentifier.Count - 1];
                             sourceColumnName = colId.Dequote();
-                            if (source.TryResolveSourceColumnType(ctx.BatchResolver, sourceColumnName, out DbType columnDbType))
+                            if (source.TryResolveSourceColumnType(ctx.BatchResolver, sourceColumnName, out SourceColumnType columnDbType))
                             {
-                                qmodel.AddOutputColumn(new QueryColumnE(source, sourceColumnName, sourceColumnName, columnDbType));
+                                qmodel.AddOutputColumn(new QueryColumnE(source, sourceColumnName, sourceColumnName, columnDbType.ColumnDbType));
                             }
                             else
                             {
@@ -284,6 +284,10 @@ namespace StoreLake.Sdk.SqlDom
             {
                 // SubQuery
                 CollectQueryDerivedTable(ctx, sourceFactory, parent, qDerivedTable, ctes, collector);
+            }
+            else if (tableRef is FullTextTableReference fttRef)
+            {
+                collector(sourceFactory.NewFullTextTable(parent, fttRef));
             }
             else
             {
@@ -532,7 +536,16 @@ namespace StoreLake.Sdk.SqlDom
                     else
                     {
                         // NullLiteral ?!?
-                        throw new NotImplementedException(se.WhatIsThis());
+                        if (!string.IsNullOrEmpty(outputColumnName))
+                        {
+                            // column or its type cannot be resolved;
+                            mqe.AddOutputColumn(new QueryColumnE(col.Source, outputColumnName, outputColumnName, null));
+                        }
+                        else
+                        {
+                            // no output column name, no source column, or type!!!
+                            throw new NotImplementedException(se.WhatIsThis());
+                        }
                     }
                 }
                 else
@@ -614,7 +627,9 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
-                    throw new NotImplementedException(scalarExpr.WhatIsThis());
+                    // source column not there or column type cannot be resolved!
+                    column = null;
+                    return false;
                 }
             }
             else if (scalarExpr is NullLiteral nullLit)
@@ -683,8 +698,11 @@ namespace StoreLake.Sdk.SqlDom
                 DbType? varDbType = ctx.BatchResolver.TryGetScalarVariableType(varRef.Name);
                 if (varDbType.HasValue)
                 {
+                    string outputColumnNameSafe = outputColumnName ??
+                        varRef.Name.Substring(1);
+                    //sourceFactory.NewNameForColumnLiteral(mqe, binLit);
                     var source = sourceFactory.NewVariableSource(mqe, varRef, varDbType.Value);
-                    column = new SourceColumn(source, outputColumnName, varDbType.Value);
+                    column = new SourceColumn(source, outputColumnNameSafe, varDbType.Value);
                     return true;
                 }
                 throw new NotImplementedException(varRef.WhatIsThis());
@@ -749,6 +767,14 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     throw new NotImplementedException(binLit.AsText());
                 }
+            }
+            else if (scalarExpr is ParenthesisExpression ptsExpr)
+            {
+                return TryResolveScalarExpression(ctx, sourceFactory, mqe, ptsExpr.Expression, outputColumnName, out column);
+            }
+            else if (scalarExpr is UnaryExpression unaryExpr)
+            {
+                return TryResolveScalarExpression(ctx, sourceFactory, mqe, unaryExpr.Expression, outputColumnName, out column);
             }
             else
             {
@@ -895,8 +921,8 @@ namespace StoreLake.Sdk.SqlDom
                     }
                     else
                     {
-                        // source column not there?!?!
-                        throw new NotImplementedException(colRef.WhatIsThis());
+                        // source column not there or column type cannot be resolved!
+                        return false;
                     }
                 }
                 else
@@ -951,11 +977,20 @@ namespace StoreLake.Sdk.SqlDom
 
         private static bool TryResolveReferencedSourceColumn(LoadingContext ctx, QuerySpecificationModel mqe, QueryColumnSourceBase source, string outputColumnName, string sourceColumnName, out SourceColumn outputColumn)
         {
-            if (source.TryResolveSourceColumnType(ctx.BatchResolver, sourceColumnName, out DbType columnDbType))
+            if (source.TryResolveSourceColumnType(ctx.BatchResolver, sourceColumnName, out SourceColumnType columnDbType))
             {
-                // coool!
-                outputColumn = new SourceColumn(source, sourceColumnName, columnDbType);
-                return true;
+                if (columnDbType.ColumnDbType.HasValue)
+                {
+                    // coool!
+                    outputColumn = new SourceColumn(source, sourceColumnName, columnDbType.ColumnDbType.Value);
+                    return true;
+                }
+                else
+                {
+                    // almost there
+                    outputColumn = new SourceColumn(source, sourceColumnName);
+                    return true;
+                }
             }
             else
             {
@@ -1057,39 +1092,26 @@ namespace StoreLake.Sdk.SqlDom
                 var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64);
                 outputColumn = new SourceColumn(source, outputColumnName, DbType.Int64);
                 return true;
-                // throw new NotImplementedException(fCall.WhatIsThis());
-                throw new NotImplementedException(fCall.WhatIsThis());
+            }
+
+            if (string.Equals(functionName, "DENSE_RANK", StringComparison.OrdinalIgnoreCase)
+                            )
+            {
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt64(mqe, 0);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64);
+                outputColumn = new SourceColumn(source, outputColumnName, DbType.Int64);
+                return true;
+            }
+
+            if (string.Equals(functionName, "COUNT", StringComparison.OrdinalIgnoreCase)
+                            )
+            {
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt32(mqe, 0);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int32);
+                outputColumn = new SourceColumn(source, outputColumnName, DbType.Int32);
+                return true;
             }
             throw new NotImplementedException(fCall.WhatIsThis());
-        }
-
-        private sealed class SourceColumn
-        {
-            internal readonly QueryColumnSourceBase Source;
-            internal readonly DbType? ColumnDbType;
-            internal readonly string SourceColumnName;
-            public SourceColumn(QueryColumnSourceBase source, string sourceColumnName, DbType columnDbType)
-            {
-                if (source == null)
-                    throw new ArgumentNullException(nameof(source));
-                if (string.IsNullOrEmpty(sourceColumnName))
-                    throw new ArgumentNullException(nameof(sourceColumnName));
-                Source = source;
-                SourceColumnName = sourceColumnName;
-                ColumnDbType = columnDbType;
-            }
-            public SourceColumn(QueryColumnSourceBase source, string sourceColumnName)
-            {
-                if (source == null)
-                    throw new ArgumentNullException(nameof(source));
-                if (string.IsNullOrEmpty(sourceColumnName))
-                    throw new ArgumentNullException(nameof(sourceColumnName));
-
-                Source = source;
-                SourceColumnName = sourceColumnName;
-                ColumnDbType = null;
-            }
-
         }
     }
 

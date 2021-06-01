@@ -85,6 +85,12 @@ namespace StoreLake.Sdk.SqlDom
                 var dbType = ProcedureGenerator.ResolveToDbDataType(castExpr.DataType);
                 return ColumnModelToDescriptor(dbType);
             }
+            else if (node.Expression is VariableReference varRefExpr)
+            {
+                if (batchResolver.TryGetScalarVariableType(varRefExpr.Name, out DbType columnDbType))
+                    return ColumnModelToDescriptor(columnDbType);
+                throw new NotImplementedException(varRefExpr.Name);
+            }
             else
             {
                 throw new NotImplementedException(node.Expression.WhatIsThis());

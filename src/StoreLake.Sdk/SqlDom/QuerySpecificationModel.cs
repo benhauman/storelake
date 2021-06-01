@@ -34,7 +34,7 @@ namespace StoreLake.Sdk.SqlDom
     internal sealed class QuerySpecificationModel : QueryModelBase
     {
         internal readonly QuerySpecification QrySpec;
-        internal readonly IDictionary<string, QueryColumnSourceBase> sources = new SortedDictionary<string, QueryColumnSourceBase>();
+        internal readonly IDictionary<string, QueryColumnSourceBase> sources = new SortedDictionary<string, QueryColumnSourceBase>(StringComparer.OrdinalIgnoreCase);
         public QuerySpecificationModel(int id, QuerySpecification qspec, string key)
             : base(id, key)
         {
@@ -153,13 +153,13 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
-                    throw new NotSupportedException("Output column type not resolved.");
+                    // Output column type not resolved!
                 }
             }
 
             if (!outputColumn.ColumnDbType.HasValue)
             {
-                throw new ArgumentException("Output column type not resolved.", nameof(outputColumn));
+//                throw new ArgumentException("Output column type not resolved.", nameof(outputColumn));
             }
 
             return outputColumn;

@@ -25,6 +25,8 @@ namespace StoreLake.Sdk.SqlDom
         QuerySourceOnVariable NewVariableSource(QuerySpecificationModel mqe, VariableReference varRef, DbType variableDbType);
         string NewNameForColumnLiteral(QuerySpecificationModel parent, Literal lit);
         string NewNameForColumnInt64(QuerySpecificationModel parent, long lit);
+        string NewNameForColumnInt32(QuerySpecificationModel parent, int lit);
+        QuerySourceFullTextTable NewFullTextTable(QuerySpecificationModel parent, FullTextTableReference fttRef);
     }
 
     internal sealed class QueryColumnSourceFactory : IQueryColumnSourceFactory
@@ -111,6 +113,10 @@ namespace StoreLake.Sdk.SqlDom
         {
             return "?" + NewId(parent) + "?";
         }
+        public string NewNameForColumnInt32(QuerySpecificationModel parent, int lit)
+        {
+            return "?" + NewId(parent) + "?";
+        }
 
         public QuerySourceOnQuery NewSourceOnQueryDerivedTable(QuerySpecificationModel parent, string key, IQueryModel cte_qmodel)
         {
@@ -120,6 +126,11 @@ namespace StoreLake.Sdk.SqlDom
         public QueryOnReqursiveCte NewSourceOnRecursiveCte(QuerySpecificationModel parent, string key, QuerySourceOnQuery cte)
         {
             return new QueryOnReqursiveCte(NewId(parent), key, cte);
+        }
+
+        public QuerySourceFullTextTable NewFullTextTable(QuerySpecificationModel parent, FullTextTableReference fttRef)
+        {
+            return new QuerySourceFullTextTable(NewId(parent), fttRef);
         }
     }
 }

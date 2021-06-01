@@ -742,6 +742,33 @@ END";
         {
             TestProcedureOutput(1, 0, 1);
         }
-        
+
+        [TestMethod]
+        public void hlsyscfgchange_targetqueue_receive()
+        {
+            TestProcedureOutput(1, 0, 1);
+        }
+
+        [TestMethod]
+        public void hlsysdetail_query_su()
+        {
+            TestProcedureOutput(2, 0, 17);
+            TestProcedureOutput(2, 1, 6);
+        }
+
+        [TestMethod]
+        public void hlsyslic_getpendingbooklicenserequest()
+        {
+            // StringComparer.OrdinalIgnoreCase for sources 'PortalCount <> portalCount'
+            TestProcedureOutput(1, 0, 9);
+        }
+
+        [TestMethod]
+        public void hlsysportal_query_casetable_data_user()
+        {
+            // ParenthesisExpression
+            TestProcedureOutput(1, 0, 17);
+        }
+        // 
     }
 }

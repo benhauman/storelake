@@ -9,6 +9,63 @@ using System.Diagnostics;
 // see [DebuggerTypeProxy(typeof(HashtableDebugView))]
 namespace StoreLake.Sdk.SqlDom
 {
+    internal sealed class SourceColumn
+    {
+        internal readonly QueryColumnSourceBase Source;
+        internal readonly DbType? ColumnDbType;
+        internal readonly string SourceColumnName;
+        public SourceColumn(QueryColumnSourceBase source, string sourceColumnName, DbType columnDbType)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (string.IsNullOrEmpty(sourceColumnName))
+                throw new ArgumentNullException(nameof(sourceColumnName));
+            Source = source;
+            SourceColumnName = sourceColumnName;
+            ColumnDbType = columnDbType;
+        }
+        public SourceColumn(QueryColumnSourceBase source, string sourceColumnName)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (string.IsNullOrEmpty(sourceColumnName))
+                throw new ArgumentNullException(nameof(sourceColumnName));
+
+            Source = source;
+            SourceColumnName = sourceColumnName;
+            ColumnDbType = null;
+        }
+
+    }
+
+    internal sealed class SourceColumnType
+    {
+        internal readonly QueryColumnSourceBase Source;
+        internal readonly DbType? ColumnDbType;
+        internal readonly string SourceColumnName;
+        public SourceColumnType(QueryColumnSourceBase source, string sourceColumnName, DbType columnDbType)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (string.IsNullOrEmpty(sourceColumnName))
+                throw new ArgumentNullException(nameof(sourceColumnName));
+            Source = source;
+            SourceColumnName = sourceColumnName;
+            ColumnDbType = columnDbType;
+        }
+        public SourceColumnType(QueryColumnSourceBase source, string sourceColumnName)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (string.IsNullOrEmpty(sourceColumnName))
+                throw new ArgumentNullException(nameof(sourceColumnName));
+        
+            Source = source;
+            SourceColumnName = sourceColumnName;
+            ColumnDbType = null;
+        }
+
+    }
     internal abstract class QueryColumnBase
     {
         public abstract string OutputColumnName { get; }

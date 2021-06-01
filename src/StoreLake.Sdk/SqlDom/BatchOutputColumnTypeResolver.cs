@@ -20,23 +20,27 @@ namespace StoreLake.Sdk.SqlDom
             BodyFragment = bodyFragment;
             parameters = parametersMetadata;
         }
-        internal DbType? ResolveColumnReference(StatementWithCtesAndXmlNamespaces statement, ColumnReferenceExpression node)
+
+        internal bool TryGetScalarVariableType(string variableName, out DbType variableDbType)
         {
-            if (node.ColumnType != ColumnType.Regular)
-                throw new NotImplementedException(node.AsText());
+            TableVariableDeclarionVisitor vstor = new TableVariableDeclarionVisitor(variableName);
+            BodyFragment.Accept(vstor);
+            if (vstor.variableDefinition != null)
+            {
+                //source_metadata = new TableVariableMetadata(vstor.variableDefinition);
+                //cache_table_variables.Add(variableName.ToUpperInvariant(), source_metadata);
+                //return source_metadata;
+                throw new NotImplementedException(variableName);
+            }
 
-            if (node.MultiPartIdentifier.Count != 1)
+            if (vstor.VariableDataType != null)
             {
-                throw new NotImplementedException(node.AsText());
-                //return null;
+                variableDbType = ProcedureGenerator.ResolveToDbDataType(vstor.VariableDataType);
+                return true;
             }
-            else
-            {
-                // no source only column name => traverse all source and find t
-                throw new NotImplementedException(node.AsText() + "   ## " + statement.AsText());
-            }
+            //BodyFragment.Accept(new DumpFragmentVisitor(true));
+            throw new NotImplementedException(variableName);
         }
-
         internal IColumnSourceMetadata TryGetTableVariable(string variableName)
         {
             if (cache_table_variables.TryGetValue(variableName.ToUpperInvariant(), out TableVariableMetadata source_metadata))
