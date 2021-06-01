@@ -51,6 +51,13 @@ namespace StoreLake.Sdk.SqlDom
                 cache_table_variables.Add(variableName.ToUpperInvariant(), source_metadata);
                 return source_metadata;
             }
+
+            if (vstor.VariableDataType != null)
+            {
+                IColumnSourceMetadata udt_metadata = SchemaMetadata.TryGetUserDefinedTableTypeMetadata(vstor.VariableDataType.Name.SchemaIdentifier.Dequote(), vstor.VariableDataType.Name.BaseIdentifier.Dequote());
+                return udt_metadata;
+            }
+            //BodyFragment.Accept(new DumpFragmentVisitor(true));
             throw new NotImplementedException(variableName);
         }
 
@@ -88,6 +95,7 @@ namespace StoreLake.Sdk.SqlDom
         {
             private readonly string variableName;
             internal TableDefinition variableDefinition;
+            internal DataTypeReference VariableDataType;
             public TableVariableDeclarionVisitor(string variableName) : base(false)
             {
                 this.variableName = variableName;
@@ -100,6 +108,22 @@ namespace StoreLake.Sdk.SqlDom
                     variableDefinition = node.Definition;
                 }
             }
+
+            public override void ExplicitVisit(DeclareTableVariableStatement node)
+            {
+                base.ExplicitVisit(node);
+            }
+
+            public override void ExplicitVisit(DeclareVariableElement node)
+            {
+                if (string.Equals(node.VariableName.Value, variableName, StringComparison.OrdinalIgnoreCase))
+                {
+                    VariableDataType = node.DataType;
+                    //variableDefinition = node.Definition;
+                    //throw new NotImplementedException(node.WhatIsThis());
+                }
+                base.ExplicitVisit(node);
+            }
         }
 
         internal DbType? TryGetScalarVariableType(string name)
@@ -111,6 +135,14 @@ namespace StoreLake.Sdk.SqlDom
             }
 
             // scan for variable declaration
+
+            TableVariableDeclarionVisitor vstor = new TableVariableDeclarionVisitor(name);
+            BodyFragment.Accept(vstor);
+            if (vstor.VariableDataType != null)
+            {
+                return ProcedureGenerator.ResolveToDbDataType(vstor.VariableDataType);
+            }
+
             throw new NotImplementedException(name);
         }
     }

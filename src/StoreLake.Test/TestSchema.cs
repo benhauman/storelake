@@ -10,6 +10,7 @@ namespace StoreLake.Test
         internal readonly IDictionary<string, IColumnSourceMetadata> tables = new SortedDictionary<string, IColumnSourceMetadata>();
         internal readonly IDictionary<string, IColumnSourceMetadata> views = new SortedDictionary<string, IColumnSourceMetadata>();
         internal readonly IDictionary<string, IColumnSourceMetadata> functions = new SortedDictionary<string, IColumnSourceMetadata>();
+        internal readonly IDictionary<string, IColumnSourceMetadata> udts = new SortedDictionary<string, IColumnSourceMetadata>();
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetColumnSourceMetadata(string schemaName, string objectName)
         {
             string key;
@@ -44,11 +45,38 @@ namespace StoreLake.Test
             throw new NotImplementedException(key);
 
         }
+        IColumnSourceMetadata ISchemaMetadataProvider.TryGetUserDefinedTableTypeMetadata(string schemaName, string objectName)
+        {
+            string key;
+            if (string.IsNullOrEmpty(schemaName))
+            {
+                if (objectName[0] == '@')
+                    key = objectName.ToUpperInvariant();
+                else
+                    return null;
+            }
+            else
+            {
+                key = TestTable.CreateKey(schemaName, objectName).ToUpperInvariant();
+            }
+            if (udts.TryGetValue(key, out IColumnSourceMetadata sourceT))
+                return sourceT;
+
+            throw new NotImplementedException(key);
+            //return null;
+
+        }
 
         internal TestSchema AddTable(TestTable source)
         {
             string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]").ToUpperInvariant();
             tables.Add(key, source);
+            return this;
+        }
+        internal TestSchema AddUDT(TestTable source)
+        {
+            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]").ToUpperInvariant();
+            udts.Add(key, source);
             return this;
         }
 

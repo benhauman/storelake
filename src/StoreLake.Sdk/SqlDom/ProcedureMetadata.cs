@@ -7,10 +7,14 @@ namespace StoreLake.Sdk.SqlDom
 {
     public sealed class ProcedureMetadata : IBatchParameterMetadata
     {
-        public ProcedureMetadata(string procedureName, TSqlFragment bodyFragment)
+        public ProcedureMetadata(string procedureName, TSqlFragment bodyFragment, Dictionary<string, ProcedureCodeParameter> procedureParameters)
         {
             ProcedureName = procedureName;
             BodyFragment = bodyFragment;
+            foreach(var prm in procedureParameters)
+            {
+                parameters.Add(prm.Key, prm.Value);
+            }
         }
 
         public string ProcedureName { get; private set; }
@@ -26,7 +30,22 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     return DbType.Int32;
                 }
-
+                if (prm.TypeNotNull == typeof(Int64))
+                {
+                    return DbType.Int64;
+                }
+                if (prm.TypeNotNull == typeof(DateTime))
+                {
+                    return DbType.DateTime;
+                }
+                if (prm.TypeNotNull == typeof(Byte))
+                {
+                    return DbType.Byte;
+                }
+                if (prm.TypeNotNull == typeof(bool))
+                {
+                    return DbType.Boolean;
+                }
                 throw new NotImplementedException(prm.TypeNotNull.Name);
             }
             else
@@ -34,9 +53,14 @@ namespace StoreLake.Sdk.SqlDom
                 return null;
             }
         }
+
+        //public void AddParameter(string parameterName, ProcedureCodeParameter parameterType)
+        //{
+        //    parameters.Add(parameterName, parameterType);
+        //}
     }
 
-    sealed class ProcedureCodeParameter
+    public sealed class ProcedureCodeParameter
     {
         internal readonly bool IsUserDefinedTableType;
         internal readonly string UserDefinedTableTypeSqlFullName;

@@ -23,7 +23,8 @@ namespace StoreLake.Sdk.SqlDom
 
         QuerySourceOnNull NewNullSource(QuerySpecificationModel parent, string key);
         QuerySourceOnVariable NewVariableSource(QuerySpecificationModel mqe, VariableReference varRef, DbType variableDbType);
-        string NewNameForColumn(QuerySpecificationModel parent, Literal lit);
+        string NewNameForColumnLiteral(QuerySpecificationModel parent, Literal lit);
+        string NewNameForColumnInt64(QuerySpecificationModel parent, long lit);
     }
 
     internal sealed class QueryColumnSourceFactory : IQueryColumnSourceFactory
@@ -102,7 +103,11 @@ namespace StoreLake.Sdk.SqlDom
             return new QuerySourceOnVariable(NewId(parent), varRef, variableDbType);
         }
 
-        public string NewNameForColumn(QuerySpecificationModel parent, Literal lit)
+        public string NewNameForColumnLiteral(QuerySpecificationModel parent, Literal lit)
+        {
+            return "?" + NewId(parent) + "?";
+        }
+        public string NewNameForColumnInt64(QuerySpecificationModel parent, long lit)
         {
             return "?" + NewId(parent) + "?";
         }

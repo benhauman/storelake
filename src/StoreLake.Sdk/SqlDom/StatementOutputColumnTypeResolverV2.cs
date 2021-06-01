@@ -80,6 +80,11 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 throw new NotImplementedException(iif.ElseExpression.WhatIsThis());
             }
+            else if (node.Expression is CastCall castExpr)
+            {
+                var dbType = ProcedureGenerator.ResolveToDbDataType(castExpr.DataType);
+                return ColumnModelToDescriptor(dbType);
+            }
             else
             {
                 throw new NotImplementedException(node.Expression.WhatIsThis());

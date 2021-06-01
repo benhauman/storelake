@@ -29,10 +29,13 @@ BEGIN
     , [grouprecursion] AS
     (
         SELECT g.[id], CAST(g.[name] AS NVARCHAR(MAX)) AS [name], g.[agentid], g.[objectdefname], g.[parentid] 
+            , NULL AS email
         FROM [groups] AS g
         WHERE g.[parentid] = 0
         UNION ALL
-        SELECT g.[id], CAST(CONCAT(p.[name], N'\', g.[name]) AS NVARCHAR(MAX)) AS [name], g.[agentid], g.[objectdefname], g.[parentid] FROM [grouprecursion] AS p 
+        SELECT g.[id], CAST(CONCAT(p.[name], N'\', g.[name]) AS NVARCHAR(MAX)) AS [name], g.[agentid], g.[objectdefname], g.[parentid] 
+            , CONCAT(p.name, [name])
+          FROM [grouprecursion] AS p 
         JOIN [groups] AS g ON p.[id] = g.[parentid]
     )
     , [templates] AS

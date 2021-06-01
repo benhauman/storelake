@@ -21,6 +21,7 @@ namespace StoreLake.Test
                     .LoadTables()
                     .LoadViews()
                     .LoadFunctionsMetadata()
+                    .LoadUDTs()
                     .AddTable(new TestTable("dbo", "hlsysagent")
                         .AddColumn("agentid", DbType.Int32)
                         .AddColumn("name", DbType.String)
@@ -189,7 +190,8 @@ namespace StoreLake.Test
 	GROUP BY [a].[attributeid]
 END
 ";
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+            Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
             var schemaMetadata = CreateTestMetadata()
                 .AddTable(new TestTable(null, "@table"))
                 ;
@@ -227,7 +229,8 @@ END
 
 -- DROP PROCEDURE [dbo].[hlsys_createactioncontext]
 ";
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+            Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
             //procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor());
             var schemaMetadata = CreateTestMetadata();
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
@@ -285,7 +288,8 @@ BEGIN
 	SELECT IIF(@limitreached = 1, 1, 0)
 END
 ";
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+            Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
             var schemaMetadata = CreateTestMetadata();
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
             Assert.AreEqual(1, res.Length);
@@ -353,7 +357,8 @@ END
 	END
 END
 ";
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+            Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
             var schemaMetadata = CreateTestMetadata();
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
             Assert.AreEqual(1, res.Length);
@@ -380,7 +385,8 @@ ON personid = agent2object.objectid AND persondefid = agent2object.objectdefid A
 WHERE role.roleid=@RoleId
 END";
 
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+            Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
             var schemaMetadata = CreateTestMetadata();
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
             Assert.AreEqual(1, res.Length, "OutputSet.Count");
@@ -487,7 +493,8 @@ END";
        AND ([wf].[usescontractagreement] = 0 OR @hasvaliddefaultservice = 1))
 END";
 
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+            Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
             var schemaMetadata = CreateTestMetadata();
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
             Assert.AreEqual(1, res.Length, "OutputSet.Count");
@@ -545,7 +552,8 @@ BEGIN
     ORDER BY [ci].[creationtime]
 END";
 
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+            Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
             var schemaMetadata = CreateTestMetadata();
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
             Assert.AreEqual(1, res.Length, "OutputSet.Count");
@@ -563,17 +571,74 @@ END";
         }
         private void TestProcedureOutput(int outputSetCount = 1, int outputSetIndex = 0, int columnCount = 99)
         {
-            string sql = TestResources.LoadProcedureBody(TestContext.TestName);
+            var ddl = ResourceHelper.GetSql("SQL.Procedures." + TestContext.TestName);
 
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql);
+            TSqlFragment sqlF = ScriptDomFacade.Parse(ddl);
 
-            procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor(true));
+            string sql_body = TestResources.LoadProcedureBody(ddl);
+
+            CreateProcedureStatement stmt_CreateFunction = (CreateProcedureStatement)((TSqlScript)sqlF).Batches[0].Statements[0];
+            Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
+
+            foreach (ProcedureParameter prm in stmt_CreateFunction.Parameters)
+            {
+                ProcedureCodeParameter parameterType;
+                if (prm.DataType.Name.Count == 2)
+                {
+                    //SqlDbType sqlType = SqlDbType.Structured;
+                    string fullName = prm.DataType.Name.SchemaIdentifier.Dequote()
+                        + "." + prm.DataType.Name.BaseIdentifier.Dequote();
+                    parameterType = new ProcedureCodeParameter(fullName, DbType.Object);
+                }
+                else
+                {
+                    var parameterDbType = ProcedureGenerator.ResolveToDbDataType(prm.DataType);
+
+                    SqlDbType sqlType = ResolveToSqlType(parameterDbType);
+
+                    parameterType = Sdk.CodeGeneration.SchemaExportCode.GetParameterClrType(sqlType, "bzzz");
+                }
+                string parameterName = prm.VariableName.Dequote();
+                //var parameterDbType = ProcedureGenerator.ResolveToDbDataType(prm.DataType);
+                //
+                //SqlDbType sqlType = ResolveToSqlType(parameterDbType);
+                //var parameterType = Sdk.CodeGeneration.SchemaExportCode.GetParameterClrType(sqlType, "bzzz");
+                procedureParameters.Add(parameterName, parameterType);
+            }
+
+
+            ProcedureMetadata procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql_body, procedureParameters);
+
+            CreateProcedureStatement stmt = (CreateProcedureStatement)((TSqlScript)(sqlF)).Batches[0].Statements[0];
+            foreach (ProcedureParameter prm in stmt.Parameters)
+            {
+                string parameterName = prm.VariableName.Dequote();
+                ProcedureCodeParameter parameterType;
+                if (prm.DataType.Name.Count == 2)
+                {
+                    //SqlDbType sqlType = SqlDbType.Structured;
+                    string fullName = prm.DataType.Name.SchemaIdentifier.Dequote()
+                        + "." + prm.DataType.Name.BaseIdentifier.Dequote();
+                    parameterType = new ProcedureCodeParameter(fullName, DbType.Object);
+                }
+                else
+                {
+                    var parameterDbType = ProcedureGenerator.ResolveToDbDataType(prm.DataType);
+
+                    SqlDbType sqlType = ResolveToSqlType(parameterDbType);
+
+                    parameterType = Sdk.CodeGeneration.SchemaExportCode.GetParameterClrType(sqlType, "bzzz");
+                }
+                //??procedure_metadata.AddParameter(parameterName, parameterType);
+            }
+
+            //procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor(true));
 
             var schemaMetadata = CreateTestMetadata();
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
             Assert.AreEqual(outputSetCount, res.Length, "OutputSet.Count");
 
-            var outputSet = res[0];
+            var outputSet = res[outputSetIndex];
             // use: SELECT * FROM sys.dm_exec_describe_first_result_set('dbo.hlomobjectinfo_query', NULL, 0)
             Assert.AreEqual(columnCount, outputSet.ColumnCount, "ColumnCount");
             for (int ix = 0; ix < outputSet.ColumnCount; ix++)
@@ -584,6 +649,25 @@ END";
                 Assert.IsNotNull(column.ColumnDbType, "(" + ix + ") ");
             }
 
+        }
+
+        private static SqlDbType ResolveToSqlType(DbType parameterDbType)
+        {
+            if (parameterDbType == DbType.Int16)
+                return SqlDbType.SmallInt;
+            if (parameterDbType == DbType.Int32)
+                return SqlDbType.Int;
+            if (parameterDbType == DbType.Int64)
+                return SqlDbType.BigInt;
+            if (parameterDbType == DbType.Boolean)
+                return SqlDbType.Bit;
+            if (parameterDbType == DbType.DateTime)
+                return SqlDbType.DateTime;
+            if (parameterDbType == DbType.Byte)
+                return SqlDbType.TinyInt;
+            if (parameterDbType == DbType.String)
+                return SqlDbType.NVarChar;
+            throw new System.NotImplementedException("" + parameterDbType);
         }
 
         [TestMethod]
@@ -616,7 +700,7 @@ END";
             TestProcedureOutput(1, 0, 5);
         }
 
-        
+
         [TestMethod]
         public void hlsys_query_templates()
         {
@@ -624,5 +708,40 @@ END";
             TestProcedureOutput(1, 0, 7);
         }
 
+        [TestMethod]
+        public void hlsys_store_objectqueue()
+        {
+            // UDT variable
+            TestProcedureOutput(1, 0, 9);
+        }
+
+        [TestMethod]
+        public void hlsysadhocinstanceaction_targetqueue_receive()
+        {
+            // conversation handle
+            TestProcedureOutput(1, 0, 2);
+        }
+
+        [TestMethod]
+        public void hlsyscal_calculate_offset()
+        {
+            // @expected_datetime_utc
+            TestProcedureOutput(7, 0, 8);
+        }
+
+        [TestMethod]
+        public void hlsysdetail_query_case()
+        {
+            TestProcedureOutput(3, 0, 2);
+            TestProcedureOutput(3, 1, 15);
+            TestProcedureOutput(3, 2, 4);
+        }
+
+        [TestMethod]
+        public void hlsyscontract_increment_numberofcalls()
+        {
+            TestProcedureOutput(1, 0, 1);
+        }
+        
     }
 }

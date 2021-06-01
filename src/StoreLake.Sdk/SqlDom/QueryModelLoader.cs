@@ -627,15 +627,16 @@ namespace StoreLake.Sdk.SqlDom
             }
             else if (scalarExpr is IntegerLiteral intLit)
             {
-                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumn(mqe, intLit);
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnLiteral(mqe, intLit);
                 var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int32);
                 column = new SourceColumn(source, outputColumnNameSafe, DbType.Int32);
                 return true;
             }
             else if (scalarExpr is StringLiteral strLit)
             {
-                var source = sourceFactory.NewConstantSource(mqe, outputColumnName, DbType.String);
-                column = new SourceColumn(source, outputColumnName, DbType.String);
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnLiteral(mqe, strLit);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.String);
+                column = new SourceColumn(source, outputColumnNameSafe, DbType.String);
                 return true;
             }
             else if (scalarExpr is CastCall castExpr)
@@ -739,7 +740,7 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     uint value = Convert.ToUInt32(binLit.Value, 16);  //Using ToUInt32 not ToUInt64, as per OP comment
 
-                    string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumn(mqe, binLit);
+                    string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnLiteral(mqe, binLit);
                     var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.UInt32);
                     column = new SourceColumn(source, outputColumnNameSafe, DbType.UInt32);
                     return true;
@@ -1046,6 +1047,17 @@ namespace StoreLake.Sdk.SqlDom
                     }
                 }
 
+                throw new NotImplementedException(fCall.WhatIsThis());
+            }
+
+            if (string.Equals(functionName, "ROW_NUMBER", StringComparison.OrdinalIgnoreCase)
+                )
+            {
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt64(mqe, 0);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64);
+                outputColumn = new SourceColumn(source, outputColumnName, DbType.Int64);
+                return true;
+                // throw new NotImplementedException(fCall.WhatIsThis());
                 throw new NotImplementedException(fCall.WhatIsThis());
             }
             throw new NotImplementedException(fCall.WhatIsThis());

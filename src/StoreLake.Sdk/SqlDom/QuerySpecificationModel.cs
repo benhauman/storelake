@@ -133,7 +133,10 @@ namespace StoreLake.Sdk.SqlDom
                     {
                         return AddResolveOutputColumn(outputColumn);
                     }
-
+                    else if (outputColumn.Source is QuerySourceOnVariable)
+                    {
+                        return AddResolveOutputColumn(outputColumn);
+                    }
                     else
                     {
                         throw new NotSupportedException("Output column not registered.");

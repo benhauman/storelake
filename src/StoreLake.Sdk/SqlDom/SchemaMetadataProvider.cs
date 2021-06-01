@@ -4,6 +4,7 @@
     {
         IColumnSourceMetadata TryGetColumnSourceMetadata(string schemaName, string objectName);
         IColumnSourceMetadata TryGetFunctionTableMetadata(string schemaName, string objectName);
+        IColumnSourceMetadata TryGetUserDefinedTableTypeMetadata(string schemaName, string objectName);
     }
 
     public interface IColumnSourceMetadata

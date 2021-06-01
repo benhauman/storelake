@@ -677,7 +677,13 @@ namespace StoreLake.Sdk.CodeGeneration
                 SqlDom.ProcedureMetadata procedure_metadata;
                 try
                 {
-                    procedure_metadata = SqlDom.ProcedureGenerator.ParseProcedureBody(procedure.ProcedureName, procedure.ProcedureBodyScript);
+                    Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
+                    CollectProcedureParameters(rr, procedure, (parameter, parameterName, parameterType) =>
+                    {
+                        procedureParameters.Add(parameterName, parameterType);
+                    });
+
+                    procedure_metadata = SqlDom.ProcedureGenerator.ParseProcedureBody(procedure.ProcedureName, procedure.ProcedureBodyScript, procedureParameters);
                     int? isQueryProcedure = SqlDom.ProcedureGenerator.IsQueryProcedure(rr.DoResolveColumnType, rr.SchemaMetadata(), procedure_metadata).Length;
                     countOfResultSets = procedure.Annotations.Count(x => x.AnnotationKey == "Return");
                     if (countOfResultSets > 0)
@@ -960,13 +966,12 @@ namespace StoreLake.Sdk.CodeGeneration
 
             hm.handler_method_decl.Statements.Add(new CodeCommentStatement("Parameters:" + procedure.Parameters.Count));
 
+            //CollectProcedureParameters(rr, procedure, (parameter, parameterName, parameterType) =>
             for (int ix = 0; ix < procedure.Parameters.Count; ix++)
             {
                 StoreLakeParameterRegistration parameter = procedure.Parameters[ix];
-                string codeParameterName = parameter.ParameterName.Replace("@", "");
-                ProcedureCodeParameter parameterType = GetParameterClrType(parameter);
-                parameterType.ParameterCodeName = codeParameterName;
-                procedure_metadata.parameters.Add(parameter.ParameterName, parameterType);
+
+                //procedure_metadata.AddParameter(parameterName, parameterType);
 
                 if (parameter.ParameterDbType == SqlDbType.Structured)
                 {
@@ -992,9 +997,9 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         throw new NotSupportedException("Type registration could not be found:" + parameter.ParameterTypeFullName);
                     }
-                    hm.handler_method_decl.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeFullName + ") " + parameterType.UserDefinedTableTypeSqlFullName));
+                    hm.handler_method_decl.Statements.Add(new CodeCommentStatement("  Parameter [" + ix + "] : " + parameter.ParameterName + " (" + parameter.ParameterTypeFullName + ") "));
                 }
-            }
+            };
 
             CodeTypeDeclaration facade_output_type_decl;
             if (countOfResultSets > 0)
@@ -1021,6 +1026,18 @@ namespace StoreLake.Sdk.CodeGeneration
             else
             {
                 hm.handler_method_decl.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
+            }
+        }
+
+        private static void CollectProcedureParameters(RegistrationResult rr, StoreLakeProcedureRegistration procedure, Action<StoreLakeParameterRegistration, string, ProcedureCodeParameter> collector)
+        {
+            for (int ix = 0; ix < procedure.Parameters.Count; ix++)
+            {
+                StoreLakeParameterRegistration parameter = procedure.Parameters[ix];
+                string codeParameterName = parameter.ParameterName.Replace("@", "");
+                ProcedureCodeParameter parameterType = GetParameterClrType(parameter);
+                parameterType.ParameterCodeName = codeParameterName;
+                collector(parameter, parameter.ParameterName, parameterType);
             }
         }
 
@@ -1271,7 +1288,7 @@ namespace StoreLake.Sdk.CodeGeneration
         {
             return GetParameterClrType(parameter.ParameterDbType, parameter.ParameterTypeFullName);
         }
-        private static ProcedureCodeParameter GetParameterClrType(SqlDbType parameter_ParameterDbType, string parameter_ParameterTypeFullName)
+        public static ProcedureCodeParameter GetParameterClrType(SqlDbType parameter_ParameterDbType, string parameter_ParameterTypeFullName)
         {
             // https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/sql-server-data-type-mappings
             if (parameter_ParameterDbType == SqlDbType.Structured)

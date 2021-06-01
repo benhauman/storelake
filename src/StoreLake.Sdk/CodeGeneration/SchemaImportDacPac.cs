@@ -71,6 +71,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
         internal readonly IDictionary<string, IColumnSourceMetadata> column_sources = new SortedDictionary<string, IColumnSourceMetadata>();
         internal readonly IDictionary<string, IColumnSourceMetadata> function_sources = new SortedDictionary<string, IColumnSourceMetadata>();
+        internal readonly IDictionary<string, IColumnSourceMetadata> udt_sources = new SortedDictionary<string, IColumnSourceMetadata>();
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetColumnSourceMetadata(string schemaName, string objectName)
         {
             string schemaNameSafe = string.IsNullOrEmpty(schemaName) ? ds.Namespace : schemaName;
@@ -160,6 +161,68 @@ namespace StoreLake.Sdk.CodeGeneration
             }
 
             return column_source;
+        }
+
+        IColumnSourceMetadata ISchemaMetadataProvider.TryGetUserDefinedTableTypeMetadata(string schemaName, string objectName)
+        {
+            string schemaNameSafe = string.IsNullOrEmpty(schemaName) ? ds.Namespace : schemaName;
+            if (!string.Equals(schemaNameSafe, ds.Namespace, StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            string fullName = "[" + schemaNameSafe + "].[" + objectName + "]";
+            if (!udt_sources.TryGetValue(fullName.ToUpperInvariant(), out IColumnSourceMetadata column_source))
+            {
+                if (!registered_tabletypes.TryGetValue(fullName, out DacPacRegistration dacpac))
+                {
+                    if (!registered_tabletypes.TryGetValue(fullName.ToUpperInvariant(), out dacpac))
+                    {
+                        return null; // function unknown
+                    }
+                    else
+                    {
+                        if (!dacpac.registered_tabletypes.TryGetValue(fullName, out StoreLakeTableTypeRegistration function_reg))
+                            throw new NotSupportedException("Function could not be found:" + "[" + schemaNameSafe + "].[" + objectName + "]");
+                        column_source = new SourceMetadataUDT(function_reg);
+                    }
+                }
+                else
+                {
+                    if (!dacpac.registered_tabletypes.TryGetValue(fullName, out StoreLakeTableTypeRegistration function_reg))
+                        throw new NotSupportedException("Function could not be found:" + "[" + schemaNameSafe + "].[" + objectName + "]");
+                    column_source = new SourceMetadataUDT(function_reg);
+                }
+
+                udt_sources.Add(fullName.ToUpperInvariant(), column_source);
+            }
+
+            return column_source;
+        }
+    }
+
+    [DebuggerDisplay("{table.TableName}")]
+    class SourceMetadataUDT : IColumnSourceMetadata
+    {
+        private readonly StoreLakeTableTypeRegistration udt_reg;
+        public SourceMetadataUDT(StoreLakeTableTypeRegistration udt_reg)
+        {
+            this.udt_reg = udt_reg;
+        }
+        DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
+        {
+            StoreLakeColumnRegistration column = udt_reg.Columns.FirstOrDefault(x => x.ColumnName == columnName);
+            if (column != null)
+            {
+                var prmType = SchemaExportCode.GetParameterClrType(column.ColumnDbType, "?");
+                if (prmType.IsUserDefinedTableType || prmType.ParameterDbType == DbType.Object)
+                {
+                    throw new NotImplementedException();
+                }
+                else
+                {
+                    return prmType.ParameterDbType;
+                }
+            }
+            return null;
         }
     }
 

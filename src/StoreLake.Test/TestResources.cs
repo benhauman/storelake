@@ -6,10 +6,8 @@ namespace StoreLake.Test
 {
     internal static class TestResources
     {
-        internal static string LoadProcedureBody(string procedureFileName)
+        internal static string LoadProcedureBody(string ddl)
         {
-            var ddl = ResourceHelper.GetSql("SQL.Procedures." + procedureFileName);
-
             string begin = "AS" + "\r\n";
             var idx = ddl.IndexOf(begin);
             if (idx < 0)
@@ -96,6 +94,24 @@ namespace StoreLake.Test
             return table;
         }
 
+        private static TestTable LoadUDTFromDDL(string ddl)
+        {
+            TSqlFragment sqlF = ScriptDomFacade.Parse(ddl);
+            CreateTypeTableStatement stmt_CreateTable = (CreateTypeTableStatement)((TSqlScript)sqlF).Batches[0].Statements[0];
+
+            string schemaName = stmt_CreateTable.Name.SchemaIdentifier.Dequote();
+            string tableName = stmt_CreateTable.Name.BaseIdentifier.Dequote();
+            var table = new TestTable(schemaName, tableName);
+            foreach (ColumnDefinition col in stmt_CreateTable.Definition.ColumnDefinitions)
+            {
+                string columnName = col.ColumnIdentifier.Dequote();
+                var columnDbType = ProcedureGenerator.ResolveToDbDataType(col.DataType);
+
+                table.AddColumn(columnName, columnDbType);
+            }
+
+            return table;
+        }
         internal static TestSchema LoadTables(this TestSchema schema)
         {
             var tableFileNames = ResourceHelper.CollectResourceNamesByPrefix(typeof(ResourceHelper), "SQL.Tables.");
@@ -108,6 +124,17 @@ namespace StoreLake.Test
             return schema;
         }
 
+        internal static TestSchema LoadUDTs(this TestSchema schema)
+        {
+            var tableFileNames = ResourceHelper.CollectResourceNamesByPrefix(typeof(ResourceHelper), "SQL.Types.");
+            foreach (var resourceName in tableFileNames)
+            {
+                string ddl = ResourceHelper.LoadResourceText(typeof(ResourceHelper), resourceName);
+                schema.AddUDT(LoadUDTFromDDL(ddl));
+            }
+
+            return schema;
+        }
 
         internal static TestSchema LoadViews(this TestSchema schema)
         {

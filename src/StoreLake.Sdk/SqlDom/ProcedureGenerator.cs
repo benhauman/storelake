@@ -10,10 +10,10 @@ namespace StoreLake.Sdk.SqlDom
 {
     public static class ProcedureGenerator
     {
-        public static ProcedureMetadata ParseProcedureBody(string procedure_name, string procedure_body)
+        public static ProcedureMetadata ParseProcedureBody(string procedure_name, string procedure_body, Dictionary<string, ProcedureCodeParameter> procedureParameters)
         {
             TSqlFragment sqlF = ScriptDomFacade.Parse(procedure_body);
-            return new ProcedureMetadata(procedure_name, sqlF);
+            return new ProcedureMetadata(procedure_name, sqlF, procedureParameters);
         }
         public static ProcedureOutputSet[] IsQueryProcedure(bool resolveColumnType, ISchemaMetadataProvider schemaMetadata, ProcedureMetadata procedure_metadata)
         {
@@ -52,19 +52,11 @@ namespace StoreLake.Sdk.SqlDom
 
                 if (string.Equals("SMALLINT", typeName, StringComparison.OrdinalIgnoreCase))
                 {
-                    //SqlDataTypeReference sqlDataType = (SqlDataTypeReference)dataType;
-                    //string maxLen = sqlDataType.Parameters[0].Value;
-                    //dataType.p
-                    //return typeof(string);
                     return DbType.Int16;
                 }
 
                 if (string.Equals("DATETIME", typeName, StringComparison.OrdinalIgnoreCase))
                 {
-                    //SqlDataTypeReference sqlDataType = (SqlDataTypeReference)dataType;
-                    //string maxLen = sqlDataType.Parameters[0].Value;
-                    //dataType.p
-                    //return typeof(string);
                     return DbType.DateTime;
                 }
 
@@ -81,6 +73,18 @@ namespace StoreLake.Sdk.SqlDom
                 if (string.Equals("UNIQUEIDENTIFIER", typeName, StringComparison.OrdinalIgnoreCase))
                 {
                     return DbType.Guid;
+                }
+                if (string.Equals("VARBINARY", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return DbType.Binary;
+                }
+                if (string.Equals("DECIMAL", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return DbType.Decimal;
+                }
+                if (string.Equals("DATETIMEOFFSET", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return DbType.DateTimeOffset;
                 }
                 throw new NotImplementedException("typeName:" + typeName);
             }
