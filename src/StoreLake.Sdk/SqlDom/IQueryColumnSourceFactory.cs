@@ -27,6 +27,7 @@ namespace StoreLake.Sdk.SqlDom
         string NewNameForColumnInt64(QuerySpecificationModel parent, long lit);
         string NewNameForColumnInt32(QuerySpecificationModel parent, int lit);
         QuerySourceFullTextTable NewFullTextTable(QuerySpecificationModel parent, FullTextTableReference fttRef);
+        string NewNameForColumnBytes(QuerySpecificationModel parent);
     }
 
     internal sealed class QueryColumnSourceFactory : IQueryColumnSourceFactory
@@ -131,6 +132,11 @@ namespace StoreLake.Sdk.SqlDom
         public QuerySourceFullTextTable NewFullTextTable(QuerySpecificationModel parent, FullTextTableReference fttRef)
         {
             return new QuerySourceFullTextTable(NewId(parent), fttRef);
+        }
+
+        public string NewNameForColumnBytes(QuerySpecificationModel parent)
+        {
+            return "?" + NewId(parent) + "?";
         }
     }
 }

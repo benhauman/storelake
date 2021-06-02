@@ -63,20 +63,58 @@ namespace StoreLake.Sdk.CodeGeneration
         // context
         internal readonly IDictionary<string, TableTypeRow> udt_rows = new SortedDictionary<string, TableTypeRow>();
 
-        internal readonly bool DoResolveColumnType = false;
+        internal readonly bool DoResolveColumnTypes = false;
         internal ISchemaMetadataProvider SchemaMetadata()
         {
             return this;
         }
 
-        internal readonly IDictionary<string, IColumnSourceMetadata> column_sources = new SortedDictionary<string, IColumnSourceMetadata>();
+        internal readonly IDictionary<string, IColumnSourceMetadata> column_sources = PrepareColumnSources();
         internal readonly IDictionary<string, IColumnSourceMetadata> function_sources = new SortedDictionary<string, IColumnSourceMetadata>();
         internal readonly IDictionary<string, IColumnSourceMetadata> udt_sources = new SortedDictionary<string, IColumnSourceMetadata>();
+
+        private static IDictionary<string, IColumnSourceMetadata> PrepareColumnSources()
+        {
+            var sources = new SortedDictionary<string, IColumnSourceMetadata>(StringComparer.OrdinalIgnoreCase);
+            AddKnownColumnSource(sources
+                    , new SystemTableSource("sys.tables")
+                                .AddColumn("name", DbType.String)
+                                .AddColumn("object_id", DbType.Int32)
+                        );
+            AddKnownColumnSource(sources
+                    , new SystemTableSource("sys.columns")
+                                            .AddColumn("object_id", DbType.Int32)
+                                            .AddColumn("name", DbType.String)
+                                            .AddColumn("max_length", DbType.Int16)
+                                            .AddColumn("precision", DbType.Byte)
+                                            .AddColumn("user_type_id", DbType.Int32)
+                                    );
+            return AddKnownColumnSource(sources
+                    , new SystemTableSource("sys.systypes")
+                                            .AddColumn("xtype", DbType.Byte)
+                                            .AddColumn("name", DbType.String)
+                                    );
+        }
+        private static IDictionary<string, IColumnSourceMetadata> AddKnownColumnSource(IDictionary<string, IColumnSourceMetadata> sources, SystemTableSource source)
+        {
+            sources.Add(source.Fullname, source);
+            return sources;
+        }
+
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetColumnSourceMetadata(string schemaName, string objectName)
         {
             string schemaNameSafe = string.IsNullOrEmpty(schemaName) ? ds.Namespace : schemaName;
             if (!string.Equals(schemaNameSafe, ds.Namespace, StringComparison.OrdinalIgnoreCase))
-                return null;
+            {
+                if (string.Equals(schemaName, "sys", StringComparison.OrdinalIgnoreCase))
+                {
+                    //return s_sys_tables;
+                }
+                else
+                {
+                    return null;
+                }
+            }
 
             string fullName = schemaNameSafe + "." + objectName;
             if (!column_sources.TryGetValue(fullName.ToUpperInvariant(), out IColumnSourceMetadata column_source))
@@ -126,6 +164,31 @@ namespace StoreLake.Sdk.CodeGeneration
             }
 
             return column_source;
+        }
+
+        private sealed class SystemTableSource : IColumnSourceMetadata
+        {
+            private readonly IDictionary<string, OutputColumnDescriptor> output_columns = new SortedDictionary<string, OutputColumnDescriptor>(StringComparer.OrdinalIgnoreCase);
+
+            internal readonly string Fullname;
+            public SystemTableSource(string fullname)
+            {
+                Fullname = fullname;
+            }
+            public SystemTableSource AddColumn(string name, DbType columnDbType)
+            {
+                output_columns.Add(name, new OutputColumnDescriptor(name, columnDbType));
+                return this;
+            }
+            DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
+            {
+                if (output_columns.TryGetValue(columnName, out OutputColumnDescriptor coldesc))
+                {
+                    return coldesc.ColumnDbType;
+                }
+
+                return null;
+            }
         }
 
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetFunctionTableMetadata(string schemaName, string objectName)
@@ -283,7 +346,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
                 else
                 {
-                    foreach(var column in function_reg.Columns)
+                    foreach (var column in function_reg.Columns)
                     {
                         var prmType = SchemaExportCode.GetParameterClrType(column.ColumnDbType, "?");
                         if (prmType.IsUserDefinedTableType || prmType.ParameterDbType == DbType.Object)

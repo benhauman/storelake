@@ -22,6 +22,23 @@ namespace StoreLake.Test
                     .LoadViews()
                     .LoadFunctionsMetadata()
                     .LoadUDTs()
+                    .AddTable(new TestTable("sys", "tables") // sys.tables
+                                .AddColumn("name", DbType.String)
+                                .AddColumn("object_id", DbType.Int32)
+                    )
+                    .AddTable(new TestTable("sys", "columns") // sys.columns
+                                            .AddColumn("object_id", DbType.Int32)
+                                            .AddColumn("name", DbType.String)
+                                            .AddColumn("max_length", DbType.Int16)
+                                            .AddColumn("precision", DbType.Byte)
+                                            .AddColumn("user_type_id", DbType.Int32)
+                    )
+
+                    .AddTable(new TestTable("sys", "systypes") // sys.systypes
+                                            .AddColumn("xtype", DbType.Byte)
+                                            .AddColumn("name", DbType.String)
+                    )
+
                     .AddTable(new TestTable("dbo", "hlsysagent")
                         .AddColumn("agentid", DbType.Int32)
                         .AddColumn("name", DbType.String)
@@ -768,12 +785,23 @@ END";
             TestProcedureOutput(1, 0, 1);
         }
 
-        ///
         [TestMethod]
         public void hlaiwebrequestsolution_run()
         {
             TestProcedureOutput(1, 0, 5);
         }
 
+        [TestMethod]
+        public void hlbigettablemetadata()
+        {
+            TestProcedureOutput(1, 0, 6);
+        }
+        [TestMethod]
+        public void hlbigettomattribute()
+        {
+            // ScalarSubQuery
+            TestProcedureOutput(1, 0, 99);
+        }
+        // 
     }
 }

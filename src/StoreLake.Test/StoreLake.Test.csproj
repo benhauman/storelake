@@ -27,6 +27,8 @@
     <None Remove="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
     <None Remove="SQL\Functions\hlsys_query_agentcounters.sql" />
     <None Remove="SQL\Procedures\hlaiwebrequestsolution_run.sql" />
+    <None Remove="SQL\Procedures\hlbigettablemetadata.sql" />
+    <None Remove="SQL\Procedures\hlbigettomattribute.sql" />
     <None Remove="SQL\Procedures\hlcmgetcontact.sql" />
     <None Remove="SQL\Procedures\hlom_query_possibleactions.sql" />
     <None Remove="SQL\Procedures\hlsysadhocinstanceaction_targetqueue_receive.sql" />
@@ -110,6 +112,8 @@
     <EmbeddedResource Include="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsys_query_agentcounters.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlaiwebrequestsolution_run.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlbigettablemetadata.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlbigettomattribute.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlcmgetcontact.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlom_query_possibleactions.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysadhocinstanceaction_targetqueue_receive.sql" />

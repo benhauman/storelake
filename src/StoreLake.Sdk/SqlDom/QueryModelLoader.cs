@@ -1115,6 +1115,14 @@ namespace StoreLake.Sdk.SqlDom
                 outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int32);
                 return true;
             }
+            if (string.Equals(functionName, "HASHBYTES", StringComparison.OrdinalIgnoreCase)
+                            )
+            {
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnBytes(mqe);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Byte);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Byte);
+                return true;
+            }
             throw new NotImplementedException(fCall.WhatIsThis());
         }
         private static bool TryResolveLeftFunctionCall(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, LeftFunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)
