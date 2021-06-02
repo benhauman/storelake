@@ -858,6 +858,7 @@ namespace StoreLake.Sdk.SqlDom
             if ((binaryExpr.BinaryExpressionType == BinaryExpressionType.Add) // Add: 0 + 0x0100*MAX(IIF(aoa_g.am & 0x0100 = 0x0100, 1, 0))
              || (binaryExpr.BinaryExpressionType == BinaryExpressionType.Multiply) //Multiply: 0x0100*MAX(IIF(aoa_g.am & 0x0100 = 0x0100, 1, 0))
              || (binaryExpr.BinaryExpressionType == BinaryExpressionType.Subtract) //Subtract: settingid - 100
+             || (binaryExpr.BinaryExpressionType == BinaryExpressionType.BitwiseAnd) //BitwiseAnd: OAA.accessmask & 512
                 )
             {
                 SourceColumn result = null;

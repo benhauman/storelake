@@ -858,7 +858,7 @@ END";
             TestProcedureOutput(1, 0, 7);
         }
 
-        // 
+        // hlseglobalsearch_query_groups
         //
     }
 }

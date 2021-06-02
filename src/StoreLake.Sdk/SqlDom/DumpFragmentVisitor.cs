@@ -181,7 +181,9 @@ namespace StoreLake.Sdk.SqlDom
             || (node is QueryParenthesisExpression) // hltm_getnotificationagentids (SELECT a3.objectida, a3.objectdefida
             || (node is FullTextPredicate) // CONTAINS()
             || (node is FullTextTableReference) // CONTAINS()
-            || (node is SelectFunctionReturnType)) //  SELECT dv.[defaultattrpathid]
+            || (node is SelectFunctionReturnType) //  SELECT dv.[defaultattrpathid]
+            || (node is LeftFunctionCall) //  LEFT([cd].[description], 100)
+            )
             {
                 if (node is SelectInsertSource)
                 {
