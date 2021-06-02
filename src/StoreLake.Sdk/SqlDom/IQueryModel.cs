@@ -10,5 +10,6 @@ namespace StoreLake.Sdk.SqlDom
     internal interface IQueryModel
     {
         bool TryGetQueryOutputColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn);
+        bool TryGetQuerySingleOutputColumn(BatchOutputColumnTypeResolver batchResolver, out QueryColumnBase outputColumn);
     }
 }

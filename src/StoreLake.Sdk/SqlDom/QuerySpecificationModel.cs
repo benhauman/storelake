@@ -27,6 +27,13 @@ namespace StoreLake.Sdk.SqlDom
         }
 
         protected abstract bool IQueryModel_TryGetQueryOutputColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn);
+
+        bool IQueryModel.TryGetQuerySingleOutputColumn(BatchOutputColumnTypeResolver batchResolver, out QueryColumnBase outputColumn)
+        {
+            return IQueryModel_TryGetQuerySingleOutputColumn(batchResolver, out outputColumn);
+        }
+
+        protected abstract bool IQueryModel_TryGetQuerySingleOutputColumn(BatchOutputColumnTypeResolver batchResolver, out QueryColumnBase outputColumn);
     }
 
 
@@ -41,7 +48,7 @@ namespace StoreLake.Sdk.SqlDom
             QrySpec = qspec;
         }
 
-        internal readonly Dictionary<string, QueryColumnBase> resolved_OutputColumns = new Dictionary<string, QueryColumnBase>();
+        internal readonly Dictionary<string, QueryColumnBase> resolved_OutputColumns = new Dictionary<string, QueryColumnBase>(StringComparer.OrdinalIgnoreCase);
         private bool _queryOutputResolved;
         private void MarkAsOutputResolved() { _queryOutputResolved = true; }
         internal bool IsQueryOutputResolved => _queryOutputResolved;
@@ -55,7 +62,7 @@ namespace StoreLake.Sdk.SqlDom
 
         internal bool IsOutputColumnResolved(string outputColumnName, out QueryColumnBase col)
         {
-            return resolved_OutputColumns.TryGetValue(outputColumnName.ToUpperInvariant(), out col);
+            return resolved_OutputColumns.TryGetValue(outputColumnName, out col);
         }
 
         internal QueryColumnBase HasResolvedOutputColumnWithoutType()
@@ -109,7 +116,7 @@ namespace StoreLake.Sdk.SqlDom
 
         private QueryColumnBase AddResolveOutputColumn(QueryColumnBase resolved_column)
         {
-            resolved_OutputColumns.Add(resolved_column.OutputColumnName.ToUpperInvariant(), resolved_column);
+            resolved_OutputColumns.Add(resolved_column.OutputColumnName, resolved_column);
             return resolved_column;
         }
 
@@ -139,7 +146,9 @@ namespace StoreLake.Sdk.SqlDom
                     }
                     else
                     {
-                        throw new NotSupportedException("Output column not registered.");
+                        // APPLY ( SELECT ... => the source is not in this query specification!!
+                        //throw new NotSupportedException("Output column not registered.");
+                        return AddResolveOutputColumn(outputColumn);
                     }
                 }
             }
@@ -159,7 +168,7 @@ namespace StoreLake.Sdk.SqlDom
 
             if (!outputColumn.ColumnDbType.HasValue)
             {
-//                throw new ArgumentException("Output column type not resolved.", nameof(outputColumn));
+                //                throw new ArgumentException("Output column type not resolved.", nameof(outputColumn));
             }
 
             return outputColumn;
@@ -194,6 +203,12 @@ namespace StoreLake.Sdk.SqlDom
             {
                 return false;
             }
+        }
+
+        protected override bool IQueryModel_TryGetQuerySingleOutputColumn(BatchOutputColumnTypeResolver batchResolver, out QueryColumnBase outputColumn)
+        {
+            outputColumn = resolved_OutputColumns.Values.Single();
+            return true;
         }
 
     }
@@ -233,6 +248,13 @@ namespace StoreLake.Sdk.SqlDom
             throw new NotImplementedException(Key + "." + outputColumnName); // source not found?!?!
         }
 
+        protected override bool IQueryModel_TryGetQuerySingleOutputColumn(BatchOutputColumnTypeResolver batchResolver, out QueryColumnBase outputColumn)
+        {
+            outputColumn = union_queries[0].resolved_OutputColumns.Values.Single();
+            return true;
+        }
+
+
         private bool _isRecirsive;
         internal void SetAsRecursive()
         {
@@ -251,15 +273,15 @@ namespace StoreLake.Sdk.SqlDom
             MSpec = mspec;
         }
 
-        private readonly IDictionary<string, QueryColumnBase> _outputColumns = new SortedDictionary<string, QueryColumnBase>();
+        private readonly IDictionary<string, QueryColumnBase> _outputColumns = new SortedDictionary<string, QueryColumnBase>(StringComparer.OrdinalIgnoreCase);
         internal void AddOutputColumn(QueryColumnBase column)
         {
-            _outputColumns.Add(column.OutputColumnName.ToUpperInvariant(), column);
+            _outputColumns.Add(column.OutputColumnName, column);
         }
 
         protected override bool IQueryModel_TryGetQueryOutputColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn)
         {
-            if (_outputColumns.TryGetValue(outputColumnName.ToUpperInvariant(), out outputColumn))
+            if (_outputColumns.TryGetValue(outputColumnName, out outputColumn))
             {
                 return true;
             }
@@ -269,6 +291,13 @@ namespace StoreLake.Sdk.SqlDom
             }
 
         }
+
+        protected override bool IQueryModel_TryGetQuerySingleOutputColumn(BatchOutputColumnTypeResolver batchResolver, out QueryColumnBase outputColumn)
+        {
+            outputColumn = _outputColumns.Values.Single();
+            return true;
+        }
+
 
         private QueryColumnSourceBase _source;
         internal void SetTargetAsSource(QueryColumnSourceBase source)

@@ -46,6 +46,10 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     return DbType.Boolean;
                 }
+                if (prm.TypeNotNull == typeof(string))
+                {
+                    return DbType.String;
+                }
                 throw new NotImplementedException(prm.TypeNotNull.Name);
             }
             else

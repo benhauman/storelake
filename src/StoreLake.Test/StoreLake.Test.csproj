@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="SQL\Functions\hlsur_query_surveyresults.sql" />
     <None Remove="SQL\Functions\hlsysdefaultattr_query.sql" />
     <None Remove="SQL\Functions\hlsysdefaultattr_query_case.sql" />
     <None Remove="SQL\Functions\hlsysdefaultattr_query_contract.sql" />
@@ -25,28 +26,42 @@
     <None Remove="SQL\Functions\hlsyssec_query_agentobjectdefprmsearch.sql" />
     <None Remove="SQL\Functions\hlsyssec_query_agentsystemacl_udf.sql" />
     <None Remove="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
+    <None Remove="SQL\Functions\hlsysum_query_centraladminorgunits.sql" />
     <None Remove="SQL\Functions\hlsys_query_agentcounters.sql" />
     <None Remove="SQL\Procedures\hlaiwebrequestsolution_run.sql" />
     <None Remove="SQL\Procedures\hlbigettablemetadata.sql" />
     <None Remove="SQL\Procedures\hlbigettomattribute.sql" />
+    <None Remove="SQL\Procedures\hlbigettomtable.sql" />
     <None Remove="SQL\Procedures\hlcmgetcontact.sql" />
     <None Remove="SQL\Procedures\hlom_query_possibleactions.sql" />
+    <None Remove="SQL\Procedures\hlseglobalsearch_query_filters.sql" />
+    <None Remove="SQL\Procedures\hlsur_rpt_overview_fivestar.sql" />
+    <None Remove="SQL\Procedures\hlsur_surveycontent_insert.sql" />
     <None Remove="SQL\Procedures\hlsysadhocinstanceaction_targetqueue_receive.sql" />
     <None Remove="SQL\Procedures\hlsyscal_calculate_offset.sql" />
     <None Remove="SQL\Procedures\hlsyscfgchange_targetqueue_receive.sql" />
     <None Remove="SQL\Procedures\hlsyscontract_increment_numberofcalls.sql" />
     <None Remove="SQL\Procedures\hlsysdetail_query_su.sql" />
+    <None Remove="SQL\Procedures\hlsysdxi_generate_objecthistory.sql" />
     <None Remove="SQL\Procedures\hlsyslic_getpendingbooklicenserequest.sql" />
     <None Remove="SQL\Procedures\hlsysportal_query_casetable_data_user.sql" />
     <None Remove="SQL\Procedures\hlsyssec_qyery_agentdynamicsystemaccessacl.sql" />
     <None Remove="SQL\Procedures\hlsyssession_getdisconnectedsessions.sql" />
     <None Remove="SQL\Procedures\hlsyssession_query_countportaluser.sql" />
+    <None Remove="SQL\Procedures\hlsyssvccat_query_catalogflat.sql" />
+    <None Remove="SQL\Procedures\hlsyssvccat_query_catalogtree.sql" />
+    <None Remove="SQL\Procedures\hlsysum_query_adminorgunits.sql" />
     <None Remove="SQL\Procedures\hlsys_query_agentcounters_sp.sql" />
     <None Remove="SQL\Procedures\hlsys_query_historydetails.sql" />
     <None Remove="SQL\Procedures\hlsys_query_templates.sql" />
     <None Remove="SQL\Procedures\hlsys_store_objectqueue.sql" />
     <None Remove="SQL\Tables\hlaiwebrequestsolutionresponse.sql" />
     <None Remove="SQL\Tables\hlaiwebrequestsolutionresponsesuggestion.sql" />
+    <None Remove="SQL\Tables\hlbiattributeconfig.sql" />
+    <None Remove="SQL\Tables\hlbitomattribute.sql" />
+    <None Remove="SQL\Tables\hlbitomtable.sql" />
+    <None Remove="SQL\Tables\hlsurdefinition.sql" />
+    <None Remove="SQL\Tables\hlsurresponse.sql" />
     <None Remove="SQL\Tables\hlsysactioncontext.sql" />
     <None Remove="SQL\Tables\hlsysagenttogroup.sql" />
     <None Remove="SQL\Tables\hlsysapprovements.sql" />
@@ -54,6 +69,7 @@
     <None Remove="SQL\Tables\hlsysassociationdef.sql" />
     <None Remove="SQL\Tables\hlsysassociationhistory.sql" />
     <None Remove="SQL\Tables\hlsyscasehistory.sql" />
+    <None Remove="SQL\Tables\hlsyscasesystem.sql" />
     <None Remove="SQL\Tables\hlsyscontracthistory.sql" />
     <None Remove="SQL\Tables\hlsysdetailcfgfieldassoc.sql" />
     <None Remove="SQL\Tables\hlsysdetailcfgfieldattr.sql" />
@@ -63,8 +79,10 @@
     <None Remove="SQL\Tables\hlsysimage.sql" />
     <None Remove="SQL\Tables\hlsyslistitem.sql" />
     <None Remove="SQL\Tables\hlsyslistitemimage.sql" />
+    <None Remove="SQL\Tables\hlsysobjectdata.sql" />
     <None Remove="SQL\Tables\hlsysobjectdefacl.sql" />
     <None Remove="SQL\Tables\hlsysobjectqueue.sql" />
+    <None Remove="SQL\Tables\hlsysorganizationsearchdata.sql" />
     <None Remove="SQL\Tables\hlsysorgunithistory.sql" />
     <None Remove="SQL\Tables\hlsyspersonhistory.sql" />
     <None Remove="SQL\Tables\hlsysproducthistory.sql" />
@@ -72,6 +90,12 @@
     <None Remove="SQL\Tables\hlsyssessionlicense.sql" />
     <None Remove="SQL\Tables\hlsyssuassociation.sql" />
     <None Remove="SQL\Tables\hlsyssusystem.sql" />
+    <None Remove="SQL\Tables\hlsyssvccatcategory.sql" />
+    <None Remove="SQL\Tables\hlsyssvccatcategorydescription.sql" />
+    <None Remove="SQL\Tables\hlsyssvccatproduct.sql" />
+    <None Remove="SQL\Tables\hlsyssvccatproductdescription.sql" />
+    <None Remove="SQL\Tables\hlsyssvccatproductprocessdefinition.sql" />
+    <None Remove="SQL\Tables\hlsyssvccatproducttocat.sql" />
     <None Remove="SQL\Tables\hlsystemplatedefinition.sql" />
     <None Remove="SQL\Tables\hlsystemplategroup.sql" />
     <None Remove="SQL\Tables\hlsystranslationvalue.sql" />
@@ -97,6 +121,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="SQL\Functions\hlsysum_query_centraladminorgunits.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlseglobalsearch_query_filters.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsysum_query_adminorgunits.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="SQL\Functions\hlsur_query_surveyresults.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsysdefaultattr_query.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsysdefaultattr_query_case.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsysdefaultattr_query_contract.sql" />
@@ -114,25 +145,35 @@
     <EmbeddedResource Include="SQL\Procedures\hlaiwebrequestsolution_run.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlbigettablemetadata.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlbigettomattribute.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlbigettomtable.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlcmgetcontact.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlom_query_possibleactions.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsur_rpt_overview_fivestar.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsur_surveycontent_insert.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysadhocinstanceaction_targetqueue_receive.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyscal_calculate_offset.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyscfgchange_targetqueue_receive.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyscontract_increment_numberofcalls.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysdetail_query_case.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysdetail_query_su.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsysdxi_generate_objecthistory.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyslic_getpendingbooklicenserequest.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysportal_query_casetable_data_user.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssec_qyery_agentdynamicsystemaccessacl.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssession_getdisconnectedsessions.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssession_query_countportaluser.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsyssvccat_query_catalogflat.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsys_query_agentcounters_sp.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsys_query_historydetails.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsys_query_templates.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsys_store_objectqueue.sql" />
     <EmbeddedResource Include="SQL\Tables\hlaiwebrequestsolutionresponse.sql" />
     <EmbeddedResource Include="SQL\Tables\hlaiwebrequestsolutionresponsesuggestion.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlbiattributeconfig.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlbitomattribute.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlbitomtable.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsurdefinition.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsurresponse.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysactioncontext.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysagenttogroup.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysapprovements.sql" />
@@ -140,6 +181,7 @@
     <EmbeddedResource Include="SQL\Tables\hlsysassociationdef.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysassociationhistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyscasehistory.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyscasesystem.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyscontracthistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysdetailcfgfieldassoc.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysdetailcfgfieldattr.sql" />
@@ -149,8 +191,10 @@
     <EmbeddedResource Include="SQL\Tables\hlsysimage.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyslistitem.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyslistitemimage.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysobjectdata.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysobjectdefacl.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysobjectqueue.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysorganizationsearchdata.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysorgunithistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyspersonhistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysproducthistory.sql" />
@@ -158,6 +202,12 @@
     <EmbeddedResource Include="SQL\Tables\hlsyssessionlicense.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyssuassociation.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyssusystem.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyssvccatcategory.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyssvccatcategorydescription.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyssvccatproduct.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyssvccatproductdescription.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyssvccatproductprocessdefinition.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyssvccatproducttocat.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsystemplatedefinition.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsystemplategroup.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsystranslationvalue.sql" />
@@ -180,6 +230,10 @@
     <EmbeddedResource Include="SQL\Views\hlsyspersonvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyspersonzipcodevw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyssuattachmentvw.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="SQL\Procedures\hlsyssvccat_query_catalogtree.sql" />
   </ItemGroup>
 
   <ItemGroup>

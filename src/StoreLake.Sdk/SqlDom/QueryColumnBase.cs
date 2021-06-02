@@ -35,10 +35,14 @@ namespace StoreLake.Sdk.SqlDom
             SourceColumnName = sourceColumnName;
             ColumnDbType = null;
         }
+        public SourceColumn(SourceColumn column, DbType columnDbType)
+           : this(column.Source, column.SourceColumnName, columnDbType)
+        {
+        }
 
-    }
+        }
 
-    internal sealed class SourceColumnType
+        internal sealed class SourceColumnType
     {
         internal readonly QueryColumnSourceBase Source;
         internal readonly DbType? ColumnDbType;

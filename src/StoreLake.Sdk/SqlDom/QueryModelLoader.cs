@@ -13,11 +13,44 @@ namespace StoreLake.Sdk.SqlDom
 {
     internal static class QueryModelLoader
     {
-        private sealed class LoadingContext
+        private sealed class QueryLoadingContext
+        {
+            internal readonly BatchLoadingContext BatchCtx;
+            internal readonly WithCtesAndXmlNamespaces Ctes;
+            internal readonly BatchOutputColumnTypeResolver BatchResolver;
+            private readonly QueryLoadingContext ParentCtxOrNull;
+            public QueryLoadingContext(BatchLoadingContext batchCtx)
+            {
+                BatchCtx = batchCtx;
+                BatchResolver = BatchCtx.BatchResolver;
+                Ctes = BatchCtx.Ctes;
+            }
+            public QueryLoadingContext(QueryLoadingContext parentCtx) // derived context
+                : this(parentCtx.BatchCtx)
+            {
+                ParentCtxOrNull = parentCtx;
+            }
+
+            internal readonly IDictionary<string, QueryColumnSourceBase> sources = new SortedDictionary<string, QueryColumnSourceBase>(StringComparer.OrdinalIgnoreCase);
+            internal void RegisterQueryColumnSource(QueryColumnSourceBase source)
+            {
+                sources.Add(source.Key, source);
+            }
+
+            internal bool TryFindSource(string sourceNameOrAlias, out QueryColumnSourceBase source)
+            {
+                if (sources.TryGetValue(sourceNameOrAlias, out source))
+                    return true;
+                if (ParentCtxOrNull != null && ParentCtxOrNull.TryFindSource(sourceNameOrAlias, out source))
+                    return true;
+                return false;
+            }
+        }
+        private sealed class BatchLoadingContext
         {
             internal readonly BatchOutputColumnTypeResolver BatchResolver;
             internal readonly WithCtesAndXmlNamespaces Ctes;
-            public LoadingContext(BatchOutputColumnTypeResolver batchResolver, WithCtesAndXmlNamespaces ctes)
+            public BatchLoadingContext(BatchOutputColumnTypeResolver batchResolver, WithCtesAndXmlNamespaces ctes)
             {
                 BatchResolver = batchResolver;
                 Ctes = ctes;
@@ -53,14 +86,16 @@ namespace StoreLake.Sdk.SqlDom
         internal static IQueryModel LoadModificationOutputModel(BatchOutputColumnTypeResolver batchResolver, string queryName, DataModificationSpecification spec, WithCtesAndXmlNamespaces ctes)
         {
             QueryColumnSourceFactory sourceFactory = new QueryColumnSourceFactory();
-            return LoadQueryOnModificationOutputModel(new LoadingContext(batchResolver, ctes), sourceFactory, queryName, spec, ctes);
+            return LoadQueryOnModificationOutputModel(new BatchLoadingContext(batchResolver, ctes), sourceFactory, queryName, spec, ctes);
         }
 
         internal static IQueryModel LoadModel(BatchOutputColumnTypeResolver batchResolver, string queryName, QueryExpression qryExpr, WithCtesAndXmlNamespaces ctes)
         {
-            return LoadModelCore(new LoadingContext(batchResolver, ctes), queryName, qryExpr, ctes);
+            BatchLoadingContext bctx = new BatchLoadingContext(batchResolver, ctes);
+            QueryLoadingContext ctx = new QueryLoadingContext(bctx);
+            return LoadModelCore(ctx, queryName, qryExpr, ctes);
         }
-        private static IQueryModel LoadModelCore(LoadingContext ctx, string queryName, QueryExpression qryExpr, WithCtesAndXmlNamespaces ctes)
+        private static IQueryModel LoadModelCore(QueryLoadingContext ctx, string queryName, QueryExpression qryExpr, WithCtesAndXmlNamespaces ctes)
         {
             QueryColumnSourceFactory sourceFactory = new QueryColumnSourceFactory();
 
@@ -76,7 +111,8 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     var qspec = qspecs[ix];
                     string name = "q_" + (ix + 1) + "_" + qspecs.Count;
-                    var qrymodel = LoadQuerySpecificationModel(ctx, sourceFactory, qspec, name, ctes);
+                    QueryLoadingContext q_ctx = new QueryLoadingContext(ctx);
+                    var qrymodel = LoadQuerySpecificationModel(q_ctx, ctes, sourceFactory, qspec, name);
                     union.AddUnionQuery(qrymodel);
                 }
 
@@ -87,11 +123,11 @@ namespace StoreLake.Sdk.SqlDom
             }
             else
             {
-                return LoadQuerySpecificationModel(ctx, sourceFactory, (QuerySpecification)qryExpr, queryName, ctes);
+                return LoadQuerySpecificationModel(ctx, ctes, sourceFactory, (QuerySpecification)qryExpr, queryName);
             }
         }
 
-        private static IQueryModel LoadQueryOnModificationOutputModel(LoadingContext ctx, QueryColumnSourceFactory sourceFactory, string queryName, DataModificationSpecification mspec, WithCtesAndXmlNamespaces ctes)
+        private static IQueryModel LoadQueryOnModificationOutputModel(BatchLoadingContext ctx, QueryColumnSourceFactory sourceFactory, string queryName, DataModificationSpecification mspec, WithCtesAndXmlNamespaces ctes)
         {
             QueryOnModificationOutputModel qmodel = sourceFactory.NewRootOnModificationOutput(mspec, queryName);
 
@@ -154,15 +190,15 @@ namespace StoreLake.Sdk.SqlDom
             return qmodel;
         }
 
-        private static QuerySpecificationModel LoadQuerySpecificationModel(LoadingContext ctx, QueryColumnSourceFactory sourceFactory, QuerySpecification qrySpec, string queryName, WithCtesAndXmlNamespaces ctes)
+        private static QuerySpecificationModel LoadQuerySpecificationModel(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, QueryColumnSourceFactory sourceFactory, QuerySpecification qrySpec, string queryName)
         {
             QuerySpecificationModel qmodel = sourceFactory.NewRootSpecification(qrySpec, queryName);
 
             // sources
-            CollectQuerySpecificationSources(ctx, sourceFactory, qmodel, ctes);
+            CollectQuerySpecificationSources(ctx, ctes, sourceFactory, qmodel);
 
             // in-select column resolving
-            ResolveSelectedElements(ctx, sourceFactory, qmodel);
+            ResolveSelectedElements(ctx, ctes, sourceFactory, qmodel);
 
             if (qmodel.QrySpec.SelectElements.Count != qmodel.ResolvedOutputColumnsCount)
             {
@@ -188,7 +224,7 @@ namespace StoreLake.Sdk.SqlDom
             return qmodel;
         }
 
-        private static void UnionResolve(LoadingContext ctx, QueryUnionModel unionModel)
+        private static void UnionResolve(QueryLoadingContext ctx, QueryUnionModel unionModel)
         {
             foreach (QuerySpecificationModel mqeN in unionModel.union_queries)
             {
@@ -233,7 +269,7 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        private static void CollectQuerySpecificationSources(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel source, WithCtesAndXmlNamespaces ctes)
+        private static void CollectQuerySpecificationSources(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel source)
         {
             if (source.QrySpec.FromClause == null)
             {
@@ -243,29 +279,30 @@ namespace StoreLake.Sdk.SqlDom
             {
                 foreach (TableReference tableRef in source.QrySpec.FromClause.TableReferences)
                 {
-                    CollectTableRef(ctx, sourceFactory, source, tableRef, ctes, (ts) =>
+                    CollectTableRef(ctx, ctes, sourceFactory, source, tableRef, (ts) =>
                     {
+                        ctx.RegisterQueryColumnSource(ts);
                         source.AddMqeColumnSource(ts);
                     });
                 }
             }
         }
 
-        private static void CollectTableRef(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel parent, TableReference tableRef, WithCtesAndXmlNamespaces ctes, Action<QueryColumnSourceBase> collector)
+        private static void CollectTableRef(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel parent, TableReference tableRef, Action<QueryColumnSourceBase> collector)
         {
             if (tableRef is QualifiedJoin qJoin)
             {
-                CollectTableRef(ctx, sourceFactory, parent, qJoin.FirstTableReference, ctes, collector);
-                CollectTableRef(ctx, sourceFactory, parent, qJoin.SecondTableReference, ctes, collector);
+                CollectTableRef(ctx, ctes, sourceFactory, parent, qJoin.FirstTableReference, collector);
+                CollectTableRef(ctx, ctes, sourceFactory, parent, qJoin.SecondTableReference, collector);
             }
             else if (tableRef is UnqualifiedJoin uqJoin)
             {
-                CollectTableRef(ctx, sourceFactory, parent, uqJoin.FirstTableReference, ctes, collector);
-                CollectTableRef(ctx, sourceFactory, parent, uqJoin.SecondTableReference, ctes, collector);
+                CollectTableRef(ctx, ctes, sourceFactory, parent, uqJoin.FirstTableReference, collector);
+                CollectTableRef(ctx, ctes, sourceFactory, parent, uqJoin.SecondTableReference, collector);
             }
             else if (tableRef is NamedTableReference ntRef)
             {
-                CollectNamedTableReference(ctx, sourceFactory, parent, ntRef, ctes, collector);
+                CollectNamedTableReference(ctx, ctes, sourceFactory, parent, ntRef, collector);
             }
             else if (tableRef is SchemaObjectFunctionTableReference udtfRef)
             {
@@ -278,12 +315,12 @@ namespace StoreLake.Sdk.SqlDom
             else if (tableRef is InlineDerivedTable derivedTable)
             {
                 // VALUES
-                CollectInlineDerivedTable(ctx, sourceFactory, parent, derivedTable, ctes, collector);
+                CollectInlineDerivedTable(ctx, ctes, sourceFactory, parent, derivedTable, collector);
             }
             else if (tableRef is QueryDerivedTable qDerivedTable)
             {
                 // SubQuery
-                CollectQueryDerivedTable(ctx, sourceFactory, parent, qDerivedTable, ctes, collector);
+                CollectQueryDerivedTable(ctx, ctes, sourceFactory, parent, qDerivedTable, collector);
             }
             else if (tableRef is FullTextTableReference fttRef)
             {
@@ -295,18 +332,20 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        private static void CollectQueryDerivedTable(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel parent, QueryDerivedTable derivedTable, WithCtesAndXmlNamespaces ctes, Action<QueryColumnSourceBase> collector)
+        private static void CollectQueryDerivedTable(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel parent, QueryDerivedTable derivedTable, Action<QueryColumnSourceBase> collector)
         {
             //NewSourceOnCte
             string cteName = "subquery";
-            IQueryModel qmodel = QueryModelLoader.LoadModelCore(ctx, cteName, derivedTable.QueryExpression, ctes);
+            // continue the query context
+            QueryLoadingContext q_ctx = new QueryLoadingContext(ctx);
+            IQueryModel qmodel = QueryModelLoader.LoadModelCore(q_ctx, cteName, derivedTable.QueryExpression, ctes);
 
             string key = derivedTable.Alias.Dequote();
             var source = sourceFactory.NewSourceOnQueryDerivedTable(parent, key, qmodel);
             collector(source);
         }
 
-        private static void CollectInlineDerivedTable(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel parent, InlineDerivedTable derivedTable, WithCtesAndXmlNamespaces ctes, Action<QueryColumnSourceBase> collector)
+        private static void CollectInlineDerivedTable(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel parent, InlineDerivedTable derivedTable, Action<QueryColumnSourceBase> collector)
         {
             var source = sourceFactory.NewQueryColumnSourceValues(parent, derivedTable);
 
@@ -320,7 +359,7 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     foreach (ScalarExpression rowValue in row.ColumnValues)
                     {
-                        if (TryResolveScalarExpression(ctx, sourceFactory, parent, rowValue, valuesColumnName, out SourceColumn column))
+                        if (TryResolveScalarExpression(ctx, ctes, sourceFactory, parent, rowValue, valuesColumnName, out SourceColumn column))
                         {
                             if (column.ColumnDbType.HasValue)
                             {
@@ -345,12 +384,13 @@ namespace StoreLake.Sdk.SqlDom
             collector(source);
         }
 
-        private static void CollectNamedTableReference(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel parent, NamedTableReference node, WithCtesAndXmlNamespaces ctes, Action<QueryColumnSourceBase> collector)
+        private static void CollectNamedTableReference(QueryLoadingContext ntref_ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel parent, NamedTableReference node, Action<QueryColumnSourceBase> collector)
         {
             if (node.SchemaObject.SchemaIdentifier == null &&
                 ctes != null &&
                 TryGetCTEByName(ctes, node.SchemaObject.BaseIdentifier.Dequote(), out CommonTableExpression cte))
             {
+                QueryLoadingContext ctex_ctx = new QueryLoadingContext(ntref_ctx.BatchCtx);
                 string cteName = cte.ExpressionName.Dequote();
 
                 QueryExpression cte_QueryExpression;
@@ -380,7 +420,7 @@ namespace StoreLake.Sdk.SqlDom
                     cte_source = sourceFactory.NewSourceOnCte(parent, key);
                     //ctx.PushCte(cteName, cte_source);
 
-                    IQueryModel cte_qmodel = QueryModelLoader.LoadModelCore(ctx, cteName, cte_QueryExpression, ctes);
+                    IQueryModel cte_qmodel = QueryModelLoader.LoadModelCore(ctex_ctx, cteName, cte_QueryExpression, ctes);
                     //if (cte_source.IsRecursive())
                     //{
                     //    ((QueryUnionModel)cte_qmodel).SetAsRecursive();
@@ -479,11 +519,11 @@ namespace StoreLake.Sdk.SqlDom
                 // VALUES
                 return false;
             }
-            //else if (tableRef is QueryDerivedTable qDerivedTable)
-            //{
-            //    // SubQuery
-            //    return false;
-            //}
+            else if (tableRef is QueryDerivedTable qDerivedTable)
+            {
+                // CROSS APPLY
+                return false;
+            }
 
             else
             {
@@ -509,7 +549,7 @@ namespace StoreLake.Sdk.SqlDom
             return false;
         }
 
-        private static void ResolveSelectedElements(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe)
+        private static void ResolveSelectedElements(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe)
         {
             foreach (SelectElement se in mqe.QrySpec.SelectElements)
             {
@@ -520,7 +560,7 @@ namespace StoreLake.Sdk.SqlDom
                     {
                     }
 
-                    if (TryResolveScalarExpression(ctx, sourceFactory, mqe, sscalarExpr.Expression, outputColumnName, out SourceColumn col))
+                    if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, sscalarExpr.Expression, outputColumnName, out SourceColumn col))
                     {
                         string outputColumnNameSafe = outputColumnName ?? col.SourceColumnName;
                         //outputColumnNameSafe = outputColumnNameSafe ?? sourceFactory.NewNameForColumn(mqe, )
@@ -556,7 +596,7 @@ namespace StoreLake.Sdk.SqlDom
         }
 
 
-        private static bool TryResolveUnionNullColumns(LoadingContext ctx, QueryUnionModel unionModel, QuerySpecificationModel mqe)
+        private static bool TryResolveUnionNullColumns(QueryLoadingContext ctx, QueryUnionModel unionModel, QuerySpecificationModel mqe)
         {
             QueryColumnBase[] cols = mqe.CollectResolvedOutputColumnWithoutType();
             //if (mqe.union_queries.Count == 0)
@@ -615,7 +655,7 @@ namespace StoreLake.Sdk.SqlDom
             return true;
         }
 
-        private static bool TryResolveScalarExpression(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, ScalarExpression scalarExpr, string outputColumnName, out SourceColumn column)
+        private static bool TryResolveScalarExpression(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, ScalarExpression scalarExpr, string outputColumnName, out SourceColumn column)
         {
             if (scalarExpr is ColumnReferenceExpression colRef)
             {
@@ -634,11 +674,11 @@ namespace StoreLake.Sdk.SqlDom
             }
             else if (scalarExpr is NullLiteral nullLit)
             {
-                return TryResolveNullLiteral(ctx, sourceFactory, mqe, outputColumnName, nullLit, out column);
+                return TryResolveNullLiteral(ctx, ctes, sourceFactory, mqe, outputColumnName, nullLit, out column);
             }
             else if (scalarExpr is FunctionCall fCall)
             {
-                return TryResolveFunctionCall(ctx, sourceFactory, mqe, fCall, outputColumnName, out column);
+                return TryResolveFunctionCall(ctx, ctes, sourceFactory, mqe, fCall, outputColumnName, out column);
             }
             else if (scalarExpr is IntegerLiteral intLit)
             {
@@ -656,7 +696,7 @@ namespace StoreLake.Sdk.SqlDom
             }
             else if (scalarExpr is CastCall castExpr)
             {
-                if (TryResolveScalarExpression(ctx, sourceFactory, mqe, castExpr.Parameter, outputColumnName, out SourceColumn scol))
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, castExpr.Parameter, outputColumnName, out SourceColumn scol))
                 {
                     var dbType = ProcedureGenerator.ResolveToDbDataType(castExpr.DataType);
                     column = new SourceColumn(scol.Source, scol.SourceColumnName, dbType);
@@ -669,17 +709,17 @@ namespace StoreLake.Sdk.SqlDom
             }
             else if (scalarExpr is SearchedCaseExpression searchedCase)
             {
-                return TryResolveSearchedCaseExpression(ctx, sourceFactory, mqe, outputColumnName, searchedCase, out column);
+                return TryResolveSearchedCaseExpression(ctx, ctes, sourceFactory, mqe, outputColumnName, searchedCase, out column);
             }
             else if (scalarExpr is NullIfExpression nullIf)
             {
                 SourceColumn functionOutputType = null;
-                if (TryResolveScalarExpression(ctx, sourceFactory, mqe, nullIf.FirstExpression, outputColumnName, out SourceColumn outputColumnF))
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, nullIf.FirstExpression, outputColumnName, out SourceColumn outputColumnF))
                 {
                     functionOutputType = outputColumnF;
                 }
 
-                if (TryResolveScalarExpression(ctx, sourceFactory, mqe, nullIf.SecondExpression, outputColumnName, out SourceColumn outputColumnS))
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, nullIf.SecondExpression, outputColumnName, out SourceColumn outputColumnS))
                 {
                     functionOutputType = outputColumnS;
                 }
@@ -695,14 +735,13 @@ namespace StoreLake.Sdk.SqlDom
             }
             else if (scalarExpr is VariableReference varRef)
             {
-                DbType? varDbType = ctx.BatchResolver.TryGetScalarVariableType(varRef.Name);
-                if (varDbType.HasValue)
+                if (ctx.BatchResolver.TryGetScalarVariableType(varRef.Name, out DbType varDbType))
                 {
                     string outputColumnNameSafe = outputColumnName ??
                         varRef.Name.Substring(1);
                     //sourceFactory.NewNameForColumnLiteral(mqe, binLit);
-                    var source = sourceFactory.NewVariableSource(mqe, varRef, varDbType.Value);
-                    column = new SourceColumn(source, outputColumnNameSafe, varDbType.Value);
+                    var source = sourceFactory.NewVariableSource(mqe, varRef, varDbType);
+                    column = new SourceColumn(source, outputColumnNameSafe, varDbType);
                     return true;
                 }
                 throw new NotImplementedException(varRef.WhatIsThis());
@@ -710,12 +749,12 @@ namespace StoreLake.Sdk.SqlDom
             else if (scalarExpr is IIfCall iif)
             {
                 SourceColumn functionOutputType = null;
-                if (TryResolveScalarExpression(ctx, sourceFactory, mqe, iif.ThenExpression, outputColumnName, out SourceColumn outputColumnF))
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, iif.ThenExpression, outputColumnName, out SourceColumn outputColumnF))
                 {
                     functionOutputType = outputColumnF;
                 }
 
-                if (TryResolveScalarExpression(ctx, sourceFactory, mqe, iif.ElseExpression, outputColumnName, out SourceColumn outputColumnS))
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, iif.ElseExpression, outputColumnName, out SourceColumn outputColumnS))
                 {
                     if (functionOutputType != null && functionOutputType.ColumnDbType.HasValue)
                     {
@@ -738,19 +777,19 @@ namespace StoreLake.Sdk.SqlDom
             }
             else if (scalarExpr is SimpleCaseExpression simpleCaseExpr)
             {
-                return TryResolveSimpleCaseExpression(ctx, sourceFactory, mqe, outputColumnName, simpleCaseExpr, out column);
+                return TryResolveSimpleCaseExpression(ctx, ctes, sourceFactory, mqe, outputColumnName, simpleCaseExpr, out column);
             }
             else if (scalarExpr is CoalesceExpression coalesceExpr)
             {
-                return TryResolveCoalesceExpression(ctx, sourceFactory, mqe, outputColumnName, coalesceExpr, out column);
+                return TryResolveCoalesceExpression(ctx, ctes, sourceFactory, mqe, outputColumnName, coalesceExpr, out column);
             }
             else if (scalarExpr is ConvertCall convertExpr)
             {
-                return TryResolveConvertCall(ctx, sourceFactory, mqe, outputColumnName, convertExpr, out column);
+                return TryResolveConvertCall(ctx, ctes, sourceFactory, mqe, outputColumnName, convertExpr, out column);
             }
             else if (scalarExpr is BinaryExpression binaryExpr)
             {
-                return TryResolveBinaryExpression(ctx, sourceFactory, mqe, outputColumnName, binaryExpr, out column);
+                return TryResolveBinaryExpression(ctx, ctes, sourceFactory, mqe, outputColumnName, binaryExpr, out column);
             }
             else if (scalarExpr is BinaryLiteral binLit)
             {
@@ -770,15 +809,19 @@ namespace StoreLake.Sdk.SqlDom
             }
             else if (scalarExpr is ParenthesisExpression ptsExpr)
             {
-                return TryResolveScalarExpression(ctx, sourceFactory, mqe, ptsExpr.Expression, outputColumnName, out column);
+                return TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, ptsExpr.Expression, outputColumnName, out column);
             }
             else if (scalarExpr is UnaryExpression unaryExpr)
             {
-                return TryResolveScalarExpression(ctx, sourceFactory, mqe, unaryExpr.Expression, outputColumnName, out column);
+                return TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, unaryExpr.Expression, outputColumnName, out column);
             }
             else if (scalarExpr is LeftFunctionCall leftCall)
             {
-                return TryResolveLeftFunctionCall(ctx, sourceFactory, mqe, leftCall, outputColumnName, out column);
+                return TryResolveLeftFunctionCall(ctx, ctes, sourceFactory, mqe, leftCall, outputColumnName, out column);
+            }
+            else if (scalarExpr is ScalarSubquery scalarQry)
+            {
+                return TryResolveScalarSubquery(ctx, ctes, sourceFactory, mqe, scalarQry, outputColumnName, out column);
             }
             else
             {
@@ -786,7 +829,30 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        private static bool TryResolveBinaryExpression(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, BinaryExpression binaryExpr, out SourceColumn column)
+        private static bool TryResolveScalarSubquery(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, ScalarSubquery scalarQry, string outputColumnName, out SourceColumn column)
+        {
+            string qName = "subquery:" + outputColumnName;
+            // continue the query context
+            QueryLoadingContext q_ctx = new QueryLoadingContext(ctx);
+            IQueryModel qmodel = QueryModelLoader.LoadModelCore(q_ctx, qName, scalarQry.QueryExpression, ctes);
+
+            if (qmodel.TryGetQueryOutputColumn(ctx.BatchResolver, outputColumnName, out QueryColumnBase col))
+            {
+                column = new SourceColumn(col.Source, outputColumnName, col.ColumnDbType.Value);
+                return true;
+            }
+
+            // the query must return single column => use the type from it!!
+            if (qmodel.TryGetQuerySingleOutputColumn(ctx.BatchResolver, out col))
+            {
+                column = new SourceColumn(col.Source, outputColumnName, col.ColumnDbType.Value);
+                return true;
+            }
+
+            throw new NotImplementedException(scalarQry.WhatIsThis());
+        }
+
+        private static bool TryResolveBinaryExpression(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, BinaryExpression binaryExpr, out SourceColumn column)
         {
 
             if ((binaryExpr.BinaryExpressionType == BinaryExpressionType.Add) // Add: 0 + 0x0100*MAX(IIF(aoa_g.am & 0x0100 = 0x0100, 1, 0))
@@ -795,12 +861,12 @@ namespace StoreLake.Sdk.SqlDom
                 )
             {
                 SourceColumn result = null;
-                if (TryResolveScalarExpression(ctx, sourceFactory, mqe, binaryExpr.FirstExpression, outputColumnName, out SourceColumn colF))
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, binaryExpr.FirstExpression, outputColumnName, out SourceColumn colF))
                 {
                     result = colF;
                 }
 
-                if (TryResolveScalarExpression(ctx, sourceFactory, mqe, binaryExpr.SecondExpression, outputColumnName, out SourceColumn colS))
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, binaryExpr.SecondExpression, outputColumnName, out SourceColumn colS))
                 {
                     result = colS;
                 }
@@ -814,9 +880,9 @@ namespace StoreLake.Sdk.SqlDom
             throw new NotImplementedException(" (" + binaryExpr.BinaryExpressionType + ") =>" + binaryExpr.WhatIsThis());
         }
 
-        private static bool TryResolveConvertCall(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, ConvertCall convertExpr, out SourceColumn column)
+        private static bool TryResolveConvertCall(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, ConvertCall convertExpr, out SourceColumn column)
         {
-            if (TryResolveScalarExpression(ctx, sourceFactory, mqe, convertExpr.Parameter, outputColumnName, out SourceColumn scol))
+            if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, convertExpr.Parameter, outputColumnName, out SourceColumn scol))
             {
                 var dbType = ProcedureGenerator.ResolveToDbDataType(convertExpr.DataType);
                 column = new SourceColumn(scol.Source, scol.SourceColumnName, dbType);
@@ -828,12 +894,12 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        private static bool TryResolveCoalesceExpression(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, CoalesceExpression coalesceExpr, out SourceColumn column)
+        private static bool TryResolveCoalesceExpression(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, CoalesceExpression coalesceExpr, out SourceColumn column)
         {
             SourceColumn result_column = null;
             foreach (ScalarExpression scalarExpr in coalesceExpr.Expressions)
             {
-                if (TryResolveScalarExpression(ctx, sourceFactory, mqe, scalarExpr, outputColumnName, out SourceColumn col))
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, scalarExpr, outputColumnName, out SourceColumn col))
                 {
                     result_column = col;
                 }
@@ -852,18 +918,18 @@ namespace StoreLake.Sdk.SqlDom
             throw new NotImplementedException(coalesceExpr.WhatIsThis());
         }
 
-        private static bool TryResolveSimpleCaseExpression(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, SimpleCaseExpression simpleCase, out SourceColumn column)
+        private static bool TryResolveSimpleCaseExpression(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, SimpleCaseExpression simpleCase, out SourceColumn column)
         {
             foreach (var whenExpr in simpleCase.WhenClauses)
             {
-                if (TryResolveScalarExpression(ctx, sourceFactory, mqe, whenExpr.ThenExpression, outputColumnName, out column))
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, whenExpr.ThenExpression, outputColumnName, out column))
                 {
                     //outputColumn.SetColumnDbType(outputColumnDbType);
                     return true;
                 }
             }
 
-            if (TryResolveScalarExpression(ctx, sourceFactory, mqe, simpleCase.ElseExpression, outputColumnName, out column))
+            if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, simpleCase.ElseExpression, outputColumnName, out column))
             {
                 //outputColumn.SetColumnDbType(functionOutputDbType);
                 return true;
@@ -872,18 +938,18 @@ namespace StoreLake.Sdk.SqlDom
             throw new NotImplementedException(simpleCase.WhatIsThis());
         }
 
-        private static bool TryResolveSearchedCaseExpression(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, SearchedCaseExpression searchedCase, out SourceColumn column)
+        private static bool TryResolveSearchedCaseExpression(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, SearchedCaseExpression searchedCase, out SourceColumn column)
         {
             foreach (var whenExpr in searchedCase.WhenClauses)
             {
-                if (TryResolveScalarExpression(ctx, sourceFactory, mqe, whenExpr.ThenExpression, outputColumnName, out column))
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, whenExpr.ThenExpression, outputColumnName, out column))
                 {
                     //outputColumn.SetColumnDbType(outputColumnDbType);
                     return true;
                 }
             }
 
-            if (TryResolveScalarExpression(ctx, sourceFactory, mqe, searchedCase.ElseExpression, outputColumnName, out column))
+            if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, searchedCase.ElseExpression, outputColumnName, out column))
             {
                 //outputColumn.SetColumnDbType(functionOutputDbType);
                 return true;
@@ -892,7 +958,7 @@ namespace StoreLake.Sdk.SqlDom
             throw new NotImplementedException(searchedCase.WhatIsThis());
         }
 
-        private static bool TryResolveNullLiteral(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, NullLiteral nullLit, out SourceColumn column)
+        private static bool TryResolveNullLiteral(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, NullLiteral nullLit, out SourceColumn column)
         {
             //add as resolved?
             if (!string.IsNullOrEmpty(outputColumnName))
@@ -910,7 +976,7 @@ namespace StoreLake.Sdk.SqlDom
 
         }
 
-        private static bool TryResolveColumnReferenceExpression(LoadingContext ctx, QuerySpecificationModel mqe, string outputColumnName, ColumnReferenceExpression colRef, out SourceColumn column)
+        private static bool TryResolveColumnReferenceExpression(QueryLoadingContext ctx, QuerySpecificationModel mqe, string outputColumnName, ColumnReferenceExpression colRef, out SourceColumn column)
         {
             if (colRef.MultiPartIdentifier.Count == 2)
             {
@@ -931,8 +997,23 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
-                    // source not there?!?!
-                    throw new NotImplementedException(colRef.WhatIsThis());
+                    // source not in this query soecification... we are in the APPLY and all previous source should be there
+                    if (ctx.TryFindSource(sourceNameOrAlias, out source))
+                    {
+                        if (TryResolveReferencedSourceColumn(ctx, mqe, source, outputColumnName, sourceColumnName, out column))
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            // source column not there or column type cannot be resolved!
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        throw new NotImplementedException(colRef.WhatIsThis());
+                    }
                 }
             }
             else if (colRef.MultiPartIdentifier.Count == 1)
@@ -979,7 +1060,7 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        private static bool TryResolveReferencedSourceColumn(LoadingContext ctx, QuerySpecificationModel mqe, QueryColumnSourceBase source, string outputColumnName, string sourceColumnName, out SourceColumn outputColumn)
+        private static bool TryResolveReferencedSourceColumn(QueryLoadingContext ctx, QuerySpecificationModel mqe, QueryColumnSourceBase source, string outputColumnName, string sourceColumnName, out SourceColumn outputColumn)
         {
             if (source.TryResolveSourceColumnType(ctx.BatchResolver, sourceColumnName, out SourceColumnType columnDbType))
             {
@@ -1004,7 +1085,7 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        private static bool TryResolveFunctionCall(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, FunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)
+        private static bool TryResolveFunctionCall(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, FunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)
         {
             string functionName = fCall.FunctionName.Dequote();
             if (string.Equals(functionName, "ISNULL", StringComparison.OrdinalIgnoreCase)
@@ -1018,7 +1099,7 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     var prm = fCall.Parameters[0];
 
-                    if (TryResolveScalarExpression(ctx, sourceFactory, mqe, prm, outputColumnName, out SourceColumn outputColumn1))
+                    if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, prm, outputColumnName, out SourceColumn outputColumn1))
                     {
                         if (functionOutputType == null)
                         {
@@ -1054,7 +1135,7 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     var prm = fCall.Parameters[0];
 
-                    if (TryResolveScalarExpression(ctx, sourceFactory, mqe, prm, outputColumnName, out SourceColumn outputColumn1))
+                    if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, prm, outputColumnName, out SourceColumn outputColumn1))
                     {
                         if (functionOutputType == null)
                         {
@@ -1098,8 +1179,7 @@ namespace StoreLake.Sdk.SqlDom
                 return true;
             }
 
-            if (string.Equals(functionName, "DENSE_RANK", StringComparison.OrdinalIgnoreCase)
-                            )
+            if (string.Equals(functionName, "DENSE_RANK", StringComparison.OrdinalIgnoreCase))
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt64(mqe, 0);
                 var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64);
@@ -1107,25 +1187,82 @@ namespace StoreLake.Sdk.SqlDom
                 return true;
             }
 
-            if (string.Equals(functionName, "COUNT", StringComparison.OrdinalIgnoreCase)
-                            )
+            if (string.Equals(functionName, "COUNT", StringComparison.OrdinalIgnoreCase))
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt32(mqe, 0);
                 var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int32);
                 outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int32);
                 return true;
             }
-            if (string.Equals(functionName, "HASHBYTES", StringComparison.OrdinalIgnoreCase)
-                            )
+            if (string.Equals(functionName, "HASHBYTES", StringComparison.OrdinalIgnoreCase))
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnBytes(mqe);
                 var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Byte);
                 outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Byte);
                 return true;
             }
+            if (string.Equals(functionName, "SUBSTRING", StringComparison.OrdinalIgnoreCase))
+            {
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnString(mqe);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.String);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.String);
+                return true;
+            }
+            if (string.Equals(functionName, "POWER", StringComparison.OrdinalIgnoreCase))
+            {
+                var prm = fCall.Parameters[0];
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, prm, outputColumnName, out outputColumn))
+                {
+                    if (outputColumn.ColumnDbType.HasValue)
+                    {
+                        // float, real => float 
+                        // bit, char, nchar, varchar, nvarchar =>	float
+                        if (outputColumn.ColumnDbType.Value == DbType.Boolean
+                            || outputColumn.ColumnDbType.Value == DbType.String
+                            || outputColumn.ColumnDbType.Value == DbType.StringFixedLength)
+                        {
+                            outputColumn = new SourceColumn(outputColumn, DbType.Double);
+                        }
+
+                        //int, smallint, tinyint  => int
+                        if (outputColumn.ColumnDbType.Value == DbType.Byte
+                            || outputColumn.ColumnDbType.Value == DbType.Int16)
+                        {
+                            outputColumn = new SourceColumn(outputColumn, DbType.Int32);
+                        }
+                    }
+                    return true;
+                }
+                else
+                {
+                    throw new NotImplementedException(fCall.WhatIsThis());
+                }
+            }
+            if (string.Equals(functionName, "AVG", StringComparison.OrdinalIgnoreCase))
+            {
+                var prm = fCall.Parameters[0];
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, prm, outputColumnName, out outputColumn))
+                {
+                    if (outputColumn.ColumnDbType.HasValue)
+                    {
+                        // float, real => float 
+                           //int, smallint, tinyint  => int
+                        if (outputColumn.ColumnDbType.Value == DbType.Byte
+                            || outputColumn.ColumnDbType.Value == DbType.Int16)
+                        {
+                            outputColumn = new SourceColumn(outputColumn, DbType.Int32);
+                        }
+                    }
+                    return true;
+                }
+                else
+                {
+                    throw new NotImplementedException(fCall.WhatIsThis());
+                }
+            }
             throw new NotImplementedException(fCall.WhatIsThis());
         }
-        private static bool TryResolveLeftFunctionCall(LoadingContext ctx, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, LeftFunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)
+        private static bool TryResolveLeftFunctionCall(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, LeftFunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)
         {
             //string functionName = fCall.FunctionName.Dequote();
             {
@@ -1134,7 +1271,7 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     var prm = fCall.Parameters[0];
 
-                    if (TryResolveScalarExpression(ctx, sourceFactory, mqe, prm, outputColumnName, out SourceColumn outputColumn1))
+                    if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, prm, outputColumnName, out SourceColumn outputColumn1))
                     {
                         if (functionOutputType == null)
                         {

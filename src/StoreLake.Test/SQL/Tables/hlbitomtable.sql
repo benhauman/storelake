@@ -1,0 +1,15 @@
+﻿CREATE TABLE [dbo].[hlbitomtable](
+	[tableid] INT IDENTITY(1,1) NOT NULL,
+	[tablename] NVARCHAR(255) NOT NULL,
+	[columns] NVARCHAR(4000) NOT NULL,
+	[query] NVARCHAR(4000) NOT NULL,
+	[hashvalue] VARBINARY(8000) NOT NULL,
+	[createdon] DATETIME NOT NULL CONSTRAINT [DF_hlbitomtable_createdon] DEFAULT GETUTCDATE(),
+	[modifiedon] DATETIME NOT NULL CONSTRAINT [DF_hlbitomtable_modifiedon] DEFAULT GETUTCDATE(),
+	[deletedon] DATETIME NULL,
+	[deleted] BIT NOT NULL CONSTRAINT [DF_hlbitomtable_deleted] DEFAULT 0,
+ CONSTRAINT [PK_hlbitomtable] PRIMARY KEY CLUSTERED 
+(
+	[tableid] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]

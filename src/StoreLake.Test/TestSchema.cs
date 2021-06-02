@@ -7,23 +7,23 @@ namespace StoreLake.Test
 {
     class TestSchema : ISchemaMetadataProvider
     {
-        internal readonly IDictionary<string, IColumnSourceMetadata> tables = new SortedDictionary<string, IColumnSourceMetadata>();
-        internal readonly IDictionary<string, IColumnSourceMetadata> views = new SortedDictionary<string, IColumnSourceMetadata>();
-        internal readonly IDictionary<string, IColumnSourceMetadata> functions = new SortedDictionary<string, IColumnSourceMetadata>();
-        internal readonly IDictionary<string, IColumnSourceMetadata> udts = new SortedDictionary<string, IColumnSourceMetadata>();
+        internal readonly IDictionary<string, IColumnSourceMetadata> tables = new SortedDictionary<string, IColumnSourceMetadata>(StringComparer.OrdinalIgnoreCase);
+        internal readonly IDictionary<string, IColumnSourceMetadata> views = new SortedDictionary<string, IColumnSourceMetadata>(StringComparer.OrdinalIgnoreCase);
+        internal readonly IDictionary<string, IColumnSourceMetadata> functions = new SortedDictionary<string, IColumnSourceMetadata>(StringComparer.OrdinalIgnoreCase);
+        internal readonly IDictionary<string, IColumnSourceMetadata> udts = new SortedDictionary<string, IColumnSourceMetadata>(StringComparer.OrdinalIgnoreCase);
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetColumnSourceMetadata(string schemaName, string objectName)
         {
             string key;
             if (string.IsNullOrEmpty(schemaName))
             {
                 if (objectName[0] == '@')
-                    key = objectName.ToUpperInvariant();
+                    key = objectName;
                 else
                     return null;
             }
             else
             {
-                key = TestTable.CreateKey(schemaName, objectName).ToUpperInvariant();
+                key = TestTable.CreateKey(schemaName, objectName);
             }
             if (tables.TryGetValue(key, out IColumnSourceMetadata sourceT))
                 return sourceT;
@@ -37,7 +37,7 @@ namespace StoreLake.Test
 
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetFunctionTableMetadata(string schemaName, string objectName)
         {
-            string key = TestTable.CreateKey(schemaName, objectName).ToUpperInvariant();
+            string key = TestTable.CreateKey(schemaName, objectName);
 
             if (functions.TryGetValue(key, out IColumnSourceMetadata source))
                 return source;
@@ -51,13 +51,13 @@ namespace StoreLake.Test
             if (string.IsNullOrEmpty(schemaName))
             {
                 if (objectName[0] == '@')
-                    key = objectName.ToUpperInvariant();
+                    key = objectName;
                 else
                     return null;
             }
             else
             {
-                key = TestTable.CreateKey(schemaName, objectName).ToUpperInvariant();
+                key = TestTable.CreateKey(schemaName, objectName);
             }
             if (udts.TryGetValue(key, out IColumnSourceMetadata sourceT))
                 return sourceT;
@@ -69,27 +69,27 @@ namespace StoreLake.Test
 
         internal TestSchema AddTable(TestTable source)
         {
-            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]").ToUpperInvariant();
+            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]");
             tables.Add(key, source);
             return this;
         }
         internal TestSchema AddUDT(TestTable source)
         {
-            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]").ToUpperInvariant();
+            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]");
             udts.Add(key, source);
             return this;
         }
 
         internal TestSchema AddView(TestView source)
         {
-            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]").ToUpperInvariant();
+            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]");
             views.Add(key, source);
             return this;
         }
 
         internal TestSchema AddFunction(TestFunction source)
         {
-            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]").ToUpperInvariant();
+            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]");
             functions.Add(key, source);
             return this;
         }
@@ -110,16 +110,18 @@ namespace StoreLake.Test
         }
         protected TestSourceBase(string objectName)
         {
-            Key = objectName.ToUpperInvariant();
+            if (string.IsNullOrEmpty(objectName))
+                throw new ArgumentNullException(nameof(objectName));
+            Key = objectName;
             ObjectName = objectName;
         }
 
         internal static string CreateKey(string schemaName, string objectName)
         {
-            return ("[" + schemaName + "].[" + objectName + "]").ToUpperInvariant();
+            return ("[" + schemaName + "].[" + objectName + "]");
         }
 
-        internal readonly IDictionary<string, TestColumn> columns = new SortedDictionary<string, TestColumn>();
+        internal readonly IDictionary<string, TestColumn> columns = new SortedDictionary<string, TestColumn>(StringComparer.OrdinalIgnoreCase);
 
 
         DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
@@ -132,14 +134,14 @@ namespace StoreLake.Test
         {
             if (string.IsNullOrEmpty(columnName))
                 throw new ArgumentNullException(nameof(columnName));
-            string key = columnName.ToUpperInvariant();
+            string key = columnName;
             return columns.TryGetValue(key, out TestColumn column)
                 ? column.ColumnDbType
                 : null;
         }
         protected void AddSourceColumn(string name, DbType columnDbType)
         {
-            columns.Add(name.ToUpperInvariant(), new TestColumn(name, columnDbType));
+            columns.Add(name, new TestColumn(name, columnDbType));
         }
 
     }
@@ -183,15 +185,15 @@ namespace StoreLake.Test
             return base.OnTryGetColumnTypeByName(columnName);
         }
 
-        Dictionary<string, DbType> parameters = new Dictionary<string, DbType>();
+        Dictionary<string, DbType> parameters = new Dictionary<string, DbType>(StringComparer.OrdinalIgnoreCase);
         internal void AddParameter(string parameterName, DbType parameterDbType)
         {
-            parameters.Add(parameterName.ToUpperInvariant(), parameterDbType);
+            parameters.Add(parameterName, parameterDbType);
         }
 
         DbType? IBatchParameterMetadata.TryGetParameterType(string parameterName)
         {
-            if (parameters.TryGetValue(parameterName.ToUpperInvariant(), out DbType parameterType))
+            if (parameters.TryGetValue(parameterName, out DbType parameterType))
             {
                 return parameterType;
             }
@@ -235,12 +237,12 @@ namespace StoreLake.Test
         //Dictionary<string, DbType> parameters = new Dictionary<string, DbType>();
         //internal void AddParameter(string parameterName, DbType parameterDbType)
         //{
-        //    parameters.Add(parameterName.ToUpperInvariant(), parameterDbType);
+        //    parameters.Add(parameterName, parameterDbType);
         //}
 
         DbType? IBatchParameterMetadata.TryGetParameterType(string parameterName)
         {
-            //if (parameters.TryGetValue(parameterName.ToUpperInvariant(), out DbType parameterType))
+            //if (parameters.TryGetValue(parameterName, out DbType parameterType))
             //{
             //    return parameterType;
             //}

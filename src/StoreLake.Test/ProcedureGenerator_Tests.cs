@@ -669,6 +669,8 @@ END";
                 return SqlDbType.TinyInt;
             if (parameterDbType == DbType.String)
                 return SqlDbType.NVarChar;
+            if (parameterDbType == DbType.Guid)
+                return SqlDbType.UniqueIdentifier;
             throw new System.NotImplementedException("" + parameterDbType);
         }
 
@@ -800,8 +802,63 @@ END";
         public void hlbigettomattribute()
         {
             // ScalarSubQuery
-            TestProcedureOutput(1, 0, 99);
+            TestProcedureOutput(1, 0, 15);
+        }
+
+        [TestMethod]
+        public void hlbigettomtable()
+        {
+            // SUBSTRING
+            TestProcedureOutput(1, 0, 9);
         }
         // 
+        [TestMethod]
+        public void hlsysdxi_generate_objecthistory()
+        {
+            // XML
+            TestProcedureOutput(1, 0, 6);
+        }
+        [TestMethod]
+        public void hlsyssvccat_query_catalogflat()
+        {
+            // POWER
+            TestProcedureOutput(2, 0, 2);
+            TestProcedureOutput(2, 1, 9);
+        }
+
+        [TestMethod]
+        public void hlsyssvccat_query_catalogtree()
+        {
+            //  ScalarSubQuery
+            TestProcedureOutput(2, 0, 4);
+            TestProcedureOutput(2, 1, 10);
+        }
+
+        [TestMethod]
+        public void hlsur_rpt_overview_fivestar()
+        {
+            // AVG
+            TestProcedureOutput(1, 0, 7);
+        }
+        [TestMethod]
+        public void hlsur_surveycontent_insert()
+        {
+            TestProcedureOutput(1, 0, 3);
+        }
+
+        [TestMethod]
+        public void hlsysum_query_adminorgunits()
+        {
+            TestProcedureOutput(1, 0, 8);
+        }
+
+        [TestMethod]
+        public void hlseglobalsearch_query_filters()
+        {
+            TestProcedureOutput(1, 0, 7);
+        }
+
+        // 
+        //
     }
 }

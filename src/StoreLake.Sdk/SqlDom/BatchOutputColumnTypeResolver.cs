@@ -23,6 +23,15 @@ namespace StoreLake.Sdk.SqlDom
 
         internal bool TryGetScalarVariableType(string variableName, out DbType variableDbType)
         {
+            DbType? parameterDbType = parameters.TryGetParameterType(variableName);
+            if (parameterDbType.HasValue)
+            {
+                variableDbType = parameterDbType.Value;
+                return true;
+            }
+
+            // scan for variable declaration
+
             TableVariableDeclarionVisitor vstor = new TableVariableDeclarionVisitor(variableName);
             BodyFragment.Accept(vstor);
             if (vstor.variableDefinition != null)
@@ -130,24 +139,5 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        internal DbType? TryGetScalarVariableType(string name)
-        {
-            DbType? parameterDbType = parameters.TryGetParameterType(name);
-            if (parameterDbType.HasValue)
-            {
-                return parameterDbType.Value;
-            }
-
-            // scan for variable declaration
-
-            TableVariableDeclarionVisitor vstor = new TableVariableDeclarionVisitor(name);
-            BodyFragment.Accept(vstor);
-            if (vstor.VariableDataType != null)
-            {
-                return ProcedureGenerator.ResolveToDbDataType(vstor.VariableDataType);
-            }
-
-            throw new NotImplementedException(name);
-        }
     }
 }

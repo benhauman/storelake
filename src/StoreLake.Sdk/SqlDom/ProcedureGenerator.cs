@@ -90,6 +90,10 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     return DbType.String;
                 }
+                if (string.Equals("XML", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return DbType.Xml;
+                }
                 throw new NotImplementedException("typeName:" + typeName);
             }
             else
