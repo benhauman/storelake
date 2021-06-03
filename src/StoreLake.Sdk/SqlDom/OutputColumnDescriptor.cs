@@ -6,7 +6,7 @@ namespace StoreLake.Sdk.SqlDom
     {
         public string OutputColumnName { get; private set; }
         internal readonly string SourceColumnName;
-        public readonly System.Data.DbType ColumnDbType;
+        public readonly System.Data.DbType? ColumnDbType; // null: not resolved
         public OutputColumnDescriptor(System.Data.DbType columnDbType)
         {
             this.ColumnDbType = columnDbType;
@@ -16,6 +16,12 @@ namespace StoreLake.Sdk.SqlDom
             this.OutputColumnName = sourceColumnName;
             this.SourceColumnName = sourceColumnName;
             this.ColumnDbType = columnDbType;
+        }
+        public OutputColumnDescriptor(string sourceColumnName)
+        {
+            this.OutputColumnName = sourceColumnName;
+            this.SourceColumnName = sourceColumnName;
+            this.ColumnDbType = null;
         }
 
         internal OutputColumnDescriptor SetOutputColumnName(IdentifierOrValueExpression columnName)

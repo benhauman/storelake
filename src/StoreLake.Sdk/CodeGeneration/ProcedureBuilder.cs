@@ -57,7 +57,7 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 //Console.WriteLine("" + procedure.ProcedureSchemaName + "." + procedure.ProcedureName);
 
-                int? countOfResultSets;
+                ProcedureOutputSet[] procedureOutputResultSets;
                 string procedureMethodName;
                 SqlDom.ProcedureMetadata procedure_metadata;
                 try
@@ -69,11 +69,11 @@ namespace StoreLake.Sdk.CodeGeneration
                     });
 
                     procedure_metadata = SqlDom.ProcedureGenerator.ParseProcedureBody(procedure.ProcedureName, procedure.ProcedureBodyScript, procedureParameters);
-                    int? isQueryProcedure = SqlDom.ProcedureGenerator.IsQueryProcedure(rr.DoResolveColumnTypes, rr.SchemaMetadata(), procedure_metadata).Length;
-                    countOfResultSets = procedure.Annotations.Count(x => x.AnnotationKey == "Return");
-                    if (countOfResultSets > 0)
+                    procedureOutputResultSets = SqlDom.ProcedureGenerator.IsQueryProcedure(rr.DoResolveColumnTypes, rr.SchemaMetadata(), procedure_metadata);
+                    int anno_countOfResultSets = procedure.Annotations.Count(x => x.AnnotationKey == "Return");
+                    if (anno_countOfResultSets > 0)
                     {
-                        if (isQueryProcedure.GetValueOrDefault() == countOfResultSets)
+                        if (procedureOutputResultSets.Length == anno_countOfResultSets)
                         {
                             // ok
                         }
@@ -85,11 +85,11 @@ namespace StoreLake.Sdk.CodeGeneration
                     }
                     else
                     {
-                        if (isQueryProcedure.GetValueOrDefault() > 0)
+                        if (procedureOutputResultSets.Length > 0)
                         {
                             // uups => no annotations =>
                             //[hlcmgetcontact]
-                            countOfResultSets = 1; // or more?
+                            //countOfResultSets = 1; // or more?
                         }
                         else
                         {
@@ -109,14 +109,14 @@ namespace StoreLake.Sdk.CodeGeneration
                 catch (Exception ex)
                 {
                     s_tracer.TraceEvent(TraceEventType.Warning, 0, "Procedure  [" + procedure.ProcedureName + "] generation failed." + ex.Message);
-                    countOfResultSets = null;
+                    procedureOutputResultSets = null;
                     procedureMethodName = procedure.ProcedureName;
                     procedure_metadata = null;
                 }
 
-                if (countOfResultSets.HasValue)
+                if (procedureOutputResultSets != null)
                 {
-                    GenerateProcedureDeclaration(rr, extMethodAccess_HandlerFacade, procedures_handler_type_decl, procedure, countOfResultSets.Value, procedureMethodName, ns_procedures, procedures_facade_type_decl, procedure_metadata, udt_rows);
+                    GenerateProcedureDeclaration(rr, extMethodAccess_HandlerFacade, procedures_handler_type_decl, procedure, procedureOutputResultSets, procedureMethodName, ns_procedures, procedures_facade_type_decl, procedure_metadata, udt_rows);
                 }
                 else
                 {
@@ -136,11 +136,11 @@ namespace StoreLake.Sdk.CodeGeneration
             internal CodeMemberMethod facade_method_decl;
             internal bool HasReturn;
 
-            public int CountOfResultSets;
+            public ProcedureOutputSet[] OutputResultSets;
             internal CodeTypeDeclaration facade_output_type_decl;
         }
 
-        private static void GenerateProcedureDeclaration(RegistrationResult rr, string extMethodAccess_HandlerFacade, CodeTypeDeclaration procedures_type_decl, StoreLakeProcedureRegistration procedure, int countOfResultSets, string procedureMethodName, CodeNamespace ns_procedures, CodeTypeDeclaration procedures_facade_type_decl, SqlDom.ProcedureMetadata procedure_metadata, IDictionary<string, TableTypeRow> udt_rows)
+        private static void GenerateProcedureDeclaration(RegistrationResult rr, string extMethodAccess_HandlerFacade, CodeTypeDeclaration procedures_type_decl, StoreLakeProcedureRegistration procedure, ProcedureOutputSet[] procedureOutputResultSets, string procedureMethodName, CodeNamespace ns_procedures, CodeTypeDeclaration procedures_facade_type_decl, SqlDom.ProcedureMetadata procedure_metadata, IDictionary<string, TableTypeRow> udt_rows)
         {
             bool? hasReturnStatements = ProcedureGenerator.HasReturnStatement(procedure_metadata);
 
@@ -150,7 +150,7 @@ namespace StoreLake.Sdk.CodeGeneration
             hm.handler_method_decl.Parameters.Add(new CodeParameterDeclarationExpression(typeof(DataSet), "db"));
             hm.handler_method_decl.Parameters.Add(new CodeParameterDeclarationExpression(typeof(System.Data.Common.DbCommand), "cmd"));
 
-            Type returnType = countOfResultSets > 0
+            Type returnType = procedureOutputResultSets.Length > 0
                 ? typeof(System.Data.Common.DbDataReader)
                 : typeof(int);
             //: hasReturnStatements.GetValueOrDefault()
@@ -196,10 +196,10 @@ namespace StoreLake.Sdk.CodeGeneration
             };
 
             CodeTypeDeclaration facade_output_type_decl;
-            if (countOfResultSets > 0)
+            if (procedureOutputResultSets.Length > 0)
             {
                 // read
-                facade_output_type_decl = BuildCommandFacadeOutputType(procedureMethodName, countOfResultSets);
+                facade_output_type_decl = BuildCommandFacadeOutputType(procedureMethodName, procedureOutputResultSets);
                 ns_procedures.Types.Add(facade_output_type_decl);
             }
             else
@@ -207,7 +207,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 facade_output_type_decl = null;
             }
 
-            CommandFacadeMethod fm = BuildCommandFacadeMethod(procedures_facade_type_decl.Name, procedureMethodName, procedure, facade_output_type_decl, countOfResultSets, procedure_metadata, udt_rows);
+            CommandFacadeMethod fm = BuildCommandFacadeMethod(procedures_facade_type_decl.Name, procedureMethodName, procedure, facade_output_type_decl, procedureOutputResultSets, procedure_metadata, udt_rows);
             if (fm != null)
             {
                 procedures_facade_type_decl.Members.Add(fm.facade_method_decl);
@@ -223,7 +223,7 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
-        private static CodeTypeDeclaration BuildCommandFacadeOutputType(string method_name, int countOfResultSets)
+        private static CodeTypeDeclaration BuildCommandFacadeOutputType(string method_name, ProcedureOutputSet[] procedureOutputResultSets)
         {
             CodeTypeDeclaration output_type_decl = new CodeTypeDeclaration() { Name = method_name + "ResultSets" };
 
@@ -252,12 +252,12 @@ namespace StoreLake.Sdk.CodeGeneration
             //method_reader.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
             output_type_decl.Members.Add(method_reader);
 
-            if (countOfResultSets > 1)
+            if (procedureOutputResultSets.Length > 1)
             {
                 CodeMemberField field_tables_decl = new CodeMemberField() { Attributes = MemberAttributes.Private };
                 field_tables_decl.Name = "tables";
                 field_tables_decl.Type = new CodeTypeReference(new CodeTypeReference(typeof(DataTable)), 1);
-                field_tables_decl.InitExpression = new CodeArrayCreateExpression(typeof(DataTable), countOfResultSets);
+                field_tables_decl.InitExpression = new CodeArrayCreateExpression(typeof(DataTable), procedureOutputResultSets.Length);
                 output_type_decl.Members.Add(field_tables_decl);
                 CodeFieldReferenceExpression field_tables_ref = new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), field_tables_decl.Name);
 
@@ -266,8 +266,9 @@ namespace StoreLake.Sdk.CodeGeneration
                 CodeVariableDeclarationStatement var_table_decl = new CodeVariableDeclarationStatement(new CodeTypeReference(typeof(DataTable)), "table");
                 ctor.Statements.Add(var_table_decl);
                 CodeVariableReferenceExpression var_table_ref = new CodeVariableReferenceExpression(var_table_decl.Name);
-                for (int ix = 0; ix < countOfResultSets; ix++)
+                for (int ix = 0; ix < procedureOutputResultSets.Length; ix++)
                 {
+                    ProcedureOutputSet procedureOutputResultSet =  procedureOutputResultSets[ix];
                     CodeAssignStatement assign_table_ref = new CodeAssignStatement(var_table_ref, new CodeObjectCreateExpression(typeof(DataTable), new CodePrimitiveExpression("Output" + (1 + ix))));
                     ctor.Statements.Add(assign_table_ref);
                     // setup table....
@@ -281,10 +282,14 @@ namespace StoreLake.Sdk.CodeGeneration
                     prop_Table.GetStatements.Add(new CodeMethodReturnStatement(table_at));
                     output_type_decl.Members.Add(prop_Table);
 
+                    // Set1AddRow()
+                    string methodName = "Set" + (ix + 1) + "AddRow";
+                    BuildFacadeOutputTableAddRow(procedureOutputResultSet, output_type_decl, methodName);
                 }
             }
             else
             {
+                ProcedureOutputSet procedureOutputResultSet = procedureOutputResultSets[0];
                 CodeMemberField field_tables_decl = new CodeMemberField() { Attributes = MemberAttributes.Private };
                 field_tables_decl.Name = "table";
                 field_tables_decl.Type = new CodeTypeReference(typeof(DataTable));
@@ -297,10 +302,30 @@ namespace StoreLake.Sdk.CodeGeneration
                 CodeMemberProperty prop_Table = new CodeMemberProperty() { Name = "OutputTable", Type = new CodeTypeReference(typeof(DataTable)), Attributes = MemberAttributes.Public | MemberAttributes.Final };
                 prop_Table.GetStatements.Add(new CodeMethodReturnStatement(field_table_ref));
                 output_type_decl.Members.Add(prop_Table);
+
+                BuildFacadeOutputTableAddRow(procedureOutputResultSet, output_type_decl, "AddRow");
             }
 
 
             return output_type_decl;
+        }
+
+        private static void BuildFacadeOutputTableAddRow(ProcedureOutputSet procedureOutputResultSet, CodeTypeDeclaration output_type_decl, string methodName)
+        {
+            CodeMemberMethod method_AddRow_decl = new CodeMemberMethod() { Name = methodName,
+                Attributes = MemberAttributes.Public | MemberAttributes.Final,
+                ReturnType = new CodeTypeReference(output_type_decl.Name)
+            };
+
+            method_AddRow_decl.Statements.Add(new CodeMethodReturnStatement(new CodeThisReferenceExpression()));
+            output_type_decl.Members.Add(method_AddRow_decl);
+
+            for(int ix = 0; ix < procedureOutputResultSet.ColumnCount;ix++)
+            {
+                ProcedureOutputColumn outputColumn = procedureOutputResultSet.ColumnAt(ix);
+
+                Type columnClrType = TypeMap.ResolveColumnClrType(outputColumn.ColumnDbType.Value);
+            }
         }
 
         private static bool BuildInvokeFacadeMethod(string extMethodAccess_HandlerFacade, CommandFacadeMethod fm, StoreLakeProcedureRegistration procedure, ProcedureMetadata procedure_metadata
@@ -367,7 +392,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
             }
 
-            if (fm.CountOfResultSets > 0)
+            if (fm.OutputResultSets.Length > 0)
             {
                 var invoke_CreateDataReader = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(invoke_facade_method, "CreateDataReader"));
                 hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(invoke_CreateDataReader));
@@ -560,14 +585,14 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static CommandFacadeMethod BuildCommandFacadeMethod(string facade_type_name, string procedureMethodName, StoreLakeProcedureRegistration procedure, CodeTypeDeclaration facade_output_type_decl, int countOfResultSets, SqlDom.ProcedureMetadata procedure_metadata, IDictionary<string, TableTypeRow> udt_rows)
+        private static CommandFacadeMethod BuildCommandFacadeMethod(string facade_type_name, string procedureMethodName, StoreLakeProcedureRegistration procedure, CodeTypeDeclaration facade_output_type_decl, ProcedureOutputSet[] procedureOutputResultSets, SqlDom.ProcedureMetadata procedure_metadata, IDictionary<string, TableTypeRow> udt_rows)
         {
             bool? hasReturnStatements = ProcedureGenerator.HasReturnStatement(procedure_metadata);
 
             CommandFacadeMethod fm = new CommandFacadeMethod()
             {
                 facade_type_name = facade_type_name,
-                CountOfResultSets = countOfResultSets,
+                OutputResultSets = procedureOutputResultSets,
                 HasReturn = hasReturnStatements.GetValueOrDefault()
             };
 
@@ -605,7 +630,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
             fm.facade_method_decl.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
 
-            if (countOfResultSets > 0)
+            if (procedureOutputResultSets.Length > 0)
             {
                 fm.facade_output_type_decl = facade_output_type_decl;
                 fm.facade_method_decl.ReturnType = new CodeTypeReference(facade_output_type_decl.Name);

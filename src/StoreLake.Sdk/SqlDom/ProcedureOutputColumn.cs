@@ -7,12 +7,12 @@ namespace StoreLake.Sdk.SqlDom
     [DebuggerDisplay("{DebuggerText}")]
     public sealed class ProcedureOutputColumn
     {
-        private OutputColumnDescriptor columnDbType;
+        private OutputColumnDescriptor columnDescriptor;
         private readonly TSqlFragment origin;
         internal ProcedureOutputColumn(TSqlFragment origin, OutputColumnDescriptor columnDbType)
         {
             this.origin = origin;
-            this.columnDbType = columnDbType;
+            this.columnDescriptor = columnDbType;
 
             if (columnDbType == null)
             {
@@ -33,8 +33,18 @@ namespace StoreLake.Sdk.SqlDom
         {
             get
             {
-                if (columnDbType != null)
-                    return columnDbType.ColumnDbType;
+                if (columnDescriptor != null)
+                    return columnDescriptor.ColumnDbType;
+                return null;
+            }
+        }
+
+        public string OutputColumnName
+        {
+            get
+            {
+                if (columnDescriptor != null)
+                    return columnDescriptor.OutputColumnName;
                 return null;
             }
         }
@@ -43,13 +53,13 @@ namespace StoreLake.Sdk.SqlDom
         {
             get
             {
-                return columnDbType == null;
+                return columnDescriptor == null || !columnDescriptor.ColumnDbType.HasValue;
             }
         }
 
         internal void ApplyMissingInformation(ProcedureOutputColumn procedureOutputColumn)
         {
-            columnDbType = procedureOutputColumn.columnDbType;
+            columnDescriptor = procedureOutputColumn.columnDescriptor;
         }
     }
 }

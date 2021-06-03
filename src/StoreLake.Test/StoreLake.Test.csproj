@@ -35,6 +35,7 @@
     <None Remove="SQL\Procedures\hlcmgetcontact.sql" />
     <None Remove="SQL\Procedures\hlom_query_possibleactions.sql" />
     <None Remove="SQL\Procedures\hlseglobalsearch_query_filters.sql" />
+    <None Remove="SQL\Procedures\hlsp_approvalfulfilled.sql" />
     <None Remove="SQL\Procedures\hlsur_rpt_overview_fivestar.sql" />
     <None Remove="SQL\Procedures\hlsur_surveycontent_insert.sql" />
     <None Remove="SQL\Procedures\hlsysadhocinstanceaction_targetqueue_receive.sql" />
@@ -46,6 +47,7 @@
     <None Remove="SQL\Procedures\hlsyslic_getpendingbooklicenserequest.sql" />
     <None Remove="SQL\Procedures\hlsysportal_query_casetable_data_user.sql" />
     <None Remove="SQL\Procedures\hlsyssec_qyery_agentdynamicsystemaccessacl.sql" />
+    <None Remove="SQL\Procedures\hlsyssession_connectaddon.sql" />
     <None Remove="SQL\Procedures\hlsyssession_getdisconnectedsessions.sql" />
     <None Remove="SQL\Procedures\hlsyssession_query_countportaluser.sql" />
     <None Remove="SQL\Procedures\hlsyssvccat_query_catalogflat.sql" />
@@ -60,10 +62,13 @@
     <None Remove="SQL\Tables\hlbiattributeconfig.sql" />
     <None Remove="SQL\Tables\hlbitomattribute.sql" />
     <None Remove="SQL\Tables\hlbitomtable.sql" />
+    <None Remove="SQL\Tables\hlspdefinition.sql" />
+    <None Remove="SQL\Tables\hlspinstance.sql" />
     <None Remove="SQL\Tables\hlsurdefinition.sql" />
     <None Remove="SQL\Tables\hlsurresponse.sql" />
     <None Remove="SQL\Tables\hlsysactioncontext.sql" />
     <None Remove="SQL\Tables\hlsysagenttogroup.sql" />
+    <None Remove="SQL\Tables\hlsysapprovementfulfillment.sql" />
     <None Remove="SQL\Tables\hlsysapprovements.sql" />
     <None Remove="SQL\Tables\hlsysassociation.sql" />
     <None Remove="SQL\Tables\hlsysassociationdef.sql" />
@@ -123,6 +128,8 @@
   <ItemGroup>
     <EmbeddedResource Include="SQL\Functions\hlsysum_query_centraladminorgunits.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlseglobalsearch_query_filters.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsp_approvalfulfilled.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsyssession_connectaddon.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysum_query_adminorgunits.sql" />
   </ItemGroup>
 
@@ -172,10 +179,13 @@
     <EmbeddedResource Include="SQL\Tables\hlbiattributeconfig.sql" />
     <EmbeddedResource Include="SQL\Tables\hlbitomattribute.sql" />
     <EmbeddedResource Include="SQL\Tables\hlbitomtable.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlspdefinition.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlspinstance.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsurdefinition.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsurresponse.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysactioncontext.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysagenttogroup.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysapprovementfulfillment.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysapprovements.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysassociation.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysassociationdef.sql" />

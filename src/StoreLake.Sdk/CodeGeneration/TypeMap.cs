@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Xml.Linq;
 
 namespace StoreLake.Sdk.CodeGeneration
 {
@@ -94,6 +95,34 @@ namespace StoreLake.Sdk.CodeGeneration
             throw new NotImplementedException("" + parameter_ParameterDbType);
         }
 
+        public static Type ResolveColumnClrType(DbType columnDbType)
+        {
+            if (columnDbType == DbType.Int32)
+                return typeof(int);
+            if (columnDbType == DbType.String)
+                return typeof(string);
+            if (columnDbType == DbType.Byte)
+                return typeof(byte);
+            if (columnDbType == DbType.Int16)
+                return typeof(short);
+            if (columnDbType == DbType.Guid)
+                return typeof(Guid);
+            if (columnDbType == DbType.DateTime)
+                return typeof(DateTime);
+            if (columnDbType == DbType.Boolean)
+                return typeof(bool);
+            if (columnDbType == DbType.Binary)
+                return typeof(byte[]);
+            if (columnDbType == DbType.Int64)
+                return typeof(long);
+            if (columnDbType == DbType.Decimal)
+                return typeof(decimal);
+            if (columnDbType == DbType.Xml)
+                return typeof(XElement);
+            if (columnDbType == DbType.DateTimeOffset)
+                return typeof(DateTime); // ?DateTimeOffset
+            throw new NotImplementedException("" + columnDbType);
+        }
     }
 
     internal sealed class ParameterTypeMap

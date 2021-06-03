@@ -240,7 +240,7 @@ namespace StoreLake.Test
         {
             ProcedureGenerator.LoadViewOutputColumns(schema, vw.Body, (col) =>
             {
-                vw.AddViewColumn(col.OutputColumnName, col.ColumnDbType);
+                vw.AddViewColumn(col.OutputColumnName, col.ColumnDbType.Value);
             });
         }
 
@@ -256,7 +256,7 @@ namespace StoreLake.Test
         {
             ProcedureGenerator.LoadFunctionOutputColumns(schema, function_source, function_source.FunctionBodyScript, (col) =>
             {
-                function_source.AddFunctionColumn(col.OutputColumnName, col.ColumnDbType);
+                function_source.AddFunctionColumn(col.OutputColumnName, col.ColumnDbType.Value);
             });
         }
         private static void LoadViewOutputColumns(TestSchema schema, TestView function_source, CreateViewStatement stmt_CreateView)
@@ -271,7 +271,7 @@ namespace StoreLake.Test
                 if (se is SelectScalarExpression scalarExpr)
                 {
                     var col = resolver.ResolveSelectScalarExpression(scalarExpr);
-                    function_source.AddViewColumn(col.OutputColumnName, col.ColumnDbType);
+                    function_source.AddViewColumn(col.OutputColumnName, col.ColumnDbType.Value);
                 }
                 else
                 {

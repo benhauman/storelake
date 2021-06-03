@@ -26,7 +26,7 @@ namespace StoreLake.Sdk.SqlDom
         {
             return (column.ColumnDbType.HasValue)
                 ? new OutputColumnDescriptor(column.OutputColumnName, column.ColumnDbType.Value)
-                : null;
+                : new OutputColumnDescriptor(column.OutputColumnName);
         }
         private static OutputColumnDescriptor ColumnModelToDescriptor(DbType columnDbType)
         {

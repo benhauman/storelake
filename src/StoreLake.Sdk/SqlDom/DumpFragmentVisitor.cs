@@ -179,6 +179,7 @@ namespace StoreLake.Sdk.SqlDom
             || (node is FullTextTableReference) // CONTAINS()
             || (node is SelectFunctionReturnType) //  SELECT dv.[defaultattrpathid]
             || (node is LeftFunctionCall) //  LEFT([cd].[description], 100)
+            || (node is HavingClause) //  HAVING MIN([fullfillment].[state]) < 2 AND MAX([fullfillment].[state]) >= 2
             )
             {
                 if (node is SelectInsertSource)

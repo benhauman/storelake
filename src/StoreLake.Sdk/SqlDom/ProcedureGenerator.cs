@@ -113,14 +113,17 @@ namespace StoreLake.Sdk.SqlDom
                 _toAnalyze = toAnalyze;
             }
 
-            private void DoHasOutputResultSet(TSqlStatement toAnalyze)
+            private void DoResolveOutputResultSets(TSqlStatement toAnalyze, List<ProcedureOutputSet> collector)
             {
                 StatementVisitor vstor = new StatementVisitor(resolveColumnType, columnTypeResolver, toAnalyze);
                 toAnalyze.Accept(vstor);
                 int cnt = vstor.resultHasOutputResultSet.Count;
                 if (cnt > 0)
                 {
-                    this.resultHasOutputResultSet.AddRange(vstor.resultHasOutputResultSet);
+                    foreach (ProcedureOutputSet outputSet in vstor.resultHasOutputResultSet)
+                    {
+                        collector.Add(outputSet);
+                    }
                 }
             }
 
@@ -142,7 +145,7 @@ namespace StoreLake.Sdk.SqlDom
 
             public override void ExplicitVisit(IfStatement node)
             {
-                DoHasOutputResultSet(node.ThenStatement);
+                DoResolveOutputResultSets(node.ThenStatement, resultHasOutputResultSet);
 
                 if (node.ElseStatement != null)
                 {
@@ -150,11 +153,81 @@ namespace StoreLake.Sdk.SqlDom
                     if (resultHasOutputResultSet.Count == 0)
                     {
                         // no SELECT in ThenStatement list : maybe THROW? or RAISEERROR
-                        DoHasOutputResultSet(node.ElseStatement);
+                        DoResolveOutputResultSets(node.ElseStatement, resultHasOutputResultSet);
                     }
                     else
                     {
-                        // apply column types from ELSE
+                        bool hasMissingColumnInfo = this.HasMissingColumnInfo();
+                        // apply column types from ELSE branch
+                        if (hasMissingColumnInfo)
+                        {
+                            List<ProcedureOutputSet> else_outputResultSets = new List<ProcedureOutputSet>();
+                            DoResolveOutputResultSets(node.ElseStatement, else_outputResultSets);
+                            if (else_outputResultSets.Count > 0)
+                            {
+                                MergeMissingColumnInformation(resultHasOutputResultSet, else_outputResultSets);
+                            }
+
+                            if (HasMissingColumnInfo())
+                            {
+                                // still not possible! if this is a nested IF the it is ok!
+                            }
+                        }
+
+                    }
+                }
+            }
+
+            private bool HasMissingColumnInfo()
+            {
+                foreach (var xxx in resultHasOutputResultSet)
+                {
+                    if (xxx.HasMissingColumnInfo())
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            private static void MergeMissingColumnInformation(List<ProcedureOutputSet> resultHasOutputResultSet, List<ProcedureOutputSet> else_outputResultSets)
+            {
+                if (resultHasOutputResultSet.Count != else_outputResultSets.Count)
+                    throw new NotImplementedException("Mismatched output column set count. Expected:" + resultHasOutputResultSet.Count + " Actual:" + else_outputResultSets.Count);
+
+                for (int ixSet = 0; ixSet < resultHasOutputResultSet.Count; ixSet++)
+                {
+                    ProcedureOutputSet setT = resultHasOutputResultSet[ixSet];
+                    ProcedureOutputSet setE = else_outputResultSets[ixSet];
+                    string setinfo = "set_" + (ixSet + 1) + "_" + resultHasOutputResultSet.Count;
+                    MergeMissingColumnInformation(setinfo,  setT, setE);
+                }
+            }
+
+            private static void MergeMissingColumnInformation(string setinfo, ProcedureOutputSet setT, ProcedureOutputSet setE)
+            {
+                if (setT.ColumnCount != setT.ColumnCount)
+                    throw new NotImplementedException("Mismatched output column count. (" + setinfo  + ") Expected:" + setT.ColumnCount + " Actual:" + setE.ColumnCount);
+
+                for (int ixCol = 0; ixCol < setT.ColumnCount; ixCol++)
+                {
+                    var colT = setT.ColumnAt(ixCol);
+                    var colE = setE.ColumnAt(ixCol);
+                    if (colT.HasMissingInformation)
+                    {
+                        if (!colE.HasMissingInformation)
+                        {
+                            colT.ApplyMissingInformation(colE);
+                        }
+                        else
+                        {
+                            // still not possible! if this is a nested IF the it is ok!
+                        }
+                    }
+                    else
+                    {
+                        // everything's fine her
                     }
                 }
             }
@@ -430,9 +503,10 @@ namespace StoreLake.Sdk.SqlDom
                     OutputColumnDescriptor columnDbType = resolveColumnType
                         ? columnTypeResolver.ResolveSelectScalarExpression(node)
                         : null;
-                    if (columnDbType == null)
+                    if (columnDbType == null || !columnDbType.ColumnDbType.HasValue)
                     {
-                        //Console.WriteLine("Type resolve failed for scalar:" + node.AsText());
+                        // put a breakpoint here
+                        //this column cannot be resolved from this query. if this is a part of a IF statemt try ELSE branch.
                     }
                     outputSet.AddColumn(new ProcedureOutputColumn(node, columnDbType)); // SelectScalarExpression
                 }
