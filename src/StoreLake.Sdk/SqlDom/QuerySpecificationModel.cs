@@ -123,7 +123,7 @@ namespace StoreLake.Sdk.SqlDom
 
         internal QueryColumnBase AddOutputColumn(QueryColumnBase outputColumn)
         {
-            if (!IsOutputColumnResolved(outputColumn.OutputColumnName.ToUpperInvariant(), out QueryColumnBase col))
+            if (!IsOutputColumnResolved(outputColumn.OutputColumnName, out QueryColumnBase col))
             {
                 QueryColumnSourceBase source = ContainsSourceId(outputColumn.SourceId);
                 if (source != null)

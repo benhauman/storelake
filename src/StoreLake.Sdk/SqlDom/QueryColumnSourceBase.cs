@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
-using System.Text;
 
 [assembly: DebuggerDisplay(@"\{Bzz = {BaseIdentifier.Value}}", Target = typeof(SchemaObjectName))]
 [assembly: DebuggerDisplay(@"\{Bzz = {StoreLake.Sdk.SqlDom.SqlDomExtensions.WhatIsThis(SchemaObject)}}", Target = typeof(NamedTableReference))]
@@ -330,15 +329,15 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        private readonly IDictionary<string, DbType> columns = new SortedDictionary<string, DbType>();
+        private readonly IDictionary<string, DbType> columns = new SortedDictionary<string, DbType>(StringComparer.OrdinalIgnoreCase);
         internal void AddValueColumn(string columnName, DbType columnDbType)
         {
-            columns.Add(columnName.ToUpperInvariant(), columnDbType);
+            columns.Add(columnName, columnDbType);
         }
 
         internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
-            if (columns.TryGetValue(sourceColumnName.ToUpperInvariant(), out DbType columnDbType))
+            if (columns.TryGetValue(sourceColumnName, out DbType columnDbType))
             {
                 columnType = new SourceColumnType(this, sourceColumnName, columnDbType);
                 return true;

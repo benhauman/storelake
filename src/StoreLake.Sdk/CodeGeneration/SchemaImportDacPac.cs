@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Xml;
 using System.Xml.Linq;
 
 namespace StoreLake.Sdk.CodeGeneration
@@ -32,7 +31,7 @@ namespace StoreLake.Sdk.CodeGeneration
         public string TestStoreAssemblyNamespace { get; internal set; }
         public string TestStoreExtensionSetName { get; internal set; }
 
-        internal readonly IDictionary<string, DacPacRegistration> referenced_dacpacs = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
+        internal readonly IDictionary<string, DacPacRegistration> referenced_dacpacs = new SortedDictionary<string, DacPacRegistration>(StringComparer.OrdinalIgnoreCase); // <logicalname, dacpac.filename>
         internal readonly IDictionary<string, bool> registered_tables = new SortedDictionary<string, bool>(); // < ;
         internal readonly IDictionary<string, StoreLakeTableTypeRegistration> registered_tabletypes = new SortedDictionary<string, StoreLakeTableTypeRegistration>(); // < ;
         internal readonly IDictionary<string, string> referenced_assemblies = new SortedDictionary<string, string>(); // assemblyname/assemblylocation;
@@ -54,12 +53,12 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly bool ForceReferencePackageRegeneration;
         internal readonly bool GenerateMissingReferences;
         internal readonly DataSet ds;
-        internal readonly IDictionary<string, DacPacRegistration> registered_dacpacs = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
-        internal readonly IDictionary<string, DacPacRegistration> procesed_files = new SortedDictionary<string, DacPacRegistration>(); // <logicalname, dacpac.filename>
-        internal readonly IDictionary<string, DacPacRegistration> registered_tables = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
-        internal readonly IDictionary<string, DacPacRegistration> registered_tabletypes = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
-        internal readonly IDictionary<string, DacPacRegistration> registered_views = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
-        internal readonly IDictionary<string, DacPacRegistration> registered_functions = new SortedDictionary<string, DacPacRegistration>(); // <tablename, dacpac.logicalname>
+        internal readonly IDictionary<string, DacPacRegistration> registered_dacpacs = new SortedDictionary<string, DacPacRegistration>(StringComparer.OrdinalIgnoreCase); // <logicalname, dacpac.filename>
+        internal readonly IDictionary<string, DacPacRegistration> procesed_files = new SortedDictionary<string, DacPacRegistration>(StringComparer.OrdinalIgnoreCase); // <logicalname, dacpac.filename>
+        internal readonly IDictionary<string, DacPacRegistration> registered_tables = new SortedDictionary<string, DacPacRegistration>(StringComparer.OrdinalIgnoreCase); // <tablename, dacpac.logicalname>
+        internal readonly IDictionary<string, DacPacRegistration> registered_tabletypes = new SortedDictionary<string, DacPacRegistration>(StringComparer.OrdinalIgnoreCase); // <tablename, dacpac.logicalname>
+        internal readonly IDictionary<string, DacPacRegistration> registered_views = new SortedDictionary<string, DacPacRegistration>(StringComparer.OrdinalIgnoreCase); // <tablename, dacpac.logicalname>
+        internal readonly IDictionary<string, DacPacRegistration> registered_functions = new SortedDictionary<string, DacPacRegistration>(StringComparer.OrdinalIgnoreCase); // <tablename, dacpac.logicalname>
         // context
         internal readonly IDictionary<string, TableTypeRow> udt_rows = new SortedDictionary<string, TableTypeRow>();
 
@@ -69,13 +68,12 @@ namespace StoreLake.Sdk.CodeGeneration
             return this;
         }
 
-        internal readonly IDictionary<string, IColumnSourceMetadata> column_sources = PrepareColumnSources();
-        internal readonly IDictionary<string, IColumnSourceMetadata> function_sources = new SortedDictionary<string, IColumnSourceMetadata>();
-        internal readonly IDictionary<string, IColumnSourceMetadata> udt_sources = new SortedDictionary<string, IColumnSourceMetadata>();
+        internal readonly IDictionary<string, IColumnSourceMetadata> column_sources = PrepareColumnSources(new SortedDictionary<string, IColumnSourceMetadata>(StringComparer.OrdinalIgnoreCase));
+        internal readonly IDictionary<string, IColumnSourceMetadata> function_sources = new SortedDictionary<string, IColumnSourceMetadata>(StringComparer.OrdinalIgnoreCase);
+        internal readonly IDictionary<string, IColumnSourceMetadata> udt_sources = new SortedDictionary<string, IColumnSourceMetadata>(StringComparer.OrdinalIgnoreCase);
 
-        private static IDictionary<string, IColumnSourceMetadata> PrepareColumnSources()
+        private static IDictionary<string, IColumnSourceMetadata> PrepareColumnSources(IDictionary<string, IColumnSourceMetadata> sources)
         {
-            var sources = new SortedDictionary<string, IColumnSourceMetadata>(StringComparer.OrdinalIgnoreCase);
             AddKnownColumnSource(sources
                     , new SystemTableSource("sys.tables")
                                 .AddColumn("name", DbType.String)
@@ -117,24 +115,17 @@ namespace StoreLake.Sdk.CodeGeneration
             }
 
             string fullName = schemaNameSafe + "." + objectName;
-            if (!column_sources.TryGetValue(fullName.ToUpperInvariant(), out IColumnSourceMetadata column_source))
+            if (!column_sources.TryGetValue(fullName, out IColumnSourceMetadata column_source))
             {
                 DataTable table;
                 if (!registered_tables.TryGetValue(objectName, out DacPacRegistration dacpac))
                 {
-                    if (!registered_tables.TryGetValue(objectName.ToUpperInvariant(), out dacpac))
+                    if (!registered_tables.TryGetValue(objectName, out dacpac))
                     {
                         StoreLakeViewRegistration view_reg;
                         if (!registered_views.TryGetValue(objectName, out dacpac))
                         {
-                            if (!registered_views.TryGetValue(objectName.ToUpperInvariant(), out dacpac))
-                            {
-                                return null; // table/view unknown
-                            }
-                            else
-                            {
-                                view_reg = dacpac.registered_views[objectName.ToUpperInvariant()];
-                            }
+                            return null; // table/view unknown
                         }
                         else
                         {
@@ -158,9 +149,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     column_source = new SourceMetadataTable(table);
                 }
 
-                column_sources.Add(fullName.ToUpperInvariant(), column_source);
-                //throw new NotImplementedException(fullName);
-                //throw new NotSupportedException("Object could not be found:" + "[" + schemaName + "].[" + objectName + "]");
+                column_sources.Add(fullName, column_source);
             }
 
             return column_source;
@@ -198,20 +187,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 return null;
 
             string fullName = schemaNameSafe + "." + objectName;
-            if (!function_sources.TryGetValue(fullName.ToUpperInvariant(), out IColumnSourceMetadata column_source))
+            if (!function_sources.TryGetValue(fullName, out IColumnSourceMetadata column_source))
             {
                 if (!registered_functions.TryGetValue(objectName, out DacPacRegistration dacpac))
                 {
-                    if (!registered_functions.TryGetValue(objectName.ToUpperInvariant(), out dacpac))
-                    {
-                        return null; // function unknown
-                    }
-                    else
-                    {
-                        if (!dacpac.registered_TableValuedFunctions.TryGetValue(objectName, out StoreLakeTableValuedFunctionRegistration function_reg))
-                            throw new NotSupportedException("Function could not be found:" + "[" + schemaNameSafe + "].[" + objectName + "]");
-                        column_source = new SourceMetadataFunction(SchemaMetadata(), function_reg);
-                    }
+                    return null; // function unknown
                 }
                 else
                 {
@@ -220,7 +200,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     column_source = new SourceMetadataFunction(SchemaMetadata(), function_reg);
                 }
 
-                function_sources.Add(fullName.ToUpperInvariant(), column_source);
+                function_sources.Add(fullName, column_source);
             }
 
             return column_source;
@@ -233,20 +213,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 return null;
 
             string fullName = "[" + schemaNameSafe + "].[" + objectName + "]";
-            if (!udt_sources.TryGetValue(fullName.ToUpperInvariant(), out IColumnSourceMetadata column_source))
+            if (!udt_sources.TryGetValue(fullName, out IColumnSourceMetadata column_source))
             {
                 if (!registered_tabletypes.TryGetValue(fullName, out DacPacRegistration dacpac))
                 {
-                    if (!registered_tabletypes.TryGetValue(fullName.ToUpperInvariant(), out dacpac))
-                    {
-                        return null; // function unknown
-                    }
-                    else
-                    {
-                        if (!dacpac.registered_tabletypes.TryGetValue(fullName, out StoreLakeTableTypeRegistration function_reg))
-                            throw new NotSupportedException("Function could not be found:" + "[" + schemaNameSafe + "].[" + objectName + "]");
-                        column_source = new SourceMetadataUDT(function_reg);
-                    }
+                    return null; // function unknown
                 }
                 else
                 {
@@ -255,7 +226,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     column_source = new SourceMetadataUDT(function_reg);
                 }
 
-                udt_sources.Add(fullName.ToUpperInvariant(), column_source);
+                udt_sources.Add(fullName, column_source);
             }
 
             return column_source;
@@ -275,7 +246,7 @@ namespace StoreLake.Sdk.CodeGeneration
             StoreLakeColumnRegistration column = udt_reg.Columns.FirstOrDefault(x => x.ColumnName == columnName);
             if (column != null)
             {
-                var prmType = SchemaExportCode.GetParameterClrType(column.ColumnDbType, "?");
+                var prmType = TypeMap.GetParameterClrType(column.ColumnDbType, "?");
                 if (prmType.IsUserDefinedTableType || prmType.ParameterDbType == DbType.Object)
                 {
                     throw new NotImplementedException();
@@ -316,7 +287,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 var prm = function_reg.Parameters.FirstOrDefault(x => string.Equals(x.ParameterName, parameterName, StringComparison.OrdinalIgnoreCase));
                 if (prm != null)
                 {
-                    var prmType = SchemaExportCode.GetParameterClrType(prm);
+                    var prmType = TypeMap.GetParameterClrType(prm);
                     //SourceMetadataTable.GetColumnDbType
                     //ProcedureGenerator.ResolveToDbDataType()
                     if (prmType.IsUserDefinedTableType || prmType.ParameterDbType == DbType.Object)
@@ -341,14 +312,14 @@ namespace StoreLake.Sdk.CodeGeneration
                 {
                     ProcedureGenerator.LoadFunctionOutputColumns(SchemaMetadata, new FunctionParameters(function_reg), function_reg.FunctionBodyScript, (col) =>
                     {
-                        output_columns.Add(col.OutputColumnName.ToUpperInvariant(), col);
+                        output_columns.Add(col.OutputColumnName, col);
                     });
                 }
                 else
                 {
                     foreach (var column in function_reg.Columns)
                     {
-                        var prmType = SchemaExportCode.GetParameterClrType(column.ColumnDbType, "?");
+                        var prmType = TypeMap.GetParameterClrType(column.ColumnDbType, "?");
                         if (prmType.IsUserDefinedTableType || prmType.ParameterDbType == DbType.Object)
                         {
                             throw new NotImplementedException();
@@ -390,10 +361,10 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 ProcedureGenerator.LoadViewOutputColumns(SchemaMetadata, view_reg.ViewQueryScript, (col) =>
                 {
-                    output_columns.Add(col.OutputColumnName.ToUpperInvariant(), col);
+                    output_columns.Add(col.OutputColumnName, col);
                 });
             }
-            if (output_columns.TryGetValue(columnName.ToUpperInvariant(), out OutputColumnDescriptor coldesc))
+            if (output_columns.TryGetValue(columnName, out OutputColumnDescriptor coldesc))
             {
                 return coldesc.ColumnDbType;
             }
@@ -468,12 +439,12 @@ namespace StoreLake.Sdk.CodeGeneration
         private static DacPacRegistration RegisterDacpac(string outputprefix, RegistrationResult ctx, string inputdir, string filePath, bool isReferencedPackage)
         {
             DacPacRegistration dacpac;
-            if (ctx.procesed_files.TryGetValue(filePath.ToUpperInvariant(), out dacpac))
+            if (ctx.procesed_files.TryGetValue(filePath, out dacpac))
             {
                 return dacpac;
             }
             dacpac = new DacPacRegistration(filePath, isReferencedPackage);
-            ctx.procesed_files.Add(filePath.ToUpperInvariant(), dacpac);
+            ctx.procesed_files.Add(filePath, dacpac);
             Console.WriteLine(outputprefix + filePath);
             using (ZipArchive archive = ZipFile.OpenRead(filePath))
             {
@@ -502,7 +473,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                     && e.Attributes().Any(a => a.Name.LocalName == "Value")
                                     );
                             dacpac.DacPacAssemblyAssemblyName = xReference_Assembly_AssemblyName.Attributes().Single(a => a.Name.LocalName == "Value").Value;
-                            dacpac.UniqueKey = dacpac.DacPacAssemblyAssemblyName.ToUpperInvariant();
+                            dacpac.UniqueKey = dacpac.DacPacAssemblyAssemblyName;
                             dacpac.DacPacAssemblyFileName = xReference_Assembly_FileName.Attributes().Single(a => a.Name.LocalName == "Value").Value.Replace(@"\\", @"\");
 
 
@@ -554,7 +525,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                     string dacpacFileName = xFileName.Attributes().Single(a => a.Name.LocalName == "Value").Value;
                                     //Console.WriteLine(dacpacFileName);
                                     DacPacRegistration external_dacpac;
-                                    if (ctx.registered_dacpacs.TryGetValue(logicalname.ToUpperInvariant(), out external_dacpac))
+                                    if (ctx.registered_dacpacs.TryGetValue(logicalname, out external_dacpac))
                                     {
                                         // already registered
                                     }
@@ -565,7 +536,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                     }
 
 
-                                    dacpac.referenced_dacpacs.Add(logicalname.ToUpperInvariant(), external_dacpac);
+                                    dacpac.referenced_dacpacs.Add(logicalname, external_dacpac);
                                 }
                             }
 

@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
-using System.Linq;
 
 [assembly: DebuggerDisplay(@"\{Bzz = {BaseIdentifier.Value}}", Target = typeof(SchemaObjectName))]
 [assembly: DebuggerDisplay(@"\{Bzz = {StoreLake.Sdk.SqlDom.SqlDomExtensions.WhatIsThis(SchemaObject)}}", Target = typeof(NamedTableReference))]
@@ -56,15 +55,15 @@ namespace StoreLake.Sdk.SqlDom
                 Ctes = ctes;
             }
 
-            private readonly IDictionary<string, QuerySourceOnQuery> loading_ctes = new SortedDictionary<string, QuerySourceOnQuery>();
+            private readonly IDictionary<string, QuerySourceOnQuery> loading_ctes = new SortedDictionary<string, QuerySourceOnQuery>(StringComparer.OrdinalIgnoreCase);
             internal void PushCte(string name, QuerySourceOnQuery cte_source)
             {
-                loading_ctes.Add(name.ToUpperInvariant(), cte_source);
+                loading_ctes.Add(name, cte_source);
             }
 
             internal QuerySourceOnQuery IsRecursiveCTE(string cteName)
             {
-                return loading_ctes.TryGetValue(cteName.ToUpperInvariant(), out QuerySourceOnQuery cte)
+                return loading_ctes.TryGetValue(cteName, out QuerySourceOnQuery cte)
                     ? cte
                     : null;
             }

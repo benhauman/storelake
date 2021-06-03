@@ -36,9 +36,6 @@ namespace StoreLake.Sdk.SqlDom
             BodyFragment.Accept(vstor);
             if (vstor.variableDefinition != null)
             {
-                //source_metadata = new TableVariableMetadata(vstor.variableDefinition);
-                //cache_table_variables.Add(variableName.ToUpperInvariant(), source_metadata);
-                //return source_metadata;
                 throw new NotImplementedException(variableName);
             }
 
@@ -52,7 +49,7 @@ namespace StoreLake.Sdk.SqlDom
         }
         internal IColumnSourceMetadata TryGetTableVariable(string variableName)
         {
-            if (cache_table_variables.TryGetValue(variableName.ToUpperInvariant(), out TableVariableMetadata source_metadata))
+            if (cache_table_variables.TryGetValue(variableName, out TableVariableMetadata source_metadata))
             {
                 return source_metadata;
             }
@@ -61,7 +58,7 @@ namespace StoreLake.Sdk.SqlDom
             if (vstor.variableDefinition != null)
             {
                 source_metadata = new TableVariableMetadata(vstor.variableDefinition);
-                cache_table_variables.Add(variableName.ToUpperInvariant(), source_metadata);
+                cache_table_variables.Add(variableName, source_metadata);
                 return source_metadata;
             }
 
@@ -74,13 +71,13 @@ namespace StoreLake.Sdk.SqlDom
             throw new NotImplementedException(variableName);
         }
 
-        private readonly IDictionary<string, TableVariableMetadata> cache_table_variables = new SortedDictionary<string, TableVariableMetadata>();
+        private readonly IDictionary<string, TableVariableMetadata> cache_table_variables = new SortedDictionary<string, TableVariableMetadata>(StringComparer.OrdinalIgnoreCase);
 
         class TableVariableMetadata : IColumnSourceMetadata
         {
             private readonly TableDefinition variableDefinition;
 
-            private readonly IDictionary<string, DbType> cache_columns = new SortedDictionary<string, DbType>();
+            private readonly IDictionary<string, DbType> cache_columns = new SortedDictionary<string, DbType>(StringComparer.OrdinalIgnoreCase);
 
             public TableVariableMetadata(TableDefinition variableDefinition)
             {
@@ -88,13 +85,13 @@ namespace StoreLake.Sdk.SqlDom
 
                 foreach (ColumnDefinition colDef in variableDefinition.ColumnDefinitions)
                 {
-                    cache_columns.Add(colDef.ColumnIdentifier.Value.ToUpperInvariant(), ProcedureGenerator.ResolveToDbDataType(colDef.DataType));
+                    cache_columns.Add(colDef.ColumnIdentifier.Value, ProcedureGenerator.ResolveToDbDataType(colDef.DataType));
                 }
             }
 
             DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
             {
-                if (cache_columns.TryGetValue(columnName.ToUpperInvariant(), out DbType columnDbType))
+                if (cache_columns.TryGetValue(columnName, out DbType columnDbType))
                 {
                     return columnDbType;
                 }

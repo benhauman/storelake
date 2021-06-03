@@ -21,10 +21,10 @@ namespace StoreLake.TestStore.Server
     }
     public sealed class StoreLakeDbServer
     {
-        private readonly Dictionary<string, DataSet> _dbs = new Dictionary<string, DataSet>();
+        private readonly IDictionary<string, DataSet> _dbs = new SortedDictionary<string, DataSet>(StringComparer.OrdinalIgnoreCase);
         public StoreLakeDbServer(DataSet db)
         {
-            this._dbs.Add(db.DataSetName.ToUpperInvariant(), db);
+            this._dbs.Add(db.DataSetName, db);
         }
 
         internal StoreLakeDbConnection CreateConnection(StoreLakeDbProviderFactory dbClient)
@@ -102,7 +102,7 @@ namespace StoreLake.TestStore.Server
         private DataSet GetDatabaseForConnectionCore(DbConnection connection)
         {
             string databaseName = connection.Database;
-            if (!_dbs.TryGetValue(databaseName.ToUpperInvariant(), out DataSet db))
+            if (!_dbs.TryGetValue(databaseName, out DataSet db))
             //if (!string.Equals(_db.DataSetName, databaseName, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Unknown datatabase [" + databaseName + "]");
@@ -119,7 +119,7 @@ namespace StoreLake.TestStore.Server
                 databaseName = _dbs.Keys.ElementAt(0);
             }
 
-            if (!_dbs.TryGetValue(databaseName.ToUpperInvariant(), out DataSet db))
+            if (!_dbs.TryGetValue(databaseName, out DataSet db))
             //if (!string.Equals(_db.DataSetName, databaseName, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Unknown datatabase [" + databaseName + "]");

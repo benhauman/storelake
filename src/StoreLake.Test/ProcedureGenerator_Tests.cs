@@ -598,7 +598,7 @@ END";
 
                     SqlDbType sqlType = ResolveToSqlType(parameterDbType);
 
-                    parameterType = Sdk.CodeGeneration.SchemaExportCode.GetParameterClrType(sqlType, "bzzz");
+                    parameterType = Sdk.CodeGeneration.TypeMap.GetParameterClrType(sqlType, "bzzz");
                 }
                 string parameterName = prm.VariableName.Dequote();
                 //var parameterDbType = ProcedureGenerator.ResolveToDbDataType(prm.DataType);
@@ -629,7 +629,7 @@ END";
 
                     SqlDbType sqlType = ResolveToSqlType(parameterDbType);
 
-                    parameterType = Sdk.CodeGeneration.SchemaExportCode.GetParameterClrType(sqlType, "bzzz");
+                    parameterType = Sdk.CodeGeneration.TypeMap.GetParameterClrType(sqlType, "bzzz");
                 }
                 //??procedure_metadata.AddParameter(parameterName, parameterType);
             }

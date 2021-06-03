@@ -1,14 +1,11 @@
-﻿using Microsoft.SqlServer.Server;
-using System;
+﻿using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace StoreLake.Sdk.CodeGeneration
 {
@@ -335,7 +332,7 @@ namespace StoreLake.Sdk.CodeGeneration
         private static string TypeNameAsText(Type t)
         {
             string text;
-            if (SchemaExportCode._builtinTypeAlias.TryGetValue(t.FullName, out text))
+            if (TypeMap._builtinTypeAlias.TryGetValue(t.FullName, out text))
             {
                 return text;
             }

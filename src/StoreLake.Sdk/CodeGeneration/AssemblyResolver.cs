@@ -54,12 +54,12 @@ namespace StoreLake.Sdk.CodeGeneration
             return null;
         }
 
-        private readonly IDictionary<string, string> name_location = new SortedDictionary<string, string>();
-        private readonly IDictionary<string, string> location_name = new SortedDictionary<string, string>();
-        private readonly IDictionary<string, Assembly> name_asm = new SortedDictionary<string, Assembly>();
+        private readonly IDictionary<string, string> name_location = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly IDictionary<string, string> location_name = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly IDictionary<string, Assembly> name_asm = new SortedDictionary<string, Assembly>(StringComparer.OrdinalIgnoreCase);
         internal Assembly ResolveAssembyByLocation(string dacpacDllFullFileName)
         {
-            if (location_name.TryGetValue(dacpacDllFullFileName.ToUpperInvariant(), out string cached_name))
+            if (location_name.TryGetValue(dacpacDllFullFileName, out string cached_name))
             {
                 if (name_asm.TryGetValue(cached_name, out Assembly cached_asm))
                 {
@@ -83,7 +83,7 @@ namespace StoreLake.Sdk.CodeGeneration
         internal Assembly ResolveAssembyByName(AssemblyName asmName)
         {
 
-            if (name_asm.TryGetValue(asmName.FullName.ToUpperInvariant(), out Assembly cached_asm))
+            if (name_asm.TryGetValue(asmName.FullName, out Assembly cached_asm))
             {
                 return cached_asm;
             }
@@ -105,18 +105,18 @@ namespace StoreLake.Sdk.CodeGeneration
         }
         private Assembly CacheAssembly(AssemblyName asmName, Assembly asm)
         {
-            if (!name_asm.ContainsKey(asmName.FullName.ToUpperInvariant()))
+            if (!name_asm.ContainsKey(asmName.FullName))
             {
-                name_asm.Add(asmName.FullName.ToUpperInvariant(), asm);
+                name_asm.Add(asmName.FullName, asm);
             }
-            if (!name_location.ContainsKey(asmName.FullName.ToUpperInvariant()))
+            if (!name_location.ContainsKey(asmName.FullName))
             {
-                name_location.Add(asmName.FullName.ToUpperInvariant(), asm.Location);
+                name_location.Add(asmName.FullName, asm.Location);
             }
 
-            if (!location_name.ContainsKey(asm.Location.ToUpperInvariant()))
+            if (!location_name.ContainsKey(asm.Location))
             {
-                location_name.Add(asm.Location.ToUpperInvariant(), asmName.FullName);
+                location_name.Add(asm.Location, asmName.FullName);
             }
 
             return asm;
@@ -124,7 +124,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
         internal void VerifyAssemblyLocation(string asm_location)
         {
-            if (!location_name.ContainsKey(asm_location.ToUpperInvariant()))
+            if (!location_name.ContainsKey(asm_location))
             {
                 throw new StoreLakeSdkException("Location not registered:" + asm_location);
             }
