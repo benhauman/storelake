@@ -14,7 +14,8 @@ namespace StoreLake.Test.ConsoleApp
     {
         public override bool CanExecute(DataSet db, int agentid, int globalid) // HL_ACCESS_EXECUTE: 0x0010
         {
-            return db.HelplineDataProcedures().hlsyssec_canexecuteglobal(db, agentid, globalid).SingleOrDefault();
+            throw new NotImplementedException();
+            //return db.HelplineDataProcedures().hlsyssec_canexecuteglobal(db, agentid, globalid).SingleOrDefault();
             /*
             // INNER JOIN
             // for LEFT OUTER JOIN : https://stackoverflow.com/questions/267488/linq-to-sql-multiple-left-outer-joins

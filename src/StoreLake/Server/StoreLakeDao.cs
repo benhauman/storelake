@@ -59,7 +59,8 @@ namespace StoreLake.TestStore.Server
 
                 if (isOk)
                 {
-                    Func<DataSet, DbCommand, DbDataReader> handlerMethod = handlerRegistry.CompiledReadMethod();
+                    Func<DataSet, DbCommand, DbDataReader> handlerMethod = handlerRegistry.DoCompileReadMethod();
+                    //handlerRegistry.SetCompiledReadMethod(handlerMethod);
                     handler = new HandlerReadDesc(handlerRegistry.RetrieveHandlerMethodName(), handlerMethod);
                     s_map_CommandText_Read_Method.Add(cmd.CommandText, handler);
                 }
@@ -82,7 +83,6 @@ namespace StoreLake.TestStore.Server
 
             return null;
         }
-
 
         internal static Func<DataSet, DbCommand, int> TryWrite(CommandExecutionHandler handlerRegistry, DbCommand cmd)
         {
@@ -107,7 +107,7 @@ namespace StoreLake.TestStore.Server
 
                 if (isOk)
                 {
-                    Func<DataSet, DbCommand, int> handlerMethod = handlerRegistry.CompiledExecMethod();
+                    Func<DataSet, DbCommand, int> handlerMethod = handlerRegistry.DoCompileExecMethod();
                     handler = new HandlerExecDesc(handlerRegistry.RetrieveHandlerMethodName(), handlerMethod);
                     s_map_CommandText_Exec_Method.Add(cmd.CommandText, handler);
                 }
@@ -233,10 +233,20 @@ namespace StoreLake.TestStore.Server
 
     internal abstract class CommandExecutionHandler
     {
+        internal abstract bool IsProcedureHandler(); // CommandType.StoredProcedure
         internal abstract string RetrieveHandlerMethodName();
         internal abstract IComparable RetrieveCommandText();
         internal abstract Func<DataSet, DbCommand, DbDataReader> CompiledReadMethod();
         internal abstract Func<DataSet, DbCommand, int> CompiledExecMethod();
+
+        internal abstract Func<DataSet, DbCommand, DbDataReader> DoCompileReadMethod();
+        internal abstract Func<DataSet, DbCommand, int> DoCompileExecMethod();
+
+        internal abstract void SetCompiledReadMethod(Func<DataSet, DbCommand, DbDataReader> handlerMethod);
+        internal abstract void SetCompiledExecMethod(Func<DataSet, DbCommand, int> handlerMethod);
+
+        internal abstract bool HasCompiledMethodRead();
+        internal abstract bool HasCompiledMethodExec();
     }
 
     [DebuggerDisplay("{DebuggerText}")]
@@ -245,12 +255,17 @@ namespace StoreLake.TestStore.Server
         private readonly Type _instanceType;
         private readonly MethodInfo _mi;
         private readonly IComparable _commandText;
-        
-        Func<DataSet, DbCommand, DbDataReader> _compiledMethod_Read;
-        Func<DataSet, DbCommand, int> _compiledMethod_Exec;
+        private readonly bool _isProcedureHandler;
 
-        public TypedMethodHandler(MethodInfo mi, IComparable commandText)
+        Func<DataSet, DbCommand, DbDataReader> wrapped_compiledMethod_Read;
+        Func<DataSet, DbCommand, int> wrapped_compiledMethod_Exec;
+
+        Func<DataSet, DbCommand, DbDataReader> _cached_compiledMethod_Read;
+        Func<DataSet, DbCommand, int> _cached_compiledMethod_Exec;
+
+        public TypedMethodHandler(MethodInfo mi, bool isProcedureHandler, IComparable commandText)
         {
+            _isProcedureHandler = isProcedureHandler;
             _instanceType = mi.DeclaringType;
             _mi = mi;
             _commandText = commandText;
@@ -261,7 +276,7 @@ namespace StoreLake.TestStore.Server
         {
             get
             {
-                return BuildMethodDeclarationAsText(_mi);
+                return _commandText.ToString() + "   " + BuildMethodDeclarationAsText(_mi);
             }
         }
 
@@ -308,12 +323,18 @@ namespace StoreLake.TestStore.Server
 
         internal override Func<DataSet, DbCommand, DbDataReader> CompiledReadMethod()
         {
-            return HandleRead;
+            if (_cached_compiledMethod_Read == null)
+                throw new NotImplementedException("Handler not compiled.");
+            return _cached_compiledMethod_Read;
         }
 
         internal override Func<DataSet, DbCommand, int> CompiledExecMethod()
         {
-            return HandleExec;
+            if (_cached_compiledMethod_Exec == null)
+                throw new NotImplementedException("Handler not compiled.");
+            return _cached_compiledMethod_Exec;
+
+            //return HandleExec;
         }
 
         internal static string BuildMismatchMethodExpectionText(System.Reflection.MethodInfo a_method, System.Reflection.MethodInfo h_method, string reason)
@@ -407,20 +428,21 @@ namespace StoreLake.TestStore.Server
             {
                 parameter_values.Add(cmd);
 
-                if (_compiledMethod_Exec == null)
+                if (wrapped_compiledMethod_Exec == null)
                 {
-                    _compiledMethod_Exec = CommandExecutionHandlerImpl.CollectCommandHandlerMethod_NonQuery(_mi, _instanceType);
+                    wrapped_compiledMethod_Exec = CommandExecutionHandlerImpl.CollectCommandHandlerMethod_NonQuery(_mi, _instanceType);
                 }
 
                 if (_mi.IsStatic)
                 {
 
 
-                    return _compiledMethod_Exec(db, cmd);
+                    return wrapped_compiledMethod_Exec(db, cmd);
                 }
                 else
                 {
-                    throw new NotImplementedException("public DbDataReader " + _mi.Name + "(DataSet db, DbCommand cmd) of '" + _instanceType.Name + "'");
+                    return wrapped_compiledMethod_Exec(db, cmd);
+                    //throw new NotImplementedException("public DbDataReader " + _mi.Name + "(DataSet db, DbCommand cmd) of '" + _instanceType.Name + "'");
 
                 }
             }
@@ -469,18 +491,18 @@ namespace StoreLake.TestStore.Server
             {
                 parameter_values.Add(cmd);
 
-                if (_compiledMethod_Read == null)
+                if (wrapped_compiledMethod_Read == null)
                 {
-                    _compiledMethod_Read = CommandExecutionHandlerImpl.CollectCommandHandlerMethod_Query(_mi, _instanceType);
+                    wrapped_compiledMethod_Read = CommandExecutionHandlerImpl.CollectCommandHandlerMethod_Query(_mi, _instanceType);
                 }
 
                 if (_mi.IsStatic)
                 {
-                    return _compiledMethod_Read(db, cmd);
+                    return wrapped_compiledMethod_Read(db, cmd);
                 }
                 else
                 {
-                    return _compiledMethod_Read(db, cmd);
+                    return wrapped_compiledMethod_Read(db, cmd);
                     //throw new NotImplementedException("public DbDataReader " + _mi.Name + "(DataSet db, DbCommand cmd) of '" + _instanceType.Name + "'");
 
                 }
@@ -721,25 +743,25 @@ namespace StoreLake.TestStore.Server
             {
                 //ICollection<>
                 // public ICollection<Agent> Agents
-/*                Type elementType;
+                /*                Type elementType;
 
-                if (pi.PropertyType.IsGenericType && pi.PropertyType.GetGenericArguments().Length == 1)
-                {
-                    var gt = pi.PropertyType.GetGenericTypeDefinition(); // typeof(ICollection<>)
-                    elementType = pi.PropertyType.GetGenericArguments()[0];
-                }
-                else
-                {
-                    throw new NotImplementedException(returnType.FullName + " # " + pi.Name + " # " + pi.PropertyType.FullName);
-                }
-                if (elementType.IsPrimitive)
-                {
-                }
-                else
-                {
+                                if (pi.PropertyType.IsGenericType && pi.PropertyType.GetGenericArguments().Length == 1)
+                                {
+                                    var gt = pi.PropertyType.GetGenericTypeDefinition(); // typeof(ICollection<>)
+                                    elementType = pi.PropertyType.GetGenericArguments()[0];
+                                }
+                                else
+                                {
+                                    throw new NotImplementedException(returnType.FullName + " # " + pi.Name + " # " + pi.PropertyType.FullName);
+                                }
+                                if (elementType.IsPrimitive)
+                                {
+                                }
+                                else
+                                {
 
-                }
-*/
+                                }
+                */
                 var prop_values = pi.GetValue(returnValues); // property_values can be null / empty table
                 DataTable[] property_tables = CreateDbDataReaderFromSingleSetReturnValues(pi.PropertyType, prop_values);
                 if (property_tables.Length == 0)
@@ -817,6 +839,40 @@ namespace StoreLake.TestStore.Server
             }
         }
 
+        internal override bool IsProcedureHandler()
+        {
+            return _isProcedureHandler;
+        }
+
+        internal override void SetCompiledReadMethod(Func<DataSet, DbCommand, DbDataReader> handlerMethod)
+        {
+            _cached_compiledMethod_Read = handlerMethod;
+        }
+
+        internal override void SetCompiledExecMethod(Func<DataSet, DbCommand, int> handlerMethod)
+        {
+            _cached_compiledMethod_Exec = handlerMethod;
+        }
+
+        internal override bool HasCompiledMethodRead()
+        {
+            return _cached_compiledMethod_Read != null;
+        }
+
+        internal override bool HasCompiledMethodExec()
+        {
+            return _cached_compiledMethod_Exec != null;
+        }
+
+        internal override Func<DataSet, DbCommand, DbDataReader> DoCompileReadMethod()
+        {
+            return HandleRead;
+        }
+
+        internal override Func<DataSet, DbCommand, int> DoCompileExecMethod()
+        {
+            return HandleExec;
+        }
 
         private static IDictionary<string, string> _builtinTypeAlias = new SortedDictionary<string, string>() {
             { typeof(bool).FullName, "bool" },
@@ -838,8 +894,10 @@ namespace StoreLake.TestStore.Server
         internal readonly Type HandlerMethodOwner;
         private readonly string _handlerMethodName;
         internal readonly System.Linq.Expressions.MethodCallExpression MethodCallExpr;
-        public CommandExecutionHandlerImpl(Type commandTextOwner, System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
+        private readonly bool _isProcedureHandler;
+        public CommandExecutionHandlerImpl(Type commandTextOwner, bool isProcedureHandler, System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
         {
+            _isProcedureHandler = isProcedureHandler;
             System.Linq.Expressions.MethodCallExpression methodCallExpr = (System.Linq.Expressions.MethodCallExpression)handlerExpr.Body;
             string handlerMethodName = methodCallExpr.Method.Name;
 
@@ -861,7 +919,10 @@ namespace StoreLake.TestStore.Server
 
         internal override Func<DataSet, DbCommand, DbDataReader> CompiledReadMethod()
         {
-            return CollectCommandHandlerMethod_Query(MethodCallExpr.Method, HandlerMethodOwner);
+            if (_cache_handlerMethodRead == null)
+                throw new NotImplementedException("Handler not compiled.");
+            return _cache_handlerMethodRead;
+            //return CollectCommandHandlerMethod_Query(MethodCallExpr.Method, HandlerMethodOwner);
         }
 
         internal static Func<DataSet, DbCommand, DbDataReader> CollectCommandHandlerMethod_Query(MethodInfo mi, Type methodOwner)
@@ -910,6 +971,44 @@ namespace StoreLake.TestStore.Server
         }
 
         internal override Func<DataSet, DbCommand, int> CompiledExecMethod()
+        {
+            throw new NotImplementedException();
+        }
+
+        internal override bool IsProcedureHandler()
+        {
+            throw new NotImplementedException();
+        }
+
+        private Func<DataSet, DbCommand, DbDataReader> _cache_handlerMethodRead;
+        internal override void SetCompiledReadMethod(Func<DataSet, DbCommand, DbDataReader> handlerMethod)
+        {
+            _cache_handlerMethodRead = handlerMethod;
+        }
+
+
+        private Func<DataSet, DbCommand, int> _cache_handlerMethodExec;
+        internal override void SetCompiledExecMethod(Func<DataSet, DbCommand, int> handlerMethod)
+        {
+            _cache_handlerMethodExec = handlerMethod;
+        }
+
+        internal override bool HasCompiledMethodRead()
+        {
+            throw new NotImplementedException();
+        }
+
+        internal override bool HasCompiledMethodExec()
+        {
+            throw new NotImplementedException();
+        }
+
+        internal override Func<DataSet, DbCommand, DbDataReader> DoCompileReadMethod()
+        {
+            return CommandExecutionHandlerImpl.CollectCommandHandlerMethod_Query(MethodCallExpr.Method, HandlerMethodOwner);
+        }
+
+        internal override Func<DataSet, DbCommand, int> DoCompileExecMethod()
         {
             throw new NotImplementedException();
         }

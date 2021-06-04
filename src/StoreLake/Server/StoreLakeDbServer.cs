@@ -49,44 +49,67 @@ namespace StoreLake.TestStore.Server
             };
         }
 
-        internal StoreLakeDbServer RegisterHandlerReadWithCommandText(System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
+        //internal StoreLakeDbServer RegisterHandlerReadWithCommandText(System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
+        //{
+        //    CommandExecutionHandler handler = new CommandExecutionHandlerImpl(null, handlerExpr);
+        //    handlers.Add(handler);
+        //    return this;
+        //}
+
+        //internal StoreLakeDbServer RegisterHandlerReadForCommandText(Type commandTextOwner, System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
+        //{
+        //    CommandExecutionHandler handler = new CommandExecutionHandlerImpl(commandTextOwner, handlerExpr);
+        //    handlers.Add(handler);
+        //    return this;
+        //}
+
+        private readonly List<CommandExecutionHandler> handlers_text = new List<CommandExecutionHandler>();
+        private readonly IDictionary<string, CommandExecutionHandler> handlers_key = new SortedDictionary<string, CommandExecutionHandler>(StringComparer.OrdinalIgnoreCase);
+        private void RegisterCommandExecutionHandler(CommandExecutionHandler handler)
         {
-            CommandExecutionHandler handler = new CommandExecutionHandlerImpl(null, handlerExpr);
-            handlers.Add(handler);
-            return this;
+            if (handler.IsProcedureHandler())
+            {
+                string commandText = (string)handler.RetrieveCommandText();
+                handlers_key.Add(commandText, handler);
+            }
+            else
+            {
+                this.handlers_text.Add(handler);
+            }
         }
-
-        internal StoreLakeDbServer RegisterHandlerReadForCommandText(Type commandTextOwner, System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
-        {
-            CommandExecutionHandler handler = new CommandExecutionHandlerImpl(commandTextOwner, handlerExpr);
-            handlers.Add(handler);
-            return this;
-        }
-
-        private readonly List<CommandExecutionHandler> handlers = new List<CommandExecutionHandler>();
-
 
 
         private int HandleExecuteNonQuery(DbCommand cmd)
         {
             DataSet db = GetDatabaseForConnectionCore(cmd.Connection);
             Func<DataSet, DbCommand, int> handlerMethod = null;
-            foreach (var handler in handlers)
+            if (handlers_key.TryGetValue(cmd.CommandText, out CommandExecutionHandler handler_key))
             {
-                Func<DataSet, DbCommand, int> x_handlerMethod = StoreLakeDao.TryWrite(handler, cmd);
-                if (x_handlerMethod != null)
+                handlerMethod = StoreLakeDao.TryWrite(handler_key, cmd);
+                if (handlerMethod == null)
                 {
-                    if (handlerMethod != null)
-                    {
-                        // another handler for the same command text or the command text comparer is not unique enough 
-                        throw new InvalidOperationException("Multiple handlers found for Command (" + cmd.Parameters.Count + "):" + cmd.CommandText);
-                    }
-
-                    handlerMethod = x_handlerMethod;
+                    throw new NotImplementedException(); // handler is registered for this commandtext but the method cannot be compiled?!?
                 }
-                else
+            }
+            else
+            {
+                foreach (var handler_text in handlers_text)
                 {
-                    // this handler does not handles this command text
+                    Func<DataSet, DbCommand, int> x_handlerMethod = StoreLakeDao.TryWrite(handler_text, cmd);
+                    if (x_handlerMethod != null)
+                    {
+                        if (handlerMethod != null)
+                        {
+                            // another handler for the same command text or the command text comparer is not unique enough 
+                            throw new InvalidOperationException("Multiple handlers found for Command (" + cmd.Parameters.Count + "):" + cmd.CommandText);
+                        }
+
+                        handlerMethod = x_handlerMethod;
+                    }
+                    else
+                    {
+                        // this handler does not handles this command text
+                    }
                 }
             }
 
@@ -124,26 +147,68 @@ namespace StoreLake.TestStore.Server
             {
                 throw new InvalidOperationException("Unknown datatabase [" + databaseName + "]");
             }
-            Func<DataSet, DbCommand, DbDataReader> handlerMethod = null;
-            foreach (var handler in handlers)
-            {
-                Func<DataSet, DbCommand, DbDataReader> x_handlerMethod = StoreLakeDao.TryRead(handler, cmd);
-                if (x_handlerMethod != null)
-                {
-                    if (handlerMethod != null)
-                    {
-                        // another handler for the same command text or the command text comparer is not unique enough 
-                        throw new InvalidOperationException("Multiple handlers found for Command (" + cmd.Parameters.Count + "):" + cmd.CommandText);
-                    }
 
-                    handlerMethod = x_handlerMethod;
+            string cmd_CommandText = cmd.CommandText;
+            if (cmd.CommandType == CommandType.StoredProcedure)
+            {
+                //int indexOf_SchemaSeparator = cmd_CommandText.IndexOf('.');
+                //if (indexOf_SchemaSeparator < 0)
+                //{
+                //    // no schema at all
+                //}
+                //string schemaName = cmd_CommandText.Substring(0, indexOf_SchemaSeparator);
+                //string procedureName = cmd_CommandText.Substring(indexOf_SchemaSeparator + 1);
+                //if (schemaName[0] != '[' || procedureName[0] != '[')
+                //{
+                //    if (schemaName[0] != '[')
+                //        schemaName = '[' + schemaName + ']';
+                //    if (procedureName[0] != '[')
+                //        procedureName = '[' + procedureName + ']';
+                //
+                //    cmd_CommandText = schemaName + "." + procedureName;
+                //}
+            }
+
+            Func<DataSet, DbCommand, DbDataReader> handlerMethod = null;
+            if (handlers_key.TryGetValue(cmd.CommandText, out CommandExecutionHandler handler_key))
+            {
+                if (!handler_key.HasCompiledMethodRead())
+                {
+                    handlerMethod = handler_key.DoCompileReadMethod();
+                    handler_key.SetCompiledReadMethod(handlerMethod);
                 }
                 else
                 {
-                    // this handler does not handles this command text
+                    handlerMethod = handler_key.CompiledReadMethod();
+                }
+
+                //handlerMethod = StoreLakeDao.TryRead(handler_key, cmd_CommandText);
+                if (handlerMethod == null)
+                {
+                    throw new NotImplementedException(); // handler is registered for this commandtext but the method cannot be compiled?!?
                 }
             }
+            else
+            {
+                foreach (var handler_text in handlers_text)
+                {
+                    Func<DataSet, DbCommand, DbDataReader> x_handlerMethod = StoreLakeDao.TryRead(handler_text, cmd);
+                    if (x_handlerMethod != null)
+                    {
+                        if (handlerMethod != null)
+                        {
+                            // another handler for the same command text or the command text comparer is not unique enough 
+                            throw new InvalidOperationException("Multiple handlers found for Command (" + cmd.Parameters.Count + "):" + cmd.CommandText);
+                        }
 
+                        handlerMethod = x_handlerMethod;
+                    }
+                    else
+                    {
+                        // this handler does not handles this command text
+                    }
+                }
+            }
             if (handlerMethod != null)
             {
                 DbDataReader res = handlerMethod(db, cmd);
@@ -193,13 +258,15 @@ namespace StoreLake.TestStore.Server
                     else
                     {
                         IComparable handlerCommandText = StoreLakeDao.TryGetCommandText(methodOwner, mi.Name);
+                        bool isProcedureHandler = false;
                         if (handlerCommandText == null)
                         {
-                            handlerCommandText = schemaName + "." + mi.Name; // procedure name
+                            isProcedureHandler = true;
+                            handlerCommandText = '[' + schemaName + "].[" + mi.Name + ']'; // procedure name
                         }
-                        var handler = new TypedMethodHandler(mi, handlerCommandText);
+                        var handler = new TypedMethodHandler(mi, isProcedureHandler, handlerCommandText);
                         handler.ValidateReadMethod(mi);
-                        this.handlers.Add(handler);
+                        RegisterCommandExecutionHandler(handler);
                     }
                 }
             }
@@ -229,7 +296,7 @@ namespace StoreLake.TestStore.Server
                     TypedMethodHandler handler = TryUseHandlerMethod(accessorType, handlerType, mi);
                     if (handler != null)
                     {
-                        this.handlers.Add(handler);
+                        RegisterCommandExecutionHandler(handler);
                     }
                 }
             }
@@ -265,12 +332,8 @@ namespace StoreLake.TestStore.Server
                     throw new InvalidOperationException(TypedMethodHandler.BuildMismatchMethodExpectionText(mi, accessor_method, "CommandText field '" + mi.Name + "CommandText' could not be found."));
                 }
             }
-            //if (prm0.ParameterType != typeof(DataSet))
-            //    return null;
 
-
-
-            var handler = new TypedMethodHandler(mi, handlerCommandText);
+            var handler = new TypedMethodHandler(mi, false, handlerCommandText);
             handler.ValidateReadMethod(accessor_method);
             return handler;
         }

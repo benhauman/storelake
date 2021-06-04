@@ -5,6 +5,7 @@ using System.Data.Common;
 
 namespace Helpline.Data.TestStore
 {
+    /*
     static class HelplineDataExtensions_X
     {
         public static TDataSet RegisterDataSetModel<TDataSet>(TDataSet db) where TDataSet : DataSet
@@ -18,7 +19,7 @@ namespace Helpline.Data.TestStore
             return GetTable<HelplineDataProcedureDataTable>(db, HelplineDataProcedureDataTable.HelplineDataProcedureTableName).handler;
         }
 
-        public static DataSet SetHandlerForHelplineDataProcedures<T>(this DataSet db) where T : HelplineDataProcedures, new() 
+        public static DataSet SetHandlerForHelplineDataProcedures<T>(this DataSet db) where T : HelplineDataProcedures, new()
         {
             GetTable<HelplineDataProcedureDataTable>(db, HelplineDataProcedureDataTable.HelplineDataProcedureTableName).handler = new T();
             return db;
@@ -41,8 +42,31 @@ namespace Helpline.Data.TestStore
         }
 
     }
+    
     public class HelplineDataProcedures
     {
+        private readonly IDictionary<string, Func<DataSet, DbCommand, DbDataReader>> read_methods;
+
+        public HelplineDataProcedures()
+        {
+            read_methods = InitializeReadHandlers();
+        }
+
+        private IDictionary<string, Func<DataSet, DbCommand, DbDataReader>> InitializeReadHandlers()
+        {
+            IDictionary<string, Func<DataSet, DbCommand, DbDataReader>> reg = new SortedDictionary<string, Func<DataSet, DbCommand, DbDataReader>>(StringComparer.OrdinalIgnoreCase);
+
+            //RegisterReader("[dbo].[xxxx]", SomeComplicatedMultipleResultSetProc);
+            reg.Add("[dbo].[xxxx]", SomeComplicatedMultipleResultSetProc);
+            return reg;
+        }
+
+        //private static void RegisterReader(string key, Func<HelplineDataProcedures, Func<DataSet, DbCommand, DbDataReader>> fp)
+        //{ 
+        //    fp()
+        //}
+
+        //public class HelplineDataProceduresCommandExecuteHandler
         public virtual IEnumerable<bool> hlsyssec_canexecuteglobal(DataSet db, int agentid, int globalid)
         {
             throw new NotImplementedException();
@@ -58,4 +82,5 @@ namespace Helpline.Data.TestStore
             return false;
         }
     }
+    */
 }

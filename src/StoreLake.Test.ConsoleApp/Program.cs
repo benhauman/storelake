@@ -43,14 +43,19 @@ namespace StoreLake.Test.ConsoleApp
             var db = StoreLakeDatabaseServer.CreateDatabase("MyDB")
                 .Use(DatabaseGetUtcDateExtension.Register)
                 .Use(HelplineDataExtensions.RegisterDataSetModel) // using 'Helpline.Data.TestStore.HelplineDataExtensions'
-                .Use(HelplineDataExtensions_X.RegisterDataSetModel)
+                //.Use(HelplineDataExtensions_X.RegisterDataSetModel)
                 .Use(SLMDatabaseDataExtensions.RegisterDataSetModel) // using Helpline.SLM.Database.Data.TestStore.SLMDatabaseDataExtensions
                 .Use(DatabaseGetUtcDateExtension.Register)
                 .Use(TweetExtension.Register)
                 .Build()
-                .SetHandlerForHelplineDataProcedures<DemoHandler4>()
+                //.SetHandlerForHelplineDataProcedures<DemoHandler4_CommandHandler>()
                 //.SetCommandExecuteHandlerInstanceForHelplineDataProceduresFacade<DemoHandler4>() // SetFacade
+                //.SetCommandExecuteHandlerInstanceForHelplineDataProceduresHandler<DemoHandler4_CommandHandler>()
                 ;
+            HelplineDataExtensions.SetCommandExecuteHandlerInstanceForHelplineDataProceduresHandler<DataSet, DemoHandler4_CommandHandler>(db);
+            HelplineDataExtensions.SetCommandExecuteHandlerInstanceForHelplineDataProceduresFacade<DataSet, DemoHandler4_FacadeHandler>(db);
+
+
 
             Console.WriteLine("timenow:" + db.GetUtcDate());
 
@@ -83,19 +88,18 @@ namespace StoreLake.Test.ConsoleApp
 
             //dbServer.RegisterAddedCommandHandlerContracts(db);
             //dbServer.RegisterAddedCommandHandlerContract<DemoHandler4>(db);
-            dbServer.RegisterAddedCommandHandlerContract(db, db.HelplineDataProcedures());
+            //dbServer.RegisterAddedCommandHandlerContract(db, db.HelplineDataProcedures());
+            dbServer.RegisterAddedCommandHandlerContract(db, db.HelplineDataProceduresHandler());
 
-            AdoClient.SomeComplicatedMultipleResultSetProc(dbServer.CreateDbProviderFactoryInstance());
-            //dbServer.RegisterHandlerReadWithCommandText((d, c) => DemoHandler1.GetAgentNameById(d, c)); // any / text-static
-            //dbServer.RegisterHandlerReadForCommandText(typeof(TestDML), (d, c) => DemoHandler1.GetAgentInfoById(d, c)); // static-text / static
-            dbServer.RegisterCommandHandlerFacade<DemoHandler2Repository>(typeof(Helpline.Repository.Data.HelplineData));
-            dbServer.RegisterCommandHandlerFacade<DemoHandler2_OnDatabaseAccessor>(typeof(Helpline.Data.HelplineData));
+            ////AdoClient.SomeComplicatedMultipleResultSetProc(dbServer.CreateDbProviderFactoryInstance());
+            ////dbServer.RegisterHandlerReadWithCommandText((d, c) => DemoHandler1.GetAgentNameById(d, c)); // any / text-static
+            ////dbServer.RegisterHandlerReadForCommandText(typeof(TestDML), (d, c) => DemoHandler1.GetAgentInfoById(d, c)); // static-text / static
+            //dbServer.RegisterCommandHandlerFacade<DemoHandler2Repository>(typeof(Helpline.Repository.Data.HelplineData));
+            //dbServer.RegisterCommandHandlerFacade<DemoHandler2_OnDatabaseAccessor>(typeof(Helpline.Data.HelplineData));
             dbServer.RegisterCommandHandlerMethods(typeof(TestDML), typeof(DemoHandler1)); // dml.methods(+text) => handler(+text)
-            //System.Data.SqlClient.SqlClientFactory
+            ////System.Data.SqlClient.SqlClientFactory
 
             StoreLakeDabaseAccessorGate accessorGate = new StoreLakeDabaseAccessorGate();
-            //accessorGate.RegisterRead(typeof(Helpline.Data.HelplineData), (_) => new DemoHandler3().CanExecute(db, 0, 0));
-            //accessorGate.RegisterAccessHandlerFacade<DemoHandler3>(typeof(Helpline.Data.HelplineData));
 
             DbProviderFactory dbClient = dbServer.CreateDbProviderFactoryInstance();
 

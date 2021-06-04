@@ -105,8 +105,9 @@ namespace StoreLake.Test.ConsoleApp
         {
             var db = row_table.DataSet;
 
-            if (!db.HelplineDataProcedures().IsTweetValid(db, Id))
-                throw new ConstraintException("CK_Tweet_Id");
+            //if (!db.HelplineDataProcedures().IsTweetValid(db, Id))
+            //    throw new ConstraintException("CK_Tweet_Id");
+            throw new NotImplementedException();
         }
     }
 }

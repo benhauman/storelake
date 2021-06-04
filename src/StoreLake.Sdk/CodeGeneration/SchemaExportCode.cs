@@ -1787,12 +1787,12 @@ namespace StoreLake.Sdk.CodeGeneration
                                         new_CodePrimitiveExpression(tableName)
                                     });
 
-                                    var ifTableExists = new CodeBinaryOperatorExpression(invoke_IndexOf, CodeBinaryOperatorType.LessThan, new_CodePrimitiveExpression(0));
+                                    var ifTableNotExists = new CodeBinaryOperatorExpression(invoke_IndexOf, CodeBinaryOperatorType.LessThan, new_CodePrimitiveExpression(0));
 
-                                    CodeConditionStatement if_not_Exists_Add = new CodeConditionStatement(ifTableExists, stmt_expr);
+                                    CodeConditionStatement if_table_not_Exists_Add = new CodeConditionStatement(ifTableNotExists, stmt_expr);
 
                                     //new_statements.Add(stmt_expr);
-                                    new_statements.Add(if_not_Exists_Add);
+                                    new_statements.Add(if_table_not_Exists_Add);
                                 }
                             }
                         }
