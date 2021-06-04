@@ -44,7 +44,7 @@ namespace StoreLake.Sdk.SqlDom
             get
             {
                 if (columnDescriptor != null)
-                    return columnDescriptor.OutputColumnName;
+                    return columnDescriptor.OutputOrSourceColumnName;
                 return null;
             }
         }
@@ -53,7 +53,10 @@ namespace StoreLake.Sdk.SqlDom
         {
             get
             {
-                return columnDescriptor == null || !columnDescriptor.ColumnDbType.HasValue;
+                return columnDescriptor == null 
+                        || !columnDescriptor.ColumnDbType.HasValue
+                        || string.IsNullOrEmpty(columnDescriptor.OutputOrSourceColumnName)
+                        ;
             }
         }
 

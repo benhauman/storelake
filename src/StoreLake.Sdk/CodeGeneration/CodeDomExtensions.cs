@@ -77,5 +77,18 @@ namespace StoreLake.Sdk.CodeGeneration
 
             return count;
         }
+
+        internal static CodeParameterDeclarationExpression GetMethodParameterByName(CodeMemberMethod method_decl, string name)
+        {
+            for (int ix = 0; ix < method_decl.Parameters.Count; ix++)
+            {
+                CodeParameterDeclarationExpression prm = method_decl.Parameters[ix];
+                if (prm.Name == name)
+                {
+                    return prm;
+                }
+            }
+            throw new NotSupportedException("Parrameter '" + name + "' could not be found on method:" + method_decl.Name);
+        }
     }
 }

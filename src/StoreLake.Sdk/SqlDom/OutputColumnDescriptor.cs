@@ -33,5 +33,22 @@ namespace StoreLake.Sdk.SqlDom
 
             return this;
         }
+
+        internal string OutputOrSourceColumnName
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(this.OutputColumnName))
+                {
+                    return this.OutputColumnName.Trim();
+                }
+                if (!string.IsNullOrEmpty(this.SourceColumnName))
+                {
+                    return this.SourceColumnName.Trim();
+                }
+
+                return null;
+            }
+        }
     }
 }

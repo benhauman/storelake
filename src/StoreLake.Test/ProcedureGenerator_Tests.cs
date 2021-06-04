@@ -590,6 +590,7 @@ END";
                 Assert.IsTrue(column.ColumnDbType.HasValue, "(" + ix + ") column [" + column.OutputColumnName + "]");
 
                 Sdk.CodeGeneration.TypeMap.ResolveColumnClrType(column.ColumnDbType.Value);
+                Assert.IsFalse(string.IsNullOrEmpty(column.OutputColumnName), "(" + ix + ") column [" + column.OutputColumnName + "]");
             }
 
         }
