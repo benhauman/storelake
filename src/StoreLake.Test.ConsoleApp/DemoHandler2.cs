@@ -1,4 +1,4 @@
-﻿using System.Data;
+﻿/*using System.Data;
 using Helpline.Data.TestStore;
 using System.Linq;
 using Helpline.Data;
@@ -67,7 +67,7 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
         return true;
     }
 }
-*/
+* /
             //return false;
         }
 
@@ -127,4 +127,4 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
             return new AttributesOfCmdbFlows[] { flow1, flow2 };
         }
     }
-}
+}*/

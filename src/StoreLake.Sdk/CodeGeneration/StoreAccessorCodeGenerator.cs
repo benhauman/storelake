@@ -267,7 +267,14 @@ namespace StoreLake.Sdk.CodeGeneration
         private static CodeTypeDeclaration BuildDatabaseAccessHandlerFacadeType(KnownDibixTypes dbx, Type databaseAccessorType)
         {
             string typeName = databaseAccessorType.Name + "DatabaseAccessHandlerFacade"; // CommandHandlerFacade
-            CodeTypeDeclaration typedecl = new CodeTypeDeclaration() { Name = typeName, IsClass = true, Attributes = MemberAttributes.Public };
+            CodeTypeDeclaration typedecl = new CodeTypeDeclaration()
+            {
+                Name = typeName,
+                IsClass = true,
+                //Attributes = MemberAttributes.Final | MemberAttributes.Assembly,// dont use it for now! MemberAttributes.Public
+            };
+            typedecl.TypeAttributes = (typedecl.TypeAttributes & ~TypeAttributes.VisibilityMask) | TypeAttributes.NestedAssembly;
+
 
             //typedecl.Comments.Add(new CodeCommentStatement("Generated (at:" + DateTime.UtcNow + ")", true));
             typedecl.CustomAttributes.Add(new CodeAttributeDeclaration(new CodeTypeReference(typeof(System.ComponentModel.DescriptionAttribute)), new CodeAttributeArgument(new_CodePrimitiveExpression("Generated (at:" + DateTime.UtcNow + ")"))));
@@ -286,7 +293,11 @@ namespace StoreLake.Sdk.CodeGeneration
                     throw new StoreLakeSdkException("Access method parameter signature not correct. Parameter:" + acessMethodParameters[0].Name + ", Method:" + accessMethod.Name + ", Type:" + databaseAccessorType.FullName);
                 }
 
-                CodeMemberMethod code_method = new CodeMemberMethod() { Name = accessMethod.Name, Attributes = MemberAttributes.Public };
+                CodeMemberMethod code_method = new CodeMemberMethod()
+                {
+                    Name = accessMethod.Name,
+                    Attributes = MemberAttributes.Public
+                };
                 typedecl.Members.Add(code_method);
                 code_method.ReturnType = new CodeTypeReference(accessMethod.ReturnType);
                 code_method.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(new CodeTypeReference(typeof(NotImplementedException)))));
