@@ -295,7 +295,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                     // Set1AddRow()
                     string methodName = "Set" + (ix + 1) + "AddRow";
-                    BuildFacadeOutputTableAddRow(procedureOutputResultSet, output_type_decl, methodName);
+                    BuildFacadeOutputTableAddRow(procedureOutputResultSet, output_type_decl, methodName, table_at);
                 }
             }
             else
@@ -318,7 +318,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 prop_Table.GetStatements.Add(new CodeMethodReturnStatement(field_table_ref));
                 output_type_decl.Members.Add(prop_Table);
 
-                BuildFacadeOutputTableAddRow(procedureOutputResultSet, output_type_decl, "AddRow");
+                BuildFacadeOutputTableAddRow(procedureOutputResultSet, output_type_decl, "AddRow", field_table_ref);
             }
 
 
@@ -358,7 +358,7 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
-        private static void BuildFacadeOutputTableAddRow(ProcedureOutputSet procedureOutputResultSet, CodeTypeDeclaration output_type_decl, string methodName)
+        private static void BuildFacadeOutputTableAddRow(ProcedureOutputSet procedureOutputResultSet, CodeTypeDeclaration output_type_decl, string methodName, CodeExpression tableRef)
         {
             CodeMemberMethod method_AddRow_decl = new CodeMemberMethod()
             {
@@ -367,8 +367,16 @@ namespace StoreLake.Sdk.CodeGeneration
                 ReturnType = new CodeTypeReference(output_type_decl.Name)
             };
 
-            method_AddRow_decl.Statements.Add(new CodeMethodReturnStatement(new CodeThisReferenceExpression()));
             output_type_decl.Members.Add(method_AddRow_decl);
+
+            // AddRowWithValues:
+            // object[] columnValuesArray = new object[] {....}
+            // DataRow row = this.NewRow();
+            // row.ItemArray = columnValuesArray;
+            // table.Rows.Add(row);
+
+            var columnValuesArray_Init = new CodeArrayCreateExpression(typeof(object), procedureOutputResultSet.ColumnCount);
+
 
             IDictionary<string, ProcedureOutputColumn> outputColumnNames = new SortedDictionary<string, ProcedureOutputColumn>(StringComparer.OrdinalIgnoreCase);
             for (int ix = 0; ix < procedureOutputResultSet.ColumnCount; ix++)
@@ -393,7 +401,32 @@ namespace StoreLake.Sdk.CodeGeneration
                 CodeParameterDeclarationExpression param_decl = new CodeParameterDeclarationExpression(parameterTypeRef, outputColumnName);
 
                 method_AddRow_decl.Parameters.Add(param_decl);
+
+                columnValuesArray_Init.Initializers.Add(new CodeVariableReferenceExpression(param_decl.Name));
             }
+
+            //// object[] columnValuesArray = new object[] {....}
+            //var columnValuesArray_decl = new CodeVariableDeclarationStatement(typeof(object[]), "columnValuesArray");
+            //columnValuesArray_decl.InitExpression = columnValuesArray_Init;
+            //method_AddRow_decl.Statements.Add(columnValuesArray_decl);
+
+             // DataRow row = this.NewRow();
+             var row_decl = new CodeVariableDeclarationStatement(typeof(DataRow), "row");
+            row_decl.InitExpression = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(tableRef, "NewRow"));
+            method_AddRow_decl.Statements.Add(row_decl);
+
+            // row.ItemArray = columnValuesArray;
+            var row_ItemArray = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression(row_decl.Name), "ItemArray");
+            var assign_row_ItemArray = new CodeAssignStatement(row_ItemArray, columnValuesArray_Init);// new CodeVariableReferenceExpression(columnValuesArray_decl.Name));
+            method_AddRow_decl.Statements.Add(assign_row_ItemArray);
+
+            // table.Rows.Add(row);
+            var table_Rows = new CodePropertyReferenceExpression(tableRef, "Rows");
+            var invoke_Rows_Add = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(table_Rows, "Add"), new CodeVariableReferenceExpression(row_decl.Name));
+            method_AddRow_decl.Statements.Add(invoke_Rows_Add);
+
+
+            method_AddRow_decl.Statements.Add(new CodeMethodReturnStatement(new CodeThisReferenceExpression()));
         }
 
         private static bool BuildInvokeFacadeMethod(string extMethodAccess_HandlerFacade
