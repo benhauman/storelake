@@ -280,7 +280,9 @@ namespace StoreLake.Sdk.CodeGeneration
                     ProcedureOutputSet procedureOutputResultSet = procedureOutputResultSets[ix];
                     CodeAssignStatement assign_table_ref = new CodeAssignStatement(var_table_ref, new CodeObjectCreateExpression(typeof(DataTable), new CodePrimitiveExpression("Output" + (1 + ix))));
                     ctor.Statements.Add(assign_table_ref);
-                    // setup table....
+
+                    // setup table columns....
+                    SetupOutputSetTableColumns(ctor.Statements, procedureOutputResultSet, var_table_ref, (ix + 1));
 
                     // put into the array
                     CodeArrayIndexerExpression table_at = new CodeArrayIndexerExpression(field_tables_ref, new CodePrimitiveExpression(ix));
@@ -308,6 +310,10 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 method_reader.Statements.Add(new CodeMethodReturnStatement(new CodeObjectCreateExpression(typeof(DataTableReader), field_table_ref)));
 
+                // setup table columns....
+                SetupOutputSetTableColumns(ctor.Statements, procedureOutputResultSet, field_table_ref, 1);
+
+
                 CodeMemberProperty prop_Table = new CodeMemberProperty() { Name = "OutputTable", Type = new CodeTypeReference(typeof(DataTable)), Attributes = MemberAttributes.Public | MemberAttributes.Final };
                 prop_Table.GetStatements.Add(new CodeMethodReturnStatement(field_table_ref));
                 output_type_decl.Members.Add(prop_Table);
@@ -317,6 +323,39 @@ namespace StoreLake.Sdk.CodeGeneration
 
 
             return output_type_decl;
+        }
+
+        private static void SetupOutputSetTableColumns(CodeStatementCollection statements, ProcedureOutputSet outputResultSet, CodeExpression tableRef, int outputSetIndex)
+        {
+            var table_Columns = new CodePropertyReferenceExpression(tableRef, "Columns");
+
+            IDictionary<string, ProcedureOutputColumn> outputColumnNames = new SortedDictionary<string, ProcedureOutputColumn>(StringComparer.OrdinalIgnoreCase);
+            for (int ix = 0; ix < outputResultSet.ColumnCount; ix++)
+            {
+                ProcedureOutputColumn outputColumn = outputResultSet.ColumnAt(ix);
+                string outputColumnName = ProcedureOutputSet.PrepareOutputColumnName(outputResultSet, outputColumn, outputColumnNames.Keys, ix);
+                outputColumnNames.Add(outputColumnName, outputColumn);
+                Type columnClrType = TypeMap.ResolveColumnClrType(outputColumn.ColumnDbType.Value);
+
+                // System.Data.DataColumn t1_id = new System.Data.DataColumn("id", typeof(int));
+                // t1_id.AllowDBNull = false;
+                // t1_id.ReadOnly = true;
+                // table.Columns.Add(t1_id);
+
+                var column_decl = new CodeVariableDeclarationStatement(typeof(DataColumn), "t" + outputSetIndex + "_" + outputColumnName);
+                column_decl.InitExpression = new CodeObjectCreateExpression(typeof(DataColumn), new CodePrimitiveExpression(outputColumnName), new CodeTypeOfExpression(columnClrType));
+                statements.Add(column_decl);
+                var column_ref = new CodeVariableReferenceExpression(column_decl.Name);
+
+                statements.Add(new CodeAssignStatement(new CodePropertyReferenceExpression(column_ref, "AllowDBNull"), new CodePrimitiveExpression(true)));
+                statements.Add(new CodeAssignStatement(new CodePropertyReferenceExpression(column_ref, "ReadOnly"), new CodePrimitiveExpression(true)));
+
+                var invoke_Columns_Add = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(table_Columns, "Add"));
+
+                invoke_Columns_Add.Parameters.Add(column_ref);
+
+                statements.Add(invoke_Columns_Add);
+            }
         }
 
         private static void BuildFacadeOutputTableAddRow(ProcedureOutputSet procedureOutputResultSet, CodeTypeDeclaration output_type_decl, string methodName)
@@ -340,7 +379,18 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 Type columnClrType = TypeMap.ResolveColumnClrType(outputColumn.ColumnDbType.Value);
 
-                CodeParameterDeclarationExpression param_decl = new CodeParameterDeclarationExpression(columnClrType, outputColumnName);
+                CodeTypeReference parameterTypeRef;
+                if (columnClrType.IsValueType)
+                {
+                    parameterTypeRef = new CodeTypeReference(typeof(Nullable<>));
+                    parameterTypeRef.TypeArguments.Add(columnClrType);
+                }
+                else
+                {
+                    parameterTypeRef = new CodeTypeReference(columnClrType);
+                }
+
+                CodeParameterDeclarationExpression param_decl = new CodeParameterDeclarationExpression(parameterTypeRef, outputColumnName);
 
                 method_AddRow_decl.Parameters.Add(param_decl);
             }
