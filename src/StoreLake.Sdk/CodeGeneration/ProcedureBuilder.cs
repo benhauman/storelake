@@ -335,37 +335,11 @@ namespace StoreLake.Sdk.CodeGeneration
             for (int ix = 0; ix < procedureOutputResultSet.ColumnCount; ix++)
             {
                 ProcedureOutputColumn outputColumn = procedureOutputResultSet.ColumnAt(ix);
-
-                string outputColumnName;
-                if (string.IsNullOrEmpty(outputColumn.OutputColumnName))
-                {
-                    //throw new NotImplementedException("Missing column name.");
-                    if (procedureOutputResultSet.ColumnCount == 1)
-                    {
-                        outputColumnName = "value";
-                    }
-                    else
-                    {
-                        outputColumnName = "value" + ix;
-                    }
-                }
-                else
-                {
-                    if (outputColumn.OutputColumnName[0] == '@')
-                        outputColumnName = outputColumn.OutputColumnName.Substring(1);
-                    else
-                        outputColumnName = outputColumn.OutputColumnName;
-
-                    // make the column name unique
-                    int cnt = outputColumnNames.Keys.Count(x => string.Equals(x, outputColumnName, StringComparison.OrdinalIgnoreCase));
-                    if (cnt > 0)
-                        outputColumnName = outputColumnName + (cnt + 1);
-                }
+                string outputColumnName = ProcedureOutputSet.PrepareOutputColumnName(procedureOutputResultSet, outputColumn, outputColumnNames.Keys, ix);
+                outputColumnNames.Add(outputColumnName, outputColumn);
 
                 Type columnClrType = TypeMap.ResolveColumnClrType(outputColumn.ColumnDbType.Value);
 
-
-                outputColumnNames.Add(outputColumnName, outputColumn);
                 CodeParameterDeclarationExpression param_decl = new CodeParameterDeclarationExpression(columnClrType, outputColumnName);
 
                 method_AddRow_decl.Parameters.Add(param_decl);

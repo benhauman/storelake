@@ -1,11 +1,15 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using StoreLake.Sdk.CodeGeneration;
 using StoreLake.Sdk.SqlDom;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace StoreLake.Test
 {
@@ -302,7 +306,13 @@ END
         [TestMethod]
         public void hlsp_approvalfulfilled()
         {
-            TestProcedureOutput(1, 0, 4);
+            TestProcedureOutput(new
+            {
+                processname = default(string),
+                processinstanceid = default(Guid),
+                taskid = default(Guid),
+                approved = default(int),
+            });
         }
 
 
@@ -510,7 +520,122 @@ END";
                 Assert.IsNotNull(column.ColumnDbType, "(" + ix + ") ");
             }
         }
-        private void TestProcedureOutput(int outputSetCount = 1, int outputSetIndex = 0, int columnCount = 99)
+        /*
+        internal static T ReadParameterValues<T>(T parameter_values)
+        {
+
+            var members = parameter_values.GetType().GetProperties();
+            //Assert.AreEqual(members.Length, command.Parameters.Count, "Parameters.Count");
+            foreach (PropertyInfo member in members)
+            {
+                DbParameter prm = command.Parameters.TryFindParameter(member.Name);
+                if (prm == null)
+                {
+                    Assert.IsNotNull(prm, "Parameter not found:" + member.Name);
+                }
+                else
+                {
+                    object prm_Value;
+                    if (prm.Value == DBNull.Value)
+                    {
+                        prm_Value = null;
+                    }
+                    else
+                    {
+                        prm_Value = prm.Value;
+                    }
+
+                    if (member.CanWrite)
+                    {
+                        member.SetValue(parameter_values, prm_Value);
+                    }
+                    else
+                    {
+                        var fi = member.GetBackingField();
+                        if (fi != null)
+                        {
+                            fi.SetValue(parameter_values, prm_Value);
+                        }
+                        else
+                        {
+                            // System.ArgumentException: Property set method not found.
+                            throw new ArgumentException("Property set method not found. Property:" + member.Name);
+                        }
+                    }
+                }
+            }
+            return parameter_values;
+        }
+        */
+        // T parameter_values
+
+        private void TestProcedureOutput<T>(int outputSetCount, int outputSetIndex, T expected_columns)
+        {
+            TestProcedureOutputCore(outputSetCount, outputSetIndex, expected_columns);
+        }
+
+        private void TestProcedureOutput<T>(T expected_columns)
+        {
+            TestProcedureOutputCore(1, 0, expected_columns);
+        }
+        private void TestProcedureOutputCore<T>(int outputSetCount, int outputSetIndex, T expected_columns)
+        {
+            //Type columnsType = typeof(T)
+            PropertyInfo[] properties = expected_columns.GetType().GetProperties();
+            int expected_columns_count = expected_columns.GetType().GetProperties().Count();
+
+            Dictionary<string, bool> collected_columns = new Dictionary<string, bool>();
+            TestProcedureOutputCore(outputSetCount, outputSetIndex, expected_columns_count, (outputColumnName, column) =>
+            {
+                PropertyInfo pi = TryGetPropertyInfoByName(properties, outputColumnName);
+                Assert.IsNotNull(pi, "'" + outputColumnName + "' " + " (" + column.ColumnDbType.Value + ")" + " not expected.");
+
+                collected_columns.Add(outputColumnName, true);
+
+                Type expectedColumnType;
+                Type Nullable_UnderlyingType = IsNullable(pi.PropertyType);
+                if (Nullable_UnderlyingType != null)
+                {
+                    expectedColumnType = Nullable_UnderlyingType;
+                }
+                else
+                {
+                    expectedColumnType = pi.PropertyType;
+                }
+
+                Type columnClrType = TypeMap.ResolveColumnClrType(column.ColumnDbType.Value);
+
+                Assert.AreEqual(expectedColumnType.FullName, columnClrType.FullName, outputColumnName);
+            });
+
+            if (properties.Length > collected_columns.Count)
+            {
+                // not all columns has been collected/found
+                for (int ix = 0; ix < properties.Length; ix++)
+                {
+                    var pi = properties[ix];
+                    Assert.IsTrue(collected_columns.ContainsKey(pi.Name), "'" + pi.Name + "' not found.");
+                }
+            }
+        }
+
+        private static Type IsNullable(Type tValue)
+        {
+            return Nullable.GetUnderlyingType(tValue);// != null;
+        }
+
+        private PropertyInfo TryGetPropertyInfoByName(PropertyInfo[] properties, string propertyName)
+        {
+            for (int ix = 0; ix < properties.Length; ix++)
+            {
+                var pi = properties[ix];
+                if (string.Equals(pi.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                    return pi;
+            }
+            return null;
+        }
+
+        private void TestProcedureOutputCore(int outputSetCount, int outputSetIndex, int columnCount, Action<string, ProcedureOutputColumn> column_assert)
         {
             var ddl = ResourceHelper.GetSql("SQL.Procedures." + TestContext.TestName);
 
@@ -582,15 +707,22 @@ END";
             var outputSet = res[outputSetIndex];
             // use: SELECT * FROM sys.dm_exec_describe_first_result_set('dbo.hlomobjectinfo_query', NULL, 0)
             Assert.AreEqual(columnCount, outputSet.ColumnCount, "ColumnCount");
+
+            IDictionary<string, ProcedureOutputColumn> outputColumnNames = new SortedDictionary<string, ProcedureOutputColumn>(StringComparer.OrdinalIgnoreCase);
             for (int ix = 0; ix < outputSet.ColumnCount; ix++)
             {
-                var column = outputSet.ColumnAt(ix);
-                Assert.IsNotNull(column, "ix:" + ix);
+                ProcedureOutputColumn outputColumn = outputSet.ColumnAt(ix);
+                Assert.IsNotNull(outputColumn, "ix:" + ix);
 
-                Assert.IsTrue(column.ColumnDbType.HasValue, "(" + ix + ") column [" + column.OutputColumnName + "]");
+                string outputColumnName = ProcedureOutputSet.PrepareOutputColumnName(outputSet, outputColumn, outputColumnNames.Keys, ix);
+                outputColumnNames.Add(outputColumnName, outputColumn);
 
-                Sdk.CodeGeneration.TypeMap.ResolveColumnClrType(column.ColumnDbType.Value);
-                Assert.IsFalse(string.IsNullOrEmpty(column.OutputColumnName), "(" + ix + ") column [" + column.OutputColumnName + "]");
+                Assert.IsTrue(outputColumn.ColumnDbType.HasValue, "(" + ix + ") column [" + outputColumnName + "]");
+
+                Sdk.CodeGeneration.TypeMap.ResolveColumnClrType(outputColumn.ColumnDbType.Value);
+                Assert.IsFalse(string.IsNullOrEmpty(outputColumnName), "(" + ix + ") column [" + outputColumnName + "]");
+
+                column_assert(outputColumnName, outputColumn);
             }
 
         }
@@ -620,30 +752,66 @@ END";
         public void hlsys_query_historydetails()
         {
             // [finalresult] is a CTE and not a NamedTableReference
-            TestProcedureOutput(1, 0, 12);
+            TestProcedureOutput(new
+            {
+                timestamp = default(DateTime),
+                agentid = default(int),
+                type = default(short),
+                historyitem = default(string),
+                associationdefid = default(int),
+                otherobjectid = default(int),
+                otherobjectdefid = default(int),
+                isobjecta = default(bool),
+                agentname = default(string),
+                associationdefname = default(string),
+                associationdisplayname = default(string),
+                otherobjectname = default(string),
+            });
         }
 
         [TestMethod]
         public void hlcmgetcontact()
         {
-            TestProcedureOutput(1, 0, 13);
+            TestProcedureOutput(new
+            {
+                personid = default(int),
+                persondefid = default(int),
+                surname = default(string),
+                name = default(string),
+                language = default(int),
+                title = default(string),
+                street = default(string),
+                city = default(string),
+                region = default(string),
+                zipcode = default(string),
+                country = default(string),
+                email = default(string),
+                phonenumber = default(string),
+            });
         }
 
         [TestMethod]
         public void hlom_query_possibleactions()
         {
-            TestProcedureOutput(1, 0, 1);
+            TestProcedureOutput(new { actionid = default(short) });
         }
         [TestMethod]
         public void hlsyssession_getdisconnectedsessions()
         {
-            TestProcedureOutput(1, 0, 1);
+            TestProcedureOutput(new { SessionId = default(Guid) });
         }
 
         [TestMethod]
         public void hlsys_query_agentcounters_sp()
         {
-            TestProcedureOutput(1, 0, 5);
+            TestProcedureOutput(new
+            {
+                agentdesk = default(int),
+                waitingqueue = default(int),
+                infodesk = default(int),
+                watchlist = default(int),
+                approvals = default(int),
+            });
         }
 
 
@@ -651,159 +819,394 @@ END";
         public void hlsys_query_templates()
         {
             // cte recursion 'grouprecursion'
-            TestProcedureOutput(1, 0, 7);
+            TestProcedureOutput(new
+            {
+                Id = default(int),
+                Path = default(string),
+                Name = default(string),
+                AgentId = default(int),
+                Sortorder = default(int),
+                ObjectDefinitionName = default(string),
+                ParentId = default(int),
+            });
         }
 
         [TestMethod]
         public void hlsys_store_objectqueue()
         {
             // UDT variable
-            TestProcedureOutput(1, 0, 9);
+            TestProcedureOutput(new
+            {
+                objectid = default(int),
+                objectdefid = default(int),
+                agentid = default(int),
+                agentdesk = default(bool),
+                waitingqueue = default(bool),
+                infodesk = default(bool),
+                agentdeskchanged = default(bool),
+                waitingqueuechanged = default(bool),
+                infodeskchanged = default(bool),
+            });
         }
 
         [TestMethod]
         public void hlsysadhocinstanceaction_targetqueue_receive()
         {
             // conversation handle
-            TestProcedureOutput(1, 0, 2);
+            TestProcedureOutput(new
+            {
+                targetconversationhandle = default(Guid),
+                requestid = default(int),
+            });
         }
 
         [TestMethod]
         public void hlsyscal_calculate_offset()
         {
             // @expected_datetime_utc
-            TestProcedureOutput(7, 0, 8);
+            TestProcedureOutput(7, 0, new
+            {
+                TEST = default(string),
+                TEST_DFF = default(int),
+                timezone = default(string),
+                result_datetime_utc = default(DateTime),
+                result_datetime_loc = default(DateTime),
+                expected_datetime_utc = default(DateTime),
+                expected_datetime_loc = default(DateTime),
+                expected_datetime_dst = default(int),
+            });
         }
 
         [TestMethod]
         public void hlsysdetail_query_case()
         {
-            TestProcedureOutput(3, 0, 2);
-            TestProcedureOutput(3, 1, 15);
-            TestProcedureOutput(3, 2, 4);
+            TestProcedureOutput(3, 0, new
+            {
+                hasconfiguration = default(int),
+                objectdefinitiondisplayname = default(string),
+            });
+            TestProcedureOutput(3, 1, new
+            {
+                type = default(int),
+                kind = default(int),
+                displayname = default(string),
+                datatype = default(int),
+                valuebit = default(bool),
+                valueint = default(int),
+                valuedecimal = default(decimal),
+                valuedatetime = default(DateTime),
+                valuenvarchar = default(string),
+                associatedobjectdefid = default(int),
+                associatedobjectid = default(int),
+                hasdisplayvalue = default(int),
+                displayvalue = default(string),
+                displayregion = default(byte),
+                sortorder = default(byte),
+            });
+            TestProcedureOutput(3, 2, new
+            {
+                blobid = default(int),
+                name = default(string),
+                blobsize = default(int),
+                blobtype = default(string),
+            });
         }
 
         [TestMethod]
         public void hlsyscontract_increment_numberofcalls()
         {
-            TestProcedureOutput(1, 0, 1);
+            TestProcedureOutput(new { value = default(bool) });
         }
 
         [TestMethod]
         public void hlsyscfgchange_targetqueue_receive()
         {
-            TestProcedureOutput(1, 0, 1);
+            TestProcedureOutput(new { value = default(string) });
         }
 
         [TestMethod]
         public void hlsysdetail_query_su()
         {
-            TestProcedureOutput(2, 0, 17);
-            TestProcedureOutput(2, 1, 6);
+            TestProcedureOutput(2, 0, new
+            {
+                suid = default(int),
+                suindex = default(Int64), // ??????? DENSE_RANK
+                type = default(int),
+                kind = default(int),
+                displayname = default(string),
+                datatype = default(int),
+                valuebit = default(bool),
+                valueint = default(int),
+                valuedecimal = default(decimal),
+                valuedatetime = default(DateTime),
+                valuenvarchar = default(string),
+                associatedobjectdefid = default(int),
+                associatedobjectid = default(int),
+                hasdisplayvalue = default(int),
+                displayvalue = default(string),
+                displayregion = default(byte),
+                sortorder = default(byte),
+            });
+            TestProcedureOutput(2, 1, new
+            {
+                suid = default(int),
+                suindex = default(int),
+                blobid = default(int),
+                name = default(string),
+                blobsize = default(int),
+                blobtype = default(string),
+            });
         }
 
         [TestMethod]
         public void hlsyslic_getpendingbooklicenserequest()
         {
             // StringComparer.OrdinalIgnoreCase for sources 'PortalCount <> portalCount'
-            TestProcedureOutput(1, 0, 9);
+            TestProcedureOutput(new
+            {
+                SessionId = default(Guid),
+                LicenseAction = default(int),
+                HlProduct = default(int),
+                PerSeatToken = default(string),
+                UserId = default(int),
+                UserDefId = default(int),
+                LicenseKey = default(string),
+                CanUsePerSeatLicense = default(int),
+                CountPortalUser = default(int),
+            });
         }
 
         [TestMethod]
         public void hlsysportal_query_casetable_data_user()
         {
             // ParenthesisExpression
-            TestProcedureOutput(1, 0, 17);
+            TestProcedureOutput(new
+            {
+                caseid = default(int),
+                casedefid = default(int),
+                internalstate = default(int),
+                caseimageid = default(int),
+                field_position = default(byte),
+                field_attrpathid = default(int),
+                field_display_kind = default(byte),
+                field_display_type = default(byte),
+                field_value_type = default(byte),
+                value_nvarchar = default(string),
+                value_datetime = default(DateTime),
+                value_decimal = default(decimal),
+                value_int = default(int),
+                value_bit = default(bool),
+                field_has_displayvalue = default(bool),
+                displayvalue = default(string),
+                listitemimageid = default(int),
+            });
         }
 
         [TestMethod]
         public void hlsyssec_qyery_agentdynamicsystemaccessacl() // hlsyssec_qyery_agentsystemitemacl
         {
             // SqlMultiStatementTableValuedFunction : hlsyssec_query_agentsystemacl
-            TestProcedureOutput(1, 0, 1);
+            TestProcedureOutput(new { accessmask = default(short) });
         }
 
         [TestMethod]
         public void hlsyssession_query_countportaluser()
         {
-            TestProcedureOutput(1, 0, 1);
+            TestProcedureOutput(new { value = default(int) });
         }
 
         [TestMethod]
         public void hlaiwebrequestsolution_run()
         {
-            TestProcedureOutput(1, 0, 5);
+            TestProcedureOutput(new
+            {
+                requestid = default(int),
+                isconfident = default(int),
+                position = default(byte),
+                subject = default(string),
+                excerpt = default(string),
+            });
         }
 
         [TestMethod]
         public void hlbigettablemetadata()
         {
-            TestProcedureOutput(1, 0, 6);
+            TestProcedureOutput(new
+            {
+                TableName = default(string),
+                ColumnName = default(string),
+                TypeName = default(string),
+                MaxLength = default(short),
+                Precision = default(byte),
+                Hashvalue = default(byte),
+            });
         }
         [TestMethod]
         public void hlbigettomattribute()
         {
             // ScalarSubQuery
-            TestProcedureOutput(1, 0, 15);
+            TestProcedureOutput(new
+            {
+                id = default(int),
+                objectdefinition = default(string),
+                attributepath = default(string),
+                description = default(string),
+                ExternalDescription = default(string),
+                tablename = default(string),
+                ColumnName = default(string),
+                ExternalColumnName = default(string),
+                DataType = default(string),
+                HashValue = default(byte),
+                CreatedOn = default(DateTime),
+                ModifiedOn = default(DateTime),
+                DeletedOn = default(DateTime),
+                Deleted = default(bool),
+                Status = default(string),
+            });
         }
 
         [TestMethod]
         public void hlbigettomtable()
         {
             // SUBSTRING
-            TestProcedureOutput(1, 0, 9);
+            TestProcedureOutput(new
+            {
+                tablename = default(string),
+                Columns = default(string),
+                Query = default(string),
+                HashValue = default(byte[]),
+                CreatedOn = default(DateTime),
+                ModifiedOn = default(DateTime),
+                DeletedOn = default(DateTime),
+                Deleted = default(bool),
+                Status = default(string),
+            });
         }
         // 
         [TestMethod]
         public void hlsysdxi_generate_objecthistory()
         {
             // XML
-            TestProcedureOutput(1, 0, 6);
+            TestProcedureOutput(new
+            {
+                objecttype = default(int),
+                objectid = default(int),
+                objectdefid = default(int),
+                historyid = default(int),
+                historyitem = default(XElement),
+                type = default(byte),
+            });
         }
         [TestMethod]
         public void hlsyssvccat_query_catalogflat()
         {
             // POWER
-            TestProcedureOutput(2, 0, 2);
-            TestProcedureOutput(2, 1, 9);
+            TestProcedureOutput(2, 0, new
+            {
+                id = default(Guid),
+                displayname = default(string),
+            });
+            TestProcedureOutput(2, 1, new
+            {
+                type = default(int),
+                id = default(Guid),
+                displayname = default(string),
+                description = default(string),
+                image = default(byte[]),
+                processdefinitionid = default(int),
+                price = default(decimal),
+                currency = default(string),
+                restrictions = default(int),
+            });
         }
 
         [TestMethod]
         public void hlsyssvccat_query_catalogtree()
         {
             //  ScalarSubQuery
-            TestProcedureOutput(2, 0, 4);
-            TestProcedureOutput(2, 1, 10);
+            TestProcedureOutput(2, 0, new
+            {
+                id = default(Guid),
+                parentid = default(Guid),
+                displayname = default(string),
+                productcount = default(int),
+            });
+            TestProcedureOutput(2, 1, new
+            {
+                id = default(Guid),
+                kind = default(int),
+                displayname = default(string),
+                description = default(string),
+                thumbnail = default(byte[]),
+                processdefinitionid = default(int),
+                isbundle = default(int),
+                price = default(decimal),
+                currency = default(string),
+                restrictions = default(int),
+            });
         }
 
         [TestMethod]
         public void hlsur_rpt_overview_fivestar()
         {
             // AVG
-            TestProcedureOutput(1, 0, 7);
+            TestProcedureOutput(new
+            {
+                name = default(string),
+                avg = default(decimal),
+                one = default(int),
+                two = default(int),
+                three = default(int),
+                four = default(int),
+                five = default(int),
+            });
         }
         [TestMethod]
         public void hlsur_surveycontent_insert()
         {
-            TestProcedureOutput(1, 0, 3);
+            TestProcedureOutput(new
+            {
+                value0 = default(string),
+                value1 = default(string),
+                value2 = default(int),
+            });
         }
 
         [TestMethod]
         public void hlsysum_query_adminorgunits()
         {
-            TestProcedureOutput(1, 0, 8);
+            TestProcedureOutput(new
+            {
+                orgunitid = default(int),
+                orgunitdefid = default(int),
+                name = default(string),
+                parentorgunitid = default(int),
+                parentorgunitdefid = default(int),
+                haschildren = default(bool),
+                hasadmins = default(bool),
+                found = default(bool),
+            });
         }
 
         [TestMethod]
         public void hlseglobalsearch_query_filters()
         {
-            TestProcedureOutput(1, 0, 7);
+            TestProcedureOutput(new
+            {
+                name = default(string),
+                displayname = default(string),
+                kind = default(int),
+                name2 = default(string),
+                displayname2 = default(string),
+                imageurl = default(string),
+                count = default(int),
+            });
         }
 
         [TestMethod]
         public void hlsyssession_connectaddon()
         {
-            TestProcedureOutput(1, 0, 2);
+            TestProcedureOutput(new { Result = default(int), DaysToFinalSaasExpiration = default(int) });
         }
         // hlseglobalsearch_query_groups
         // 

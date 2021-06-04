@@ -49,5 +49,37 @@ namespace StoreLake.Sdk.SqlDom
                 }
             }
         }
+
+        public static string PrepareOutputColumnName(ProcedureOutputSet procedureOutputResultSet, ProcedureOutputColumn outputColumn, IEnumerable<string> collectedOutputColumnNames, int ix)
+        {
+            string outputColumnName;
+            if (string.IsNullOrEmpty(outputColumn.OutputColumnName))
+            {
+                //throw new NotImplementedException("Missing column name.");
+                if (procedureOutputResultSet.ColumnCount == 1)
+                {
+                    outputColumnName = "value";
+                }
+                else
+                {
+                    outputColumnName = "value" + ix;
+                }
+            }
+            else
+            {
+                if (outputColumn.OutputColumnName[0] == '@')
+                    outputColumnName = outputColumn.OutputColumnName.Substring(1);
+                else
+                    outputColumnName = outputColumn.OutputColumnName;
+
+                // make the column name unique
+                int cnt = collectedOutputColumnNames.Count(x => string.Equals(x, outputColumnName, StringComparison.OrdinalIgnoreCase));
+                if (cnt > 0)
+                    outputColumnName = outputColumnName + (cnt + 1);
+            }
+
+            return outputColumnName;
+        }
+
     }
 }

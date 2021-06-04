@@ -39,7 +39,7 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        public string OutputColumnName
+        internal  string OutputColumnName// see 'PrepareOutputColumnName'
         {
             get
             {
