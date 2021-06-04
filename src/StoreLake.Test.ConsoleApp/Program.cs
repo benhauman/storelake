@@ -49,6 +49,7 @@ namespace StoreLake.Test.ConsoleApp
                 .Use(TweetExtension.Register)
                 .Build()
                 .SetHandlerForHelplineDataProcedures<DemoHandler4>()
+                //.SetCommandExecuteHandlerInstanceForHelplineDataProceduresFacade<DemoHandler4>() // SetFacade
                 ;
 
             Console.WriteLine("timenow:" + db.GetUtcDate());
@@ -88,7 +89,7 @@ namespace StoreLake.Test.ConsoleApp
             //dbServer.RegisterHandlerReadWithCommandText((d, c) => DemoHandler1.GetAgentNameById(d, c)); // any / text-static
             //dbServer.RegisterHandlerReadForCommandText(typeof(TestDML), (d, c) => DemoHandler1.GetAgentInfoById(d, c)); // static-text / static
             dbServer.RegisterCommandHandlerFacade<DemoHandler2Repository>(typeof(Helpline.Repository.Data.HelplineData));
-            dbServer.RegisterCommandHandlerFacade<DemoHandler2>(typeof(Helpline.Data.HelplineData));
+            dbServer.RegisterCommandHandlerFacade<DemoHandler2_OnDatabaseAccessor>(typeof(Helpline.Data.HelplineData));
             dbServer.RegisterCommandHandlerMethods(typeof(TestDML), typeof(DemoHandler1)); // dml.methods(+text) => handler(+text)
             //System.Data.SqlClient.SqlClientFactory
 

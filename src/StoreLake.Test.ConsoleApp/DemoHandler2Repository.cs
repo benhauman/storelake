@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace StoreLake.Test.ConsoleApp
 {
-    class DemoHandler2Repository : Helpline.Repository.Data.HelplineDataCommandHandlerFacade
+    class DemoHandler2Repository : Helpline.Repository.Data.HelplineDataDatabaseAccessHandlerFacade
     {
         public override UserInfoResult GetUserInfo(DataSet db, int agentid)
         {

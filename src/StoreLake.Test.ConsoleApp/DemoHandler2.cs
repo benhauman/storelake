@@ -10,9 +10,7 @@ using Helpline.SubProcess.DomainModel;
 
 namespace StoreLake.Test.ConsoleApp
 {
-
-    //[System.ComponentModel.Description("")]
-    internal sealed class DemoHandler2 : Helpline.Data.HelplineDataCommandHandlerFacade // uses 'HelplineDataCommandExecuteHandler'
+    internal sealed class DemoHandler2_OnDatabaseAccessor : HelplineDataDatabaseAccessHandlerFacade // uses 'HelplineDataCommandExecuteHandler'
     {
         public override bool CanExecute(DataSet db, int agentid, int globalid) // HL_ACCESS_EXECUTE: 0x0010
         {
@@ -76,6 +74,8 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
         {
             // do nothing
         }
+
+        
         public override int AddToWatchList(DataSet db, int agentid, IEnumerable<IntThreeSetRow> ids)
         {
             foreach (var id in ids) // <a:seq,b:def,c:objectid>
@@ -107,7 +107,7 @@ foreach(var ag in db.hlsysagenttogroup().Where(ag => ag.agentid == agentid))
         //    return 1;
         //}
 
-        public override IEnumerable<AttributesOfCmdbFlows> GetAttributesOfCmdbFlows(DataSet db)
+        private IEnumerable<AttributesOfCmdbFlows> GetAttributesOfCmdbFlowsX(DataSet db)
         {
             var flow2 = new AttributesOfCmdbFlows
             {
