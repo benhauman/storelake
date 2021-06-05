@@ -1,4 +1,5 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
+using System.Data;
 
 namespace StoreLake.Sdk.SqlDom
 {
@@ -6,22 +7,26 @@ namespace StoreLake.Sdk.SqlDom
     {
         public string OutputColumnName { get; private set; }
         internal readonly string SourceColumnName;
-        public readonly System.Data.DbType? ColumnDbType; // null: not resolved
-        public OutputColumnDescriptor(System.Data.DbType columnDbType)
+        public readonly ColumnTypeMetadata ColumnType; // null: not resolved
+        public OutputColumnDescriptor(ColumnTypeMetadata columnType)
         {
-            this.ColumnDbType = columnDbType;
+            this.ColumnType = columnType;
         }
-        public OutputColumnDescriptor(string sourceColumnName, System.Data.DbType columnDbType)
+        public OutputColumnDescriptor(DbType columnDbType, bool allowNull)
+            : this(new ColumnTypeMetadata(columnDbType, allowNull))
+        {
+        }
+        public OutputColumnDescriptor(string sourceColumnName, ColumnTypeMetadata columnType)
         {
             this.OutputColumnName = sourceColumnName;
             this.SourceColumnName = sourceColumnName;
-            this.ColumnDbType = columnDbType;
+            this.ColumnType = columnType;
         }
         public OutputColumnDescriptor(string sourceColumnName)
         {
             this.OutputColumnName = sourceColumnName;
             this.SourceColumnName = sourceColumnName;
-            this.ColumnDbType = null;
+            this.ColumnType = null;
         }
 
         internal OutputColumnDescriptor SetOutputColumnName(IdentifierOrValueExpression columnName)

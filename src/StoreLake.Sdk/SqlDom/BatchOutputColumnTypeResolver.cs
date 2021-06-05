@@ -7,7 +7,7 @@ namespace StoreLake.Sdk.SqlDom
 {
     public interface IBatchParameterMetadata
     {
-        System.Data.DbType? TryGetParameterType(string parameterName);
+        ColumnTypeMetadata TryGetParameterType(string parameterName);
     }
     public sealed class BatchOutputColumnTypeResolver
     {
@@ -21,13 +21,12 @@ namespace StoreLake.Sdk.SqlDom
             parameters = parametersMetadata;
         }
 
-        internal bool TryGetScalarVariableType(string variableName, out DbType variableDbType)
+        internal ColumnTypeMetadata TryGetScalarVariableType(string variableName)
         {
-            DbType? parameterDbType = parameters.TryGetParameterType(variableName);
-            if (parameterDbType.HasValue)
+            var pt = parameters.TryGetParameterType(variableName);
+            if (pt != null)
             {
-                variableDbType = parameterDbType.Value;
-                return true;
+                return new ColumnTypeMetadata(pt.ColumnDbType, pt.AllowNull);
             }
 
             // scan for variable declaration
@@ -41,8 +40,8 @@ namespace StoreLake.Sdk.SqlDom
 
             if (vstor.VariableDataType != null)
             {
-                variableDbType = ProcedureGenerator.ResolveToDbDataType(vstor.VariableDataType);
-                return true;
+                var variableDbType = ProcedureGenerator.ResolveToDbDataType(vstor.VariableDataType);
+                return new ColumnTypeMetadata(variableDbType, true);
             }
             //BodyFragment.Accept(new DumpFragmentVisitor(true));
             throw new NotImplementedException(variableName);
@@ -77,7 +76,7 @@ namespace StoreLake.Sdk.SqlDom
         {
             private readonly TableDefinition variableDefinition;
 
-            private readonly IDictionary<string, DbType> cache_columns = new SortedDictionary<string, DbType>(StringComparer.OrdinalIgnoreCase);
+            private readonly IDictionary<string, ColumnTypeMetadata> cache_columns = new SortedDictionary<string, ColumnTypeMetadata>(StringComparer.OrdinalIgnoreCase);
 
             public TableVariableMetadata(TableDefinition variableDefinition)
             {
@@ -85,13 +84,13 @@ namespace StoreLake.Sdk.SqlDom
 
                 foreach (ColumnDefinition colDef in variableDefinition.ColumnDefinitions)
                 {
-                    cache_columns.Add(colDef.ColumnIdentifier.Value, ProcedureGenerator.ResolveToDbDataType(colDef.DataType));
+                    cache_columns.Add(colDef.ColumnIdentifier.Value, new ColumnTypeMetadata(ProcedureGenerator.ResolveToDbDataType(colDef.DataType), true));
                 }
             }
 
-            DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
+            ColumnTypeMetadata IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
             {
-                if (cache_columns.TryGetValue(columnName, out DbType columnDbType))
+                if (cache_columns.TryGetValue(columnName, out ColumnTypeMetadata columnDbType))
                 {
                     return columnDbType;
                 }

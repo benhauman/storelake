@@ -124,24 +124,24 @@ namespace StoreLake.Test
         internal readonly IDictionary<string, TestColumn> columns = new SortedDictionary<string, TestColumn>(StringComparer.OrdinalIgnoreCase);
 
 
-        DbType? IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
+        ColumnTypeMetadata IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
         {
             if (string.IsNullOrEmpty(columnName))
                 throw new ArgumentNullException(nameof(columnName));
             return OnTryGetColumnTypeByName(columnName);
         }
-        protected virtual DbType? OnTryGetColumnTypeByName(string columnName)
+        protected virtual ColumnTypeMetadata OnTryGetColumnTypeByName(string columnName)
         {
             if (string.IsNullOrEmpty(columnName))
                 throw new ArgumentNullException(nameof(columnName));
             string key = columnName;
             return columns.TryGetValue(key, out TestColumn column)
-                ? column.ColumnDbType
+                ? new ColumnTypeMetadata(column.ColumnDbType, column.AllowDbNull)
                 : null;
         }
-        protected void AddSourceColumn(string name, DbType columnDbType)
+        protected void AddSourceColumn(string name, DbType columnDbType, bool allowNull)
         {
-            columns.Add(name, new TestColumn(name, columnDbType));
+            columns.Add(name, new TestColumn(name, columnDbType, allowNull));
         }
 
     }
@@ -154,9 +154,9 @@ namespace StoreLake.Test
         }
 
 
-        internal TestTable AddColumn(string name, DbType columnDbType)
+        internal TestTable AddColumn(string name, DbType columnDbType, bool allowNull)
         {
-            AddSourceColumn(name, columnDbType);
+            AddSourceColumn(name, columnDbType, allowNull);
             return this;
         }
     }
@@ -175,7 +175,7 @@ namespace StoreLake.Test
         private bool _loaded;
 
 
-        protected override DbType? OnTryGetColumnTypeByName(string columnName)
+        protected override ColumnTypeMetadata OnTryGetColumnTypeByName(string columnName)
         {
             if (!_loaded)
             {
@@ -185,15 +185,15 @@ namespace StoreLake.Test
             return base.OnTryGetColumnTypeByName(columnName);
         }
 
-        Dictionary<string, DbType> parameters = new Dictionary<string, DbType>(StringComparer.OrdinalIgnoreCase);
-        internal void AddParameter(string parameterName, DbType parameterDbType)
+        Dictionary<string, ColumnTypeMetadata> parameters = new Dictionary<string, ColumnTypeMetadata>(StringComparer.OrdinalIgnoreCase);
+        internal void AddParameter(string parameterName, DbType parameterDbType, bool allowNull)
         {
-            parameters.Add(parameterName, parameterDbType);
+            parameters.Add(parameterName, new ColumnTypeMetadata(parameterDbType, allowNull));
         }
 
-        DbType? IBatchParameterMetadata.TryGetParameterType(string parameterName)
+        ColumnTypeMetadata IBatchParameterMetadata.TryGetParameterType(string parameterName)
         {
-            if (parameters.TryGetValue(parameterName, out DbType parameterType))
+            if (parameters.TryGetValue(parameterName, out ColumnTypeMetadata parameterType))
             {
                 return parameterType;
             }
@@ -203,9 +203,9 @@ namespace StoreLake.Test
             }
         }
 
-        internal void AddFunctionColumn(string name, DbType columnDbType)
+        internal void AddFunctionColumn(string name, DbType columnDbType, bool allowNull)
         {
-            AddSourceColumn(name, columnDbType);
+            AddSourceColumn(name, columnDbType, allowNull);
             //return this;
         }
     }
@@ -224,7 +224,7 @@ namespace StoreLake.Test
         private bool _loaded;
 
 
-        protected override DbType? OnTryGetColumnTypeByName(string columnName)
+        protected override ColumnTypeMetadata OnTryGetColumnTypeByName(string columnName)
         {
             if (!_loaded)
             {
@@ -240,7 +240,7 @@ namespace StoreLake.Test
         //    parameters.Add(parameterName, parameterDbType);
         //}
 
-        DbType? IBatchParameterMetadata.TryGetParameterType(string parameterName)
+        ColumnTypeMetadata IBatchParameterMetadata.TryGetParameterType(string parameterName)
         {
             //if (parameters.TryGetValue(parameterName, out DbType parameterType))
             //{
@@ -253,9 +253,9 @@ namespace StoreLake.Test
             throw new NotImplementedException(parameterName);
         }
 
-        internal void AddViewColumn(string outputColumnName, DbType columnDbType)
+        internal void AddViewColumn(string outputColumnName, DbType columnDbType, bool allowNull)
         {
-            AddSourceColumn(outputColumnName, columnDbType);
+            AddSourceColumn(outputColumnName, columnDbType, allowNull);
         }
     }
 
@@ -263,12 +263,13 @@ namespace StoreLake.Test
     {
         internal readonly string ColumnName;
         internal readonly DbType ColumnDbType;
+        internal readonly bool AllowDbNull;
 
-        public TestColumn(string columnName, DbType columnDbType)
+        public TestColumn(string columnName, DbType columnDbType, bool allowDbNull)
         {
             ColumnName = columnName;
             ColumnDbType = columnDbType;
-
+            AllowDbNull = allowDbNull;
         }
     }
 }

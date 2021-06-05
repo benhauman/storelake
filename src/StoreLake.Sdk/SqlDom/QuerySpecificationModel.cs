@@ -128,7 +128,7 @@ namespace StoreLake.Sdk.SqlDom
                 QueryColumnSourceBase source = ContainsSourceId(outputColumn.SourceId);
                 if (source != null)
                 {
-                    col = AddResolveOutputColumn(new QueryColumnE(source, outputColumn.OutputColumnName, outputColumn.SourceColumnName, outputColumn.ColumnDbType));
+                    col = AddResolveOutputColumn(new QueryColumnE(source, outputColumn.OutputColumnName, outputColumn.SourceColumnName, outputColumn.ColumnDbType, outputColumn.AllowNull));
                 }
                 else
                 {

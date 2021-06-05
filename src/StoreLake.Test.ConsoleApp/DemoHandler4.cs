@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace StoreLake.Test.ConsoleApp
 {
-    class DemoHandler4_CommandHandler : HelplineDataProceduresCommandExecuteHandler
+    /*class DemoHandler4_CommandHandler : HelplineDataProceduresCommandExecuteHandler
     {
         public override DbDataReader hlsyssec_canexecuteglobal(DataSet db, DbCommand cmd)
         {
@@ -20,7 +20,7 @@ namespace StoreLake.Test.ConsoleApp
         {
             return base.hlsys_query_userinfo(db, cmd);
         }
-    }
+    }*/
 
     class DemoHandler4_FacadeHandler : HelplineDataProceduresHandlerFacade
     {

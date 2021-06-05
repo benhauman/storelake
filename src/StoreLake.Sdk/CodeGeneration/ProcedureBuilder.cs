@@ -641,12 +641,12 @@ namespace StoreLake.Sdk.CodeGeneration
                 Attributes = MemberAttributes.Public | MemberAttributes.Static,
                 ReturnType = new CodeTypeReference(procedures_type_decl.Name)
             };
-            CodeTypeParameter ctp = new CodeTypeParameter("TDataSet");
-            ctp.Constraints.Add(new CodeTypeReference(typeof(DataSet)));
-            extensions_method_GetHandler.TypeParameters.Add(ctp);
+            //CodeTypeParameter ctp = new CodeTypeParameter("TDataSet");
+            //ctp.Constraints.Add(new CodeTypeReference(typeof(DataSet)));
+            //extensions_method_GetHandler.TypeParameters.Add(ctp);
 
 
-            var param_decl_ds = new CodeParameterDeclarationExpression("this TDataSet", "ds");
+            var param_decl_ds = new CodeParameterDeclarationExpression("this " + typeof(DataSet).FullName, "ds");
             extensions_method_GetHandler.Parameters.Add(param_decl_ds);
 
             var method_GetTable_Handlers = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(exttype.extensions_type_decl.Name),
@@ -669,11 +669,11 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 Name = "SetCommandExecuteHandlerInstanceFor" + extensionMethodNameGet, // SetHandlerFacadeInstanceDor
                 Attributes = MemberAttributes.Public | MemberAttributes.Static,
-                ReturnType = new CodeTypeReference("TDataSet")
+                ReturnType = new CodeTypeReference(typeof(DataSet)),//"TDataSet")
             };
-            CodeTypeParameter ctp_set_ds = new CodeTypeParameter("TDataSet");
-            ctp_set_ds.Constraints.Add(new CodeTypeReference(typeof(DataSet)));
-            extensions_method_SetHandler.TypeParameters.Add(ctp_set_ds);
+            //CodeTypeParameter ctp_set_ds = new CodeTypeParameter("DataSet");
+            //ctp_set_ds.Constraints.Add(new CodeTypeReference(typeof(DataSet)));
+            //extensions_method_SetHandler.TypeParameters.Add(ctp_set_ds);
             CodeTypeParameter ctp_set_hi = new CodeTypeParameter("THandler") { HasConstructorConstraint = true };
             ctp_set_hi.Constraints.Add(new CodeTypeReference(procedures_type_decl.Name));
             extensions_method_SetHandler.TypeParameters.Add(ctp_set_hi);

@@ -359,9 +359,9 @@ namespace StoreLake.Sdk.SqlDom
             if (sourceMetadata != null)
             {
                 var coltype = sourceMetadata.TryGetColumnTypeByName(columnName);
-                if (coltype.HasValue)
+                if (coltype != null)
                 {
-                    resultColumnType = new OutputColumnDescriptor(columnName, coltype.Value);
+                    resultColumnType = new OutputColumnDescriptor(columnName, coltype);
                     return true;
                 }
                 if (throwOnColumnNotFound)
@@ -385,9 +385,9 @@ namespace StoreLake.Sdk.SqlDom
             if (sourceMetadata != null)
             {
                 var coltype = sourceMetadata.TryGetColumnTypeByName(columnName);
-                if (coltype.HasValue)
+                if (coltype != null)
                 {
-                    resultColumnType = new OutputColumnDescriptor(columnName, coltype.Value);
+                    resultColumnType = new OutputColumnDescriptor(columnName, coltype);
                     return true;
                 }
                 if (throwOnColumnNotFound)
@@ -422,7 +422,7 @@ namespace StoreLake.Sdk.SqlDom
             }
             if (scalarExpr is IntegerLiteral intLit)
             {
-                columnDbType = new OutputColumnDescriptor(DbType.Int32);
+                columnDbType = new OutputColumnDescriptor(DbType.Int32, false);
                 return true;
             }
             if (scalarExpr is IIfCall iif)
@@ -440,7 +440,7 @@ namespace StoreLake.Sdk.SqlDom
 
             if (scalarExpr is StringLiteral stringLit)
             {
-                columnDbType = new OutputColumnDescriptor(DbType.String);
+                columnDbType = new OutputColumnDescriptor(DbType.String, true);
                 return true;
             }
 

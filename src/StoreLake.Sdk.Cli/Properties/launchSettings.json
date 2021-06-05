@@ -1,16 +1,17 @@
 {
   "profiles": {
 
-    "HelplineData": {
-      "commandName": "Project",
-      "commandLineArgs": "libdir=C:\\Users\\Luben.Naumov\\.nuget\\packages\\dibix.sdk\\1.0.86\\tools\\net472 inputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ dacpac=HelplineData.dacpac outputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ storesuffix=TestStore generateschema=false tempdir=D:\\Helpline\\Current\\SQL\\HelplineData\\obj\\Debug\\TestStore\\",
-      "workingDirectory": "D:\\Helpline\\Current\\SQL\\HelplineData"
-    },
 
     "Helpline": {
       "commandName": "Project",
       "commandLineArgs": "generatemissingreferences=true regeneratereferences=true libdir=D:\\Helpline\\Current\\SQL\\Helpline\\obj\\Debug\\TestStore\\ inputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ dacpac=Helpline.dacpac outputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ storesuffix=TestStore generateschema=false tempdir=D:\\Helpline\\Current\\SQL\\Helpline\\obj\\Debug\\TestStore\\",
       "workingDirectory": "D:\\Helpline\\Current\\SQL\\Helpline"
+    },
+
+    "HelplineData": {
+      "commandName": "Project",
+      "commandLineArgs": "libdir=C:\\Users\\Luben.Naumov\\.nuget\\packages\\dibix.sdk\\1.0.86\\tools\\net472 inputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ dacpac=HelplineData.dacpac outputdir=D:\\Helpline\\Current\\bin\\debug\\output\\database\\ storesuffix=TestStore generateschema=false tempdir=D:\\Helpline\\Current\\SQL\\HelplineData\\obj\\Debug\\TestStore\\",
+      "workingDirectory": "D:\\Helpline\\Current\\SQL\\HelplineData"
     },
 
 

@@ -100,10 +100,10 @@ namespace StoreLake.Sdk.SqlDom
                 }
             }
 
-            DbType? sourceColumnDbType = resolved_table.TryGetColumnTypeByName(sourceColumnName);
-            if (sourceColumnDbType.HasValue)
+            ColumnTypeMetadata sourceColumnType = resolved_table.TryGetColumnTypeByName(sourceColumnName);
+            if (sourceColumnType != null)
             {
-                columnDbType = new SourceColumnType(this, sourceColumnName, sourceColumnDbType.Value);
+                columnDbType = new SourceColumnType(this, sourceColumnName, sourceColumnType.ColumnDbType, sourceColumnType.AllowNull);
                 return true;
             }
             else
@@ -202,10 +202,10 @@ namespace StoreLake.Sdk.SqlDom
             }
 
 
-            DbType? columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
-            if (columnDbType.HasValue)
+            ColumnTypeMetadata columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
+            if (columnDbType != null)
             {
-                columnType = new SourceColumnType(this, sourceColumnName, columnDbType.Value);
+                columnType = new SourceColumnType(this, sourceColumnName, columnDbType.ColumnDbType, columnDbType.AllowNull);
                 return true;
             }
 
@@ -275,10 +275,10 @@ namespace StoreLake.Sdk.SqlDom
                 }
             }
 
-            DbType? columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
-            if (columnDbType.HasValue)
+            ColumnTypeMetadata columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
+            if (columnDbType != null)
             {
-                columnType = new SourceColumnType(this, sourceColumnName, columnDbType.Value);
+                columnType = new SourceColumnType(this, sourceColumnName, columnDbType.ColumnDbType, columnDbType.AllowNull);
                 return true;
             }
 
@@ -329,17 +329,17 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        private readonly IDictionary<string, DbType> columns = new SortedDictionary<string, DbType>(StringComparer.OrdinalIgnoreCase);
-        internal void AddValueColumn(string columnName, DbType columnDbType)
+        private readonly IDictionary<string, ColumnTypeMetadata> columns = new SortedDictionary<string, ColumnTypeMetadata>(StringComparer.OrdinalIgnoreCase);
+        internal void AddValueColumn(string columnName, DbType columnDbType, bool allowNull)
         {
-            columns.Add(columnName, columnDbType);
+            columns.Add(columnName, new ColumnTypeMetadata(columnDbType, allowNull));
         }
 
         internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
-            if (columns.TryGetValue(sourceColumnName, out DbType columnDbType))
+            if (columns.TryGetValue(sourceColumnName, out ColumnTypeMetadata columnTypeX))
             {
-                columnType = new SourceColumnType(this, sourceColumnName, columnDbType);
+                columnType = new SourceColumnType(this, sourceColumnName, columnTypeX.ColumnDbType, columnTypeX.AllowNull);
                 return true;
             }
             else
@@ -382,7 +382,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (outputColumn.ColumnDbType.HasValue)
                 {
-                    columnType = new SourceColumnType(this, sourceColumnName, outputColumn.ColumnDbType.Value);
+                    columnType = new SourceColumnType(this, sourceColumnName, outputColumn.ColumnDbType.Value, outputColumn.AllowNull.GetValueOrDefault(true));
                     return true;
                 }
                 else
@@ -409,15 +409,17 @@ namespace StoreLake.Sdk.SqlDom
     internal sealed class QuerySourceOnConstant : QueryColumnSourceBase
     {
         private readonly DbType constantType;
+        private readonly bool allowNull;
 
-        public QuerySourceOnConstant(int id, string key, DbType constantType) : base(id, key)
+        public QuerySourceOnConstant(int id, string key, DbType constantType, bool allowNull) : base(id, key)
         {
             this.constantType = constantType;
+            this.allowNull = allowNull;
         }
 
         internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
-            columnType = new SourceColumnType(this, sourceColumnName, constantType);
+            columnType = new SourceColumnType(this, sourceColumnName, constantType, allowNull);
             return true;
         }
     }
@@ -446,7 +448,7 @@ namespace StoreLake.Sdk.SqlDom
 
         internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
-            columnType = new SourceColumnType(this, sourceColumnName, variableType);
+            columnType = new SourceColumnType(this, sourceColumnName, variableType, true);
             return true;
         }
     }
@@ -484,13 +486,13 @@ namespace StoreLake.Sdk.SqlDom
 
             if (string.Equals("KEY", sourceColumnName, StringComparison.OrdinalIgnoreCase))
             {
-                columnType = new SourceColumnType(this, sourceColumnName, DbType.Int32);
+                columnType = new SourceColumnType(this, sourceColumnName, DbType.Int32, true);
                 return true;
             }
 
             if (string.Equals("RANK", sourceColumnName, StringComparison.OrdinalIgnoreCase))
             {
-                columnType = new SourceColumnType(this, sourceColumnName, DbType.Int32);
+                columnType = new SourceColumnType(this, sourceColumnName, DbType.Int32, true);
                 return true;
             }
 

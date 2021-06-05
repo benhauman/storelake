@@ -33,6 +33,7 @@
     <None Remove="SQL\Procedures\hlbigettomattribute.sql" />
     <None Remove="SQL\Procedures\hlbigettomtable.sql" />
     <None Remove="SQL\Procedures\hlcmgetcontact.sql" />
+    <None Remove="SQL\Procedures\hlmad_contract_fulltextsearch_query.sql" />
     <None Remove="SQL\Procedures\hlom_query_possibleactions.sql" />
     <None Remove="SQL\Procedures\hlseglobalsearch_query_filters.sql" />
     <None Remove="SQL\Procedures\hlsp_approvalfulfilled.sql" />
@@ -127,6 +128,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="SQL\Functions\hlsysum_query_centraladminorgunits.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlmad_contract_fulltextsearch_query.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlseglobalsearch_query_filters.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsp_approvalfulfilled.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssession_connectaddon.sql" />

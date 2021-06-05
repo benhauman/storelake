@@ -43,17 +43,18 @@ namespace StoreLake.Test.ConsoleApp
             var db = StoreLakeDatabaseServer.CreateDatabase("MyDB")
                 .Use(DatabaseGetUtcDateExtension.Register)
                 .Use(HelplineDataExtensions.RegisterDataSetModel) // using 'Helpline.Data.TestStore.HelplineDataExtensions'
-                //.Use(HelplineDataExtensions_X.RegisterDataSetModel)
+                                                                  //.Use(HelplineDataExtensions_X.RegisterDataSetModel)
                 .Use(SLMDatabaseDataExtensions.RegisterDataSetModel) // using Helpline.SLM.Database.Data.TestStore.SLMDatabaseDataExtensions
                 .Use(DatabaseGetUtcDateExtension.Register)
                 .Use(TweetExtension.Register)
                 .Build()
+                .SetCommandExecuteHandlerInstanceForHelplineDataProceduresFacade<DemoHandler4_FacadeHandler>();
                 //.SetHandlerForHelplineDataProcedures<DemoHandler4_CommandHandler>()
                 //.SetCommandExecuteHandlerInstanceForHelplineDataProceduresFacade<DemoHandler4>() // SetFacade
                 //.SetCommandExecuteHandlerInstanceForHelplineDataProceduresHandler<DemoHandler4_CommandHandler>()
                 ;
-            HelplineDataExtensions.SetCommandExecuteHandlerInstanceForHelplineDataProceduresHandler<DataSet, DemoHandler4_CommandHandler>(db);
-            HelplineDataExtensions.SetCommandExecuteHandlerInstanceForHelplineDataProceduresFacade<DataSet, DemoHandler4_FacadeHandler>(db);
+            //HelplineDataExtensions.SetCommandExecuteHandlerInstanceForHelplineDataProceduresHandler<DataSet, DemoHandler4_CommandHandler>(db);
+            //HelplineDataExtensions.SetCommandExecuteHandlerInstanceForHelplineDataProceduresFacade<DataSet, DemoHandler4_FacadeHandler>(db);
 
 
 

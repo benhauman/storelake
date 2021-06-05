@@ -25,13 +25,13 @@ namespace StoreLake.Sdk.SqlDom
         private static OutputColumnDescriptor ColumnModelToDescriptor(QueryColumnBase column)
         {
             return (column.ColumnDbType.HasValue)
-                ? new OutputColumnDescriptor(column.OutputColumnName, column.ColumnDbType.Value)
+                ? new OutputColumnDescriptor(column.OutputColumnName, new ColumnTypeMetadata(column.ColumnDbType.Value, column.AllowNull.GetValueOrDefault(true)))
                 : new OutputColumnDescriptor(column.OutputColumnName);
         }
-        private static OutputColumnDescriptor ColumnModelToDescriptor(DbType columnDbType)
+        private static OutputColumnDescriptor ColumnModelToDescriptor(DbType columnDbType, bool allowNull)
         {
             string outputColumnNameAnonymous = null;
-            return new OutputColumnDescriptor(outputColumnNameAnonymous, columnDbType);
+            return new OutputColumnDescriptor(outputColumnNameAnonymous, new ColumnTypeMetadata(columnDbType, allowNull));
         }
 
         public OutputColumnDescriptor ResolveColumnReference(ColumnReferenceExpression node)
@@ -69,25 +69,26 @@ namespace StoreLake.Sdk.SqlDom
             else if (node.Expression is IIfCall iif)
             {
                 // no output name! if single column output -> use it???
-                if (TrtGetAnonymousColumnType_ScalarExpression(iif.ThenExpression, out DbType columnDbTypeT))
+                if (TrtGetAnonymousColumnType_ScalarExpression(iif.ThenExpression, out DbType columnDbTypeT, out bool allowNull))
                 {
-                    return ColumnModelToDescriptor(columnDbTypeT);
+                    return ColumnModelToDescriptor(columnDbTypeT, allowNull);
                 }
-                if (TrtGetAnonymousColumnType_ScalarExpression(iif.ThenExpression, out DbType columnDbTypeE))
+                if (TrtGetAnonymousColumnType_ScalarExpression(iif.ThenExpression, out DbType columnDbTypeE, out allowNull))
                 {
-                    return ColumnModelToDescriptor(columnDbTypeE);
+                    return ColumnModelToDescriptor(columnDbTypeE, allowNull);
                 }
                 throw new NotImplementedException(iif.ElseExpression.WhatIsThis());
             }
             else if (node.Expression is CastCall castExpr)
             {
                 var dbType = ProcedureGenerator.ResolveToDbDataType(castExpr.DataType);
-                return ColumnModelToDescriptor(dbType);
+                return ColumnModelToDescriptor(dbType, true);
             }
             else if (node.Expression is VariableReference varRefExpr)
             {
-                if (batchResolver.TryGetScalarVariableType(varRefExpr.Name, out DbType columnDbType))
-                    return ColumnModelToDescriptor(columnDbType);
+                var varType = batchResolver.TryGetScalarVariableType(varRefExpr.Name);
+                if (varType != null)
+                    return ColumnModelToDescriptor(varType.ColumnDbType, varType.AllowNull);
                 throw new NotImplementedException(varRefExpr.Name);
             }
             else if (node.Expression is FunctionCall fCall)
@@ -95,7 +96,7 @@ namespace StoreLake.Sdk.SqlDom
                 string functionName = fCall.FunctionName.Dequote();
                 if (string.Equals(functionName, "COUNT", StringComparison.OrdinalIgnoreCase))
                 {
-                    return ColumnModelToDescriptor(DbType.Int32);
+                    return ColumnModelToDescriptor(DbType.Int32, true);
                 }
 
                 throw new NotImplementedException(fCall.WhatIsThis());
@@ -106,11 +107,12 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        private static bool TrtGetAnonymousColumnType_ScalarExpression(ScalarExpression scalarExpr, out DbType columnDbType)
+        private static bool TrtGetAnonymousColumnType_ScalarExpression(ScalarExpression scalarExpr, out DbType columnDbType, out bool allowNull)
         {
             if (scalarExpr is IntegerLiteral intLit)
             {
                 columnDbType = DbType.Int32;
+                allowNull = true;
                 return true;
             }
 

@@ -386,7 +386,7 @@ namespace StoreLake.Sdk.SqlDom
 
         sealed class BatchWithoutParameters : IBatchParameterMetadata
         {
-            DbType? IBatchParameterMetadata.TryGetParameterType(string parameterName)
+            ColumnTypeMetadata IBatchParameterMetadata.TryGetParameterType(string parameterName)
             {
                 return null;
             }
@@ -503,7 +503,7 @@ namespace StoreLake.Sdk.SqlDom
                     OutputColumnDescriptor columnDbType = resolveColumnType
                         ? columnTypeResolver.ResolveSelectScalarExpression(node)
                         : null;
-                    if (columnDbType == null || !columnDbType.ColumnDbType.HasValue)
+                    if (columnDbType == null || columnDbType.ColumnType == null)
                     {
                         // put a breakpoint here
                         //this column cannot be resolved from this query. if this is a part of a IF statemt try ELSE branch.

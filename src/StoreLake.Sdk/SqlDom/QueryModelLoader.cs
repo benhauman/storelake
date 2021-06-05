@@ -151,7 +151,7 @@ namespace StoreLake.Sdk.SqlDom
                     {
                         if (source.TryResolveSourceColumnType(ctx.BatchResolver, sourceColumnName, out SourceColumnType columnDbType))
                         {
-                            qmodel.AddOutputColumn(new QueryColumnE(source, sourceColumnName, sourceColumnName, columnDbType.ColumnDbType));
+                            qmodel.AddOutputColumn(new QueryColumnE(source, sourceColumnName, sourceColumnName, columnDbType.ColumnDbType, columnDbType.AllowNull));
                         }
                         else
                         {
@@ -167,7 +167,7 @@ namespace StoreLake.Sdk.SqlDom
                             sourceColumnName = colId.Dequote();
                             if (source.TryResolveSourceColumnType(ctx.BatchResolver, sourceColumnName, out SourceColumnType columnDbType))
                             {
-                                qmodel.AddOutputColumn(new QueryColumnE(source, sourceColumnName, sourceColumnName, columnDbType.ColumnDbType));
+                                qmodel.AddOutputColumn(new QueryColumnE(source, sourceColumnName, sourceColumnName, columnDbType.ColumnDbType, columnDbType.AllowNull));
                             }
                             else
                             {
@@ -353,7 +353,7 @@ namespace StoreLake.Sdk.SqlDom
                 var col = derivedTable.Columns[ix];
 
                 string valuesColumnName = col.Dequote();
-                DbType? columnDbType = null;
+                ColumnTypeMetadata columnDbType = null;
                 foreach (RowValue row in derivedTable.RowValues)
                 {
                     foreach (ScalarExpression rowValue in row.ColumnValues)
@@ -362,22 +362,22 @@ namespace StoreLake.Sdk.SqlDom
                         {
                             if (column.ColumnDbType.HasValue)
                             {
-                                columnDbType = column.ColumnDbType.Value;
+                                columnDbType = new ColumnTypeMetadata(column.ColumnDbType.Value, column.AllowNull.Value);
                             }
                         }
 
-                        if (columnDbType.HasValue)
+                        if (columnDbType != null)
                         {
                             break;
                         }
                     }
-                    if (columnDbType.HasValue)
+                    if (columnDbType != null)
                     {
                         break;
                     }
                 }
 
-                source.AddValueColumn(valuesColumnName, columnDbType.Value);
+                source.AddValueColumn(valuesColumnName, columnDbType.ColumnDbType, columnDbType.AllowNull);
             }
 
             collector(source);
@@ -565,11 +565,11 @@ namespace StoreLake.Sdk.SqlDom
                         //outputColumnNameSafe = outputColumnNameSafe ?? sourceFactory.NewNameForColumn(mqe, )
                         if (col.ColumnDbType.HasValue)
                         {
-                            mqe.AddOutputColumn(new QueryColumnE(col.Source, outputColumnNameSafe, col.SourceColumnName, col.ColumnDbType.Value));
+                            mqe.AddOutputColumn(new QueryColumnE(col.Source, outputColumnNameSafe, col.SourceColumnName, col.ColumnDbType.Value, col.AllowNull.Value));
                         }
                         else
                         {
-                            mqe.AddOutputColumn(new QueryColumnE(col.Source, outputColumnNameSafe, col.SourceColumnName, null));
+                            mqe.AddOutputColumn(new QueryColumnE(col.Source, outputColumnNameSafe, col.SourceColumnName, null, null));
                         }
                     }
                     else
@@ -578,7 +578,7 @@ namespace StoreLake.Sdk.SqlDom
                         if (!string.IsNullOrEmpty(outputColumnName))
                         {
                             // column or its type cannot be resolved;
-                            mqe.AddOutputColumn(new QueryColumnE(col.Source, outputColumnName, outputColumnName, null));
+                            mqe.AddOutputColumn(new QueryColumnE(col.Source, outputColumnName, outputColumnName, null, null));
                         }
                         else
                         {
@@ -682,15 +682,15 @@ namespace StoreLake.Sdk.SqlDom
             else if (scalarExpr is IntegerLiteral intLit)
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnLiteral(mqe, intLit);
-                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int32);
-                column = new SourceColumn(source, outputColumnNameSafe, DbType.Int32);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int32, false);
+                column = new SourceColumn(source, outputColumnNameSafe, DbType.Int32, false);
                 return true;
             }
             else if (scalarExpr is StringLiteral strLit)
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnLiteral(mqe, strLit);
-                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.String);
-                column = new SourceColumn(source, outputColumnNameSafe, DbType.String);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.String, true);
+                column = new SourceColumn(source, outputColumnNameSafe, DbType.String, true);
                 return true;
             }
             else if (scalarExpr is CastCall castExpr)
@@ -698,7 +698,7 @@ namespace StoreLake.Sdk.SqlDom
                 if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, castExpr.Parameter, outputColumnName, out SourceColumn scol))
                 {
                     var dbType = ProcedureGenerator.ResolveToDbDataType(castExpr.DataType);
-                    column = new SourceColumn(scol.Source, scol.SourceColumnName, dbType);
+                    column = new SourceColumn(scol.Source, scol.SourceColumnName, dbType, scol.AllowNull.GetValueOrDefault(true));
                     return true;
                 }
                 else
@@ -734,13 +734,14 @@ namespace StoreLake.Sdk.SqlDom
             }
             else if (scalarExpr is VariableReference varRef)
             {
-                if (ctx.BatchResolver.TryGetScalarVariableType(varRef.Name, out DbType varDbType))
+                var varType = ctx.BatchResolver.TryGetScalarVariableType(varRef.Name);
+                if (varType != null)
                 {
                     string outputColumnNameSafe = outputColumnName ??
                         varRef.Name.Substring(1);
                     //sourceFactory.NewNameForColumnLiteral(mqe, binLit);
-                    var source = sourceFactory.NewVariableSource(mqe, varRef, varDbType);
-                    column = new SourceColumn(source, outputColumnNameSafe, varDbType);
+                    var source = sourceFactory.NewVariableSource(mqe, varRef, varType.ColumnDbType);
+                    column = new SourceColumn(source, outputColumnNameSafe, varType.ColumnDbType, varType.AllowNull);
                     return true;
                 }
                 throw new NotImplementedException(varRef.WhatIsThis());
@@ -797,8 +798,8 @@ namespace StoreLake.Sdk.SqlDom
                     uint value = Convert.ToUInt32(binLit.Value, 16);  //Using ToUInt32 not ToUInt64, as per OP comment
 
                     string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnLiteral(mqe, binLit);
-                    var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.UInt32);
-                    column = new SourceColumn(source, outputColumnNameSafe, DbType.UInt32);
+                    var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.UInt32, false);
+                    column = new SourceColumn(source, outputColumnNameSafe, DbType.UInt32, false);
                     return true;
                 }
                 else
@@ -837,14 +838,14 @@ namespace StoreLake.Sdk.SqlDom
 
             if (qmodel.TryGetQueryOutputColumn(ctx.BatchResolver, outputColumnName, out QueryColumnBase col))
             {
-                column = new SourceColumn(col.Source, outputColumnName, col.ColumnDbType.Value);
+                column = new SourceColumn(col.Source, outputColumnName, col.ColumnDbType.Value, col.AllowNull.Value);
                 return true;
             }
 
             // the query must return single column => use the type from it!!
             if (qmodel.TryGetQuerySingleOutputColumn(ctx.BatchResolver, out col))
             {
-                column = new SourceColumn(col.Source, outputColumnName, col.ColumnDbType.Value);
+                column = new SourceColumn(col.Source, outputColumnName, col.ColumnDbType.Value, col.AllowNull.Value);
                 return true;
             }
 
@@ -885,7 +886,7 @@ namespace StoreLake.Sdk.SqlDom
             if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, convertExpr.Parameter, outputColumnName, out SourceColumn scol))
             {
                 var dbType = ProcedureGenerator.ResolveToDbDataType(convertExpr.DataType);
-                column = new SourceColumn(scol.Source, scol.SourceColumnName, dbType);
+                column = new SourceColumn(scol.Source, scol.SourceColumnName, dbType, scol.AllowNull.Value);
                 return true;
             }
             else
@@ -1067,7 +1068,7 @@ namespace StoreLake.Sdk.SqlDom
                 if (columnDbType.ColumnDbType.HasValue)
                 {
                     // coool!
-                    outputColumn = new SourceColumn(source, sourceColumnName, columnDbType.ColumnDbType.Value);
+                    outputColumn = new SourceColumn(source, sourceColumnName, columnDbType.ColumnDbType.Value, columnDbType.AllowNull.Value);
                     return true;
                 }
                 else
@@ -1157,7 +1158,7 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     if (functionOutputType.ColumnDbType != DbType.String)
                     {
-                        outputColumn = new SourceColumn(functionOutputType.Source, functionOutputType.SourceColumnName, DbType.String);
+                        outputColumn = new SourceColumn(functionOutputType.Source, functionOutputType.SourceColumnName, DbType.String, functionOutputType.AllowNull.Value);
                         return true;
                     }
                     else
@@ -1174,38 +1175,38 @@ namespace StoreLake.Sdk.SqlDom
                 )
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt64(mqe, 0);
-                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64);
-                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64, true);
                 return true;
             }
 
             if (string.Equals(functionName, "DENSE_RANK", StringComparison.OrdinalIgnoreCase))
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt64(mqe, 0);
-                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64);
-                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64, true);
                 return true;
             }
 
             if (string.Equals(functionName, "COUNT", StringComparison.OrdinalIgnoreCase))
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt32(mqe, 0);
-                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int32);
-                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int32);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int32, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int32, true);
                 return true;
             }
             if (string.Equals(functionName, "HASHBYTES", StringComparison.OrdinalIgnoreCase))
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnBytes(mqe);
-                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Byte);
-                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Byte);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Byte, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Byte, true);
                 return true;
             }
             if (string.Equals(functionName, "SUBSTRING", StringComparison.OrdinalIgnoreCase))
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnString(mqe);
-                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.String);
-                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.String);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.String, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.String, true);
                 return true;
             }
             if (string.Equals(functionName, "POWER", StringComparison.OrdinalIgnoreCase))
@@ -1221,14 +1222,14 @@ namespace StoreLake.Sdk.SqlDom
                             || outputColumn.ColumnDbType.Value == DbType.String
                             || outputColumn.ColumnDbType.Value == DbType.StringFixedLength)
                         {
-                            outputColumn = new SourceColumn(outputColumn, DbType.Double);
+                            outputColumn = new SourceColumn(outputColumn, DbType.Double, true);
                         }
 
                         //int, smallint, tinyint  => int
                         if (outputColumn.ColumnDbType.Value == DbType.Byte
                             || outputColumn.ColumnDbType.Value == DbType.Int16)
                         {
-                            outputColumn = new SourceColumn(outputColumn, DbType.Int32);
+                            outputColumn = new SourceColumn(outputColumn, DbType.Int32, true);
                         }
                     }
                     return true;
@@ -1250,7 +1251,7 @@ namespace StoreLake.Sdk.SqlDom
                         if (outputColumn.ColumnDbType.Value == DbType.Byte
                             || outputColumn.ColumnDbType.Value == DbType.Int16)
                         {
-                            outputColumn = new SourceColumn(outputColumn, DbType.Int32);
+                            outputColumn = new SourceColumn(outputColumn, DbType.Int32, true);
                         }
                     }
                     return true;
@@ -1293,7 +1294,7 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     if (functionOutputType.ColumnDbType != DbType.String)
                     {
-                        outputColumn = new SourceColumn(functionOutputType.Source, functionOutputType.SourceColumnName, DbType.String);
+                        outputColumn = new SourceColumn(functionOutputType.Source, functionOutputType.SourceColumnName, DbType.String, true);
                         return true;
                     }
                     else

@@ -14,7 +14,8 @@ namespace StoreLake.Sdk.SqlDom
         internal readonly QueryColumnSourceBase Source;
         internal readonly DbType? ColumnDbType;
         internal readonly string SourceColumnName;
-        public SourceColumn(QueryColumnSourceBase source, string sourceColumnName, DbType columnDbType)
+        internal readonly bool? AllowNull;
+        public SourceColumn(QueryColumnSourceBase source, string sourceColumnName, DbType columnDbType, bool allowNull)
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
@@ -23,6 +24,7 @@ namespace StoreLake.Sdk.SqlDom
             Source = source;
             SourceColumnName = sourceColumnName;
             ColumnDbType = columnDbType;
+            AllowNull = allowNull;
         }
         public SourceColumn(QueryColumnSourceBase source, string sourceColumnName)
         {
@@ -34,20 +36,22 @@ namespace StoreLake.Sdk.SqlDom
             Source = source;
             SourceColumnName = sourceColumnName;
             ColumnDbType = null;
+            AllowNull = null;
         }
-        public SourceColumn(SourceColumn column, DbType columnDbType)
-           : this(column.Source, column.SourceColumnName, columnDbType)
+        public SourceColumn(SourceColumn column, DbType columnDbType, bool allowNull)
+           : this(column.Source, column.SourceColumnName, columnDbType, allowNull)
         {
         }
 
-        }
+    }
 
-        internal sealed class SourceColumnType
+    internal sealed class SourceColumnType
     {
         internal readonly QueryColumnSourceBase Source;
-        internal readonly DbType? ColumnDbType;
         internal readonly string SourceColumnName;
-        public SourceColumnType(QueryColumnSourceBase source, string sourceColumnName, DbType columnDbType)
+        internal readonly DbType? ColumnDbType;
+        internal readonly bool? AllowNull;
+        public SourceColumnType(QueryColumnSourceBase source, string sourceColumnName, DbType columnDbType, bool allowNull)
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
@@ -56,6 +60,7 @@ namespace StoreLake.Sdk.SqlDom
             Source = source;
             SourceColumnName = sourceColumnName;
             ColumnDbType = columnDbType;
+            AllowNull = allowNull;
         }
         public SourceColumnType(QueryColumnSourceBase source, string sourceColumnName)
         {
@@ -63,10 +68,11 @@ namespace StoreLake.Sdk.SqlDom
                 throw new ArgumentNullException(nameof(source));
             if (string.IsNullOrEmpty(sourceColumnName))
                 throw new ArgumentNullException(nameof(sourceColumnName));
-        
+
             Source = source;
             SourceColumnName = sourceColumnName;
             ColumnDbType = null;
+            AllowNull = null;
         }
 
     }
@@ -77,6 +83,8 @@ namespace StoreLake.Sdk.SqlDom
 
         public readonly QueryColumnSourceBase Source;
         public abstract DbType? ColumnDbType { get; }
+
+        public abstract bool? AllowNull { get; }
 
         public abstract void SetColumnDbType(DbType columnDbType);
         public abstract void SetSourceColumnName(string sourceColumnName, DbType columnDbType);
@@ -96,8 +104,9 @@ namespace StoreLake.Sdk.SqlDom
         private readonly string outputColumnName;
         private string _sourceColumnName;
         private DbType? _columnDbType;
+        private bool? _allowNull;
 
-        public QueryColumnE(QueryColumnSourceBase source, string outputColumnName, string sourceColumnName, DbType? columnDbType)
+        public QueryColumnE(QueryColumnSourceBase source, string outputColumnName, string sourceColumnName, DbType? columnDbType, bool? allowNull)
             : base(source)
         {
             if (string.IsNullOrEmpty(outputColumnName))
@@ -106,6 +115,7 @@ namespace StoreLake.Sdk.SqlDom
             this.outputColumnName = outputColumnName;
             this._sourceColumnName = sourceColumnName;
             this._columnDbType = columnDbType;
+            this._allowNull = allowNull;
         }
         private string DebuggerText
         {
@@ -124,6 +134,8 @@ namespace StoreLake.Sdk.SqlDom
         public override string SourceColumnName => _sourceColumnName;
 
         public override DbType? ColumnDbType => _columnDbType;
+
+        public override bool? AllowNull => _allowNull;
 
         public override void SetColumnDbType(DbType columnDbType)
         {

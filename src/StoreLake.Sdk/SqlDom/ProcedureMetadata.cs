@@ -22,9 +22,20 @@ namespace StoreLake.Sdk.SqlDom
 
         internal readonly IDictionary<string, ProcedureCodeParameter> parameters = new SortedDictionary<string, ProcedureCodeParameter>();
 
-        DbType? IBatchParameterMetadata.TryGetParameterType(string parameterName)
+        ColumnTypeMetadata IBatchParameterMetadata.TryGetParameterType(string parameterName)
         {
-            if (parameters.TryGetValue(parameterName, out ProcedureCodeParameter prm))
+            var pt = TryGetParameterTypeX(parameterName, out ProcedureCodeParameter prm);
+            if (pt.HasValue)
+            {
+                return new ColumnTypeMetadata(pt.Value, true);
+            }
+
+            return null;
+        }
+
+        private DbType? TryGetParameterTypeX(string parameterName, out ProcedureCodeParameter prm)
+        { 
+            if (parameters.TryGetValue(parameterName, out prm))
             {
                 if (prm.TypeNotNull == typeof(int))
                 {

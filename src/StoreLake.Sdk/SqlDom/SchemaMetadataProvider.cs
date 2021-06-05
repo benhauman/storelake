@@ -1,4 +1,6 @@
-﻿namespace StoreLake.Sdk.SqlDom
+﻿using System.Data;
+
+namespace StoreLake.Sdk.SqlDom
 {
     public interface ISchemaMetadataProvider
     {
@@ -9,6 +11,18 @@
 
     public interface IColumnSourceMetadata
     {
-        System.Data.DbType? TryGetColumnTypeByName(string columnName);
+        ColumnTypeMetadata TryGetColumnTypeByName(string columnName);
     }
+
+    public sealed class ColumnTypeMetadata
+    {
+        public readonly DbType ColumnDbType;
+        public readonly bool AllowNull;
+        public ColumnTypeMetadata(DbType columnDbType, bool allowNull)
+        {
+            ColumnDbType = columnDbType;
+            AllowNull = allowNull;
+        }
+    }
+
 }

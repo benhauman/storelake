@@ -23,7 +23,8 @@ namespace StoreLake.Sdk.SqlDom
             {
                 DebuggerText = (columnDbType.OutputColumnName != null ? columnDbType.OutputColumnName : null)
                     + " " + (columnDbType.SourceColumnName != null ? "(" + columnDbType.SourceColumnName + ")" : null)
-                    + " : (" + columnDbType.ColumnDbType + ")";
+                    //+ " : (" + columnDbType.ColumnDbType + ")"
+                    ;
             }
         }
 
@@ -33,8 +34,8 @@ namespace StoreLake.Sdk.SqlDom
         {
             get
             {
-                if (columnDescriptor != null)
-                    return columnDescriptor.ColumnDbType;
+                if (columnDescriptor != null && columnDescriptor.ColumnType != null)
+                    return columnDescriptor.ColumnType.ColumnDbType;
                 return null;
             }
         }
@@ -53,8 +54,8 @@ namespace StoreLake.Sdk.SqlDom
         {
             get
             {
-                return columnDescriptor == null 
-                        || !columnDescriptor.ColumnDbType.HasValue
+                return columnDescriptor == null
+                        || (columnDescriptor.ColumnType == null)
                         || string.IsNullOrEmpty(columnDescriptor.OutputOrSourceColumnName)
                         ;
             }
