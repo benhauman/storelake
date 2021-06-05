@@ -26,6 +26,11 @@
     <None Remove="SQL\Functions\hlsyssec_query_agentobjectdefprmsearch.sql" />
     <None Remove="SQL\Functions\hlsyssec_query_agentsystemacl_udf.sql" />
     <None Remove="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
+    <None Remove="SQL\Functions\hlsysum_querybusinessadminorgunitchildren.sql" />
+    <None Remove="SQL\Functions\hlsysum_querybusinessadminrootorgunits.sql" />
+    <None Remove="SQL\Functions\hlsysum_querycentraladminorgunitchildren.sql" />
+    <None Remove="SQL\Functions\hlsysum_querycentraladminrootorgunits.sql" />
+    <None Remove="SQL\Functions\hlsysum_query_businessadminorgunits.sql" />
     <None Remove="SQL\Functions\hlsysum_query_centraladminorgunits.sql" />
     <None Remove="SQL\Functions\hlsys_query_agentcounters.sql" />
     <None Remove="SQL\Procedures\hlaiwebrequestsolution_run.sql" />
@@ -111,6 +116,7 @@
     <None Remove="SQL\Views\hlcmcontactvw.sql" />
     <None Remove="SQL\Views\hlsyscaseattachmentvw.sql" />
     <None Remove="SQL\Views\hlsyscasevw.sql" />
+    <None Remove="SQL\Views\hlsysorgunitnamevw.sql" />
     <None Remove="SQL\Views\hlsyspersoncityvw.sql" />
     <None Remove="SQL\Views\hlsyspersoncountryvw.sql" />
     <None Remove="SQL\Views\hlsyspersonemailaddressvw.sql" />
@@ -127,6 +133,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="SQL\Functions\hlsysum_querybusinessadminorgunitchildren.sql" />
+    <EmbeddedResource Include="SQL\Functions\hlsysum_querybusinessadminrootorgunits.sql" />
+    <EmbeddedResource Include="SQL\Functions\hlsysum_querycentraladminorgunitchildren.sql" />
+    <EmbeddedResource Include="SQL\Functions\hlsysum_querycentraladminrootorgunits.sql" />
+    <EmbeddedResource Include="SQL\Functions\hlsysum_query_businessadminorgunits.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsysum_query_centraladminorgunits.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlmad_contract_fulltextsearch_query.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlseglobalsearch_query_filters.sql" />
@@ -229,6 +240,7 @@
     <EmbeddedResource Include="SQL\Views\hlcmcontactvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyscaseattachmentvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyscasevw.sql" />
+    <EmbeddedResource Include="SQL\Views\hlsysorgunitnamevw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyspersoncityvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyspersoncountryvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyspersonemailaddressvw.sql" />

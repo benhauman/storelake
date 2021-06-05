@@ -311,7 +311,7 @@ END
                 processname = default(string),
                 processinstanceid = default(Guid?),
                 taskid = default(Guid?),
-                approved = default(int),
+                approved = default(int?),
             });
         }
 
@@ -911,8 +911,8 @@ END";
             });
             TestProcedureOutput(3, 1, new
             {
-                type = default(int),
-                kind = default(int),
+                type = default(int?),
+                kind = default(int?),
                 displayname = "",//???
                 datatype = default(int?),
                 valuebit = default(bool?),
@@ -922,7 +922,7 @@ END";
                 valuenvarchar = default(string),
                 associatedobjectdefid = default(int?),
                 associatedobjectid = default(int?),
-                hasdisplayvalue = default(int),
+                hasdisplayvalue = default(int?),
                 displayvalue = "", //???
                 displayregion = default(byte?),
                 sortorder = default(byte?),
@@ -1204,8 +1204,8 @@ END";
                 orgunitid = default(int?),
                 orgunitdefid = default(int?),
                 name = default(string),
-                parentorgunitid = default(int),
-                parentorgunitdefid = default(int),
+                parentorgunitid = default(int?),
+                parentorgunitdefid = default(int?),
                 haschildren = default(bool),
                 hasadmins = default(bool),
                 found = default(bool),
@@ -1218,10 +1218,10 @@ END";
             TestProcedureOutput(new
             {
                 name = default(string),
-                displayname = "", //???
-                kind = default(int),
+                displayname = "", //???  [displayname] = NULL
+                kind = default(int?),
                 name2 = default(string),
-                displayname2 = "", //???
+                displayname2 = "", //??? [displayname] = NULL
                 imageurl = default(string),
                 count = default(int?),
             });
@@ -1230,7 +1230,11 @@ END";
         [TestMethod]
         public void hlsyssession_connectaddon()
         {
-            TestProcedureOutput(new { Result = default(int), DaysToFinalSaasExpiration = default(int?) });
+            TestProcedureOutput(new
+            {
+                Result = default(int?),
+                DaysToFinalSaasExpiration = default(int?) //NULL AS 
+            });
         }
         [TestMethod]
         public void hlmad_contract_fulltextsearch_query()

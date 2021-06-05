@@ -158,8 +158,8 @@ namespace StoreLake.Sdk.SqlDom
                     else
                     {
                         bool hasMissingColumnInfo = this.HasMissingColumnInfo();
-                        // apply column types from ELSE branch
-                        if (hasMissingColumnInfo)
+                        // apply column types from ELSE branch + (NOT NULL => NULL)
+                        //if (hasMissingColumnInfo)
                         {
                             List<ProcedureOutputSet> else_outputResultSets = new List<ProcedureOutputSet>();
                             DoResolveOutputResultSets(node.ElseStatement, else_outputResultSets);
@@ -168,10 +168,10 @@ namespace StoreLake.Sdk.SqlDom
                                 MergeMissingColumnInformation(resultHasOutputResultSet, else_outputResultSets);
                             }
 
-                            if (HasMissingColumnInfo())
-                            {
-                                // still not possible! if this is a nested IF the it is ok!
-                            }
+                            //if (HasMissingColumnInfo())
+                            //{
+                            //    // still not possible! if this is a nested IF the it is ok!
+                            //}
                         }
 
                     }
@@ -227,7 +227,15 @@ namespace StoreLake.Sdk.SqlDom
                     }
                     else
                     {
-                        // everything's fine her
+                        if (!colT.AllowNull.Value && colE.AllowNull.GetValueOrDefault(true))
+                        {
+                            // NOT NULL => NULL
+                            colT.SetAllowNull();
+                        }
+                        else
+                        {
+                            // everything's fine here
+                        }
                     }
                 }
             }

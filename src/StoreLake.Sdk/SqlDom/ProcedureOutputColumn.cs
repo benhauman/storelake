@@ -1,4 +1,5 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
+using System;
 using System.Data;
 using System.Diagnostics;
 
@@ -40,10 +41,14 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
+
+        private bool? _allowNull;
         public bool? AllowNull
         {
             get
             {
+                if (_allowNull.HasValue)
+                    return _allowNull.Value;
                 if (columnDescriptor != null && columnDescriptor.ColumnType != null)
                     return columnDescriptor.ColumnType.AllowNull;
                 return null;
@@ -74,6 +79,11 @@ namespace StoreLake.Sdk.SqlDom
         internal void ApplyMissingInformation(ProcedureOutputColumn procedureOutputColumn)
         {
             columnDescriptor = procedureOutputColumn.columnDescriptor;
+        }
+
+        internal void SetAllowNull()
+        {
+            _allowNull = true;
         }
     }
 }

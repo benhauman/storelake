@@ -885,8 +885,11 @@ namespace StoreLake.Sdk.SqlDom
         {
             if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, convertExpr.Parameter, outputColumnName, out SourceColumn scol))
             {
-                var dbType = ProcedureGenerator.ResolveToDbDataType(convertExpr.DataType);
-                column = new SourceColumn(scol.Source, scol.SourceColumnName, dbType, scol.AllowNull.Value);
+                DbType dbType = ProcedureGenerator.ResolveToDbDataType(convertExpr.DataType);
+                if (scol.AllowNull.HasValue)
+                    column = new SourceColumn(scol.Source, scol.SourceColumnName, dbType, scol.AllowNull.Value);
+                else
+                    column = new SourceColumn(scol.Source, scol.SourceColumnName, dbType, true);
                 return true;
             }
             else
