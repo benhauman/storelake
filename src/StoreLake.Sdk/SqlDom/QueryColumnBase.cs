@@ -43,6 +43,13 @@ namespace StoreLake.Sdk.SqlDom
         {
         }
 
+        public SourceColumn(SourceColumn column, bool allowNull) // NOT NULL => NULL
+        {
+            Source = column.Source;
+            SourceColumnName = column.SourceColumnName;
+            ColumnDbType = column.ColumnDbType;
+            AllowNull = allowNull;
+        }
     }
 
     internal sealed class SourceColumnType

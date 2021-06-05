@@ -656,6 +656,11 @@ namespace StoreLake.Sdk.SqlDom
 
         private static bool TryResolveScalarExpression(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, ScalarExpression scalarExpr, string outputColumnName, out SourceColumn column)
         {
+            if (scalarExpr == null)
+            {
+                throw new ArgumentNullException(nameof(scalarExpr));
+            }
+
             if (scalarExpr is ColumnReferenceExpression colRef)
             {
                 if (TryResolveColumnReferenceExpression(ctx, mqe, outputColumnName, colRef, out SourceColumn scol))
@@ -944,18 +949,59 @@ namespace StoreLake.Sdk.SqlDom
 
         private static bool TryResolveSearchedCaseExpression(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, string outputColumnName, SearchedCaseExpression searchedCase, out SourceColumn column)
         {
+            SourceColumn result_column = null;
+            bool? allowNull = null;
             foreach (var whenExpr in searchedCase.WhenClauses)
             {
-                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, whenExpr.ThenExpression, outputColumnName, out column))
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, whenExpr.ThenExpression, outputColumnName, out SourceColumn columnW))
                 {
                     //outputColumn.SetColumnDbType(outputColumnDbType);
-                    return true;
+                    result_column = columnW;
+                    if (columnW.AllowNull.HasValue)
+                    {
+                        if (allowNull.HasValue && !allowNull.Value)
+                            allowNull = columnW.AllowNull.Value; // try to change it to NULLable
+                        else
+                            allowNull = columnW.AllowNull.Value;
+                    }
+                    if (allowNull.HasValue && allowNull.Value)
+                        break;
+//                    return true;
                 }
             }
 
-            if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, searchedCase.ElseExpression, outputColumnName, out column))
+            if (searchedCase.ElseExpression != null && TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, searchedCase.ElseExpression, outputColumnName, out SourceColumn columnE))
             {
                 //outputColumn.SetColumnDbType(functionOutputDbType);
+                result_column = columnE;
+                if (columnE.AllowNull.HasValue)
+                {
+                    if (allowNull.HasValue && !allowNull.Value)
+                        allowNull = columnE.AllowNull.Value; // try to change it to NULLable
+                    else
+                        allowNull = columnE.AllowNull.Value;
+                }
+                //return true;
+            }
+
+            if (result_column != null)
+            {
+                bool columnAllowNull = (result_column.AllowNull.GetValueOrDefault(true)
+                    || allowNull.GetValueOrDefault(true));
+
+                if (result_column.AllowNull.HasValue && result_column.AllowNull.Value != columnAllowNull)
+                {
+                    // NOT NULL => NULL
+                    column = new SourceColumn(result_column, true);
+                }
+                else
+                {
+                    if (!result_column.AllowNull.HasValue)
+                    {
+                        // no type =>????
+                    }
+                    column = result_column;
+                }
                 return true;
             }
 

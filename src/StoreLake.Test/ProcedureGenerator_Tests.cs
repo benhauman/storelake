@@ -912,7 +912,7 @@ END";
             TestProcedureOutput(3, 1, new
             {
                 type = default(int?),
-                kind = default(int?),
+                kind = default(short?), // ELSE [apo].[attr_type]
                 displayname = "",//???
                 datatype = default(int?),
                 valuebit = default(bool?),
@@ -955,8 +955,8 @@ END";
             {
                 suid = default(int?),
                 suindex = default(Int64?), // ??????? DENSE_RANK
-                type = default(int),
-                kind = default(int),
+                type = default(int), 
+                kind = default(short?), // ELSE [apo].[attr_type]
                 displayname = "", //??
                 datatype = default(int?),
                 valuebit = default(bool?),
@@ -1022,7 +1022,7 @@ END";
                 value_bit = default(bool?),
                 field_has_displayvalue = default(bool),
                 displayvalue = "",//???
-                listitemimageid = default(int), //???
+                listitemimageid = default(int?), //!!! // ELSE NULL END) AS INT) AS listitemimageid
             });
         }
 

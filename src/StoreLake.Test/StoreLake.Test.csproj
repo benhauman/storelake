@@ -79,6 +79,7 @@
     <None Remove="SQL\Tables\hlsysassociation.sql" />
     <None Remove="SQL\Tables\hlsysassociationdef.sql" />
     <None Remove="SQL\Tables\hlsysassociationhistory.sql" />
+    <None Remove="SQL\Tables\hlsysattrpathodedef.sql" />
     <None Remove="SQL\Tables\hlsyscasehistory.sql" />
     <None Remove="SQL\Tables\hlsyscasesystem.sql" />
     <None Remove="SQL\Tables\hlsyscontracthistory.sql" />
@@ -203,6 +204,7 @@
     <EmbeddedResource Include="SQL\Tables\hlsysassociation.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysassociationdef.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysassociationhistory.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysattrpathodedef.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyscasehistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyscasesystem.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyscontracthistory.sql" />
