@@ -40,6 +40,16 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
+        public bool? AllowNull
+        {
+            get
+            {
+                if (columnDescriptor != null && columnDescriptor.ColumnType != null)
+                    return columnDescriptor.ColumnType.AllowNull;
+                return null;
+            }
+        }
+
         internal  string OutputColumnName// see 'PrepareOutputColumnName'
         {
             get
