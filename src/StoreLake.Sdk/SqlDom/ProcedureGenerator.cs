@@ -91,6 +91,14 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     return DbType.Xml;
                 }
+                if (string.Equals("DATE", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return DbType.Date;
+                }
+                if (string.Equals("TIME", typeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return DbType.Time;
+                }
                 throw new NotImplementedException("typeName:" + typeName);
             }
             else

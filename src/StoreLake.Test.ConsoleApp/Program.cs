@@ -25,18 +25,18 @@ namespace StoreLake.Test.ConsoleApp
             }
         }
 
-        private static Helpline.Data.IntThreeSetRow[] read_Udt(DbCommand cmd, string name)
-        {
-            //System.Linq.Enumerable.Select()
-            IDataRecord[] records = System.Linq.Enumerable.ToArray((IEnumerable<IDataRecord>)cmd.Parameters[name]);
+        //private static Helpline.Data.IntThreeSetRow[] read_Udt(DbCommand cmd, string name)
+        //{
+        //    //System.Linq.Enumerable.Select()
+        //    IDataRecord[] records = System.Linq.Enumerable.ToArray((IEnumerable<IDataRecord>)cmd.Parameters[name]);
 
-            Helpline.Data.IntThreeSetRow[] rows = new Helpline.Data.IntThreeSetRow[records.Length];
-            for (int ix = 0; ix < records.Length; ix++)
-            {
-                rows[ix] = new Helpline.Data.IntThreeSetRow(records[ix]);
-            }
-            return rows;
-        }
+        //    Helpline.Data.IntThreeSetRow[] rows = new Helpline.Data.IntThreeSetRow[records.Length];
+        //    for (int ix = 0; ix < records.Length; ix++)
+        //    {
+        //        rows[ix] = new Helpline.Data.IntThreeSetRow(records[ix]);
+        //    }
+        //    return rows;
+        //}
 
         private static void Test01()
         {
@@ -55,8 +55,6 @@ namespace StoreLake.Test.ConsoleApp
                 ;
             //HelplineDataExtensions.SetCommandExecuteHandlerInstanceForHelplineDataProceduresHandler<DataSet, DemoHandler4_CommandHandler>(db);
             //HelplineDataExtensions.SetCommandExecuteHandlerInstanceForHelplineDataProceduresFacade<DataSet, DemoHandler4_FacadeHandler>(db);
-
-
 
             Console.WriteLine("timenow:" + db.GetUtcDate());
 

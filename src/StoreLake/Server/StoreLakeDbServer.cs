@@ -9,22 +9,20 @@ using System.Linq.Expressions;
 
 namespace StoreLake.TestStore.Server
 {
-    public static class StoreLakeDbProviderFactoryExtensions
-    {
-        public static DbProviderFactory CreateDbProviderFactoryInstance(this StoreLakeDbServer server)
-        {
-            return StoreLakeDbProviderFactory.CreateInstance(x =>
-            {
-                x.CreateConnection_Override = server.CreateConnection;
-            });
-        }
-    }
     public sealed class StoreLakeDbServer
     {
         private readonly IDictionary<string, DataSet> _dbs = new SortedDictionary<string, DataSet>(StringComparer.OrdinalIgnoreCase);
         public StoreLakeDbServer(DataSet db)
         {
             this._dbs.Add(db.DataSetName, db);
+        }
+
+        public DbProviderFactory CreateDbProviderFactoryInstance()
+        {
+            return StoreLakeDbProviderFactory.CreateInstance(x =>
+            {
+                x.CreateConnection_Override = this.CreateConnection;
+            });
         }
 
         internal StoreLakeDbConnection CreateConnection(StoreLakeDbProviderFactory dbClient)
@@ -48,20 +46,6 @@ namespace StoreLake.TestStore.Server
                 ExecuteNonQuery_Override = (cmd) => HandleExecuteNonQuery(cmd)
             };
         }
-
-        //internal StoreLakeDbServer RegisterHandlerReadWithCommandText(System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
-        //{
-        //    CommandExecutionHandler handler = new CommandExecutionHandlerImpl(null, handlerExpr);
-        //    handlers.Add(handler);
-        //    return this;
-        //}
-
-        //internal StoreLakeDbServer RegisterHandlerReadForCommandText(Type commandTextOwner, System.Linq.Expressions.Expression<Func<DataSet, DbCommand, DbDataReader>> handlerExpr)
-        //{
-        //    CommandExecutionHandler handler = new CommandExecutionHandlerImpl(commandTextOwner, handlerExpr);
-        //    handlers.Add(handler);
-        //    return this;
-        //}
 
         private readonly List<CommandExecutionHandler> handlers_text = new List<CommandExecutionHandler>();
         private readonly IDictionary<string, CommandExecutionHandler> handlers_key = new SortedDictionary<string, CommandExecutionHandler>(StringComparer.OrdinalIgnoreCase);

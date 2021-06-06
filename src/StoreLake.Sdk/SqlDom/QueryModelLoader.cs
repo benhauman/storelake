@@ -966,7 +966,7 @@ namespace StoreLake.Sdk.SqlDom
                     }
                     if (allowNull.HasValue && allowNull.Value)
                         break;
-//                    return true;
+                    //                    return true;
                 }
             }
 
@@ -1290,13 +1290,13 @@ namespace StoreLake.Sdk.SqlDom
             }
             if (string.Equals(functionName, "AVG", StringComparison.OrdinalIgnoreCase))
             {
-                var prm = fCall.Parameters[0];
+                ScalarExpression prm = fCall.Parameters[0];
                 if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, prm, outputColumnName, out outputColumn))
                 {
                     if (outputColumn.ColumnDbType.HasValue)
                     {
                         // float, real => float 
-                           //int, smallint, tinyint  => int
+                        //int, smallint, tinyint  => int
                         if (outputColumn.ColumnDbType.Value == DbType.Byte
                             || outputColumn.ColumnDbType.Value == DbType.Int16)
                         {
@@ -1310,6 +1310,47 @@ namespace StoreLake.Sdk.SqlDom
                     throw new NotImplementedException(fCall.WhatIsThis());
                 }
             }
+
+
+            if (string.Equals(functionName, "DATEDIFF", StringComparison.OrdinalIgnoreCase))
+            {
+                // DATEDIFF + SECOND (3:Parameters)
+                string datatepartName = ((ColumnReferenceExpression)fCall.Parameters[0]).MultiPartIdentifier.Identifiers[0].Dequote();
+
+                ScalarExpression prm = fCall.Parameters[1];
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, prm, outputColumnName, out SourceColumn startdate))
+                {
+                    outputColumn = new SourceColumn(startdate, DbType.Int32, startdate.AllowNull.GetValueOrDefault(true));
+                    return true;
+                }
+                throw new NotImplementedException(fCall.WhatIsThis());
+            }
+
+            if (string.Equals(functionName, "DATEADD", StringComparison.OrdinalIgnoreCase))
+            {
+                // DATEDIFF + SECOND (3:Parameters)
+                string datatepartName = ((ColumnReferenceExpression)fCall.Parameters[0]).MultiPartIdentifier.Identifiers[0].Dequote();
+
+                bool? number_allowNull = null;
+                ScalarExpression prm1 = fCall.Parameters[1];
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, prm1, outputColumnName, out SourceColumn nmbr))
+                {
+                    number_allowNull = nmbr.AllowNull;
+                }
+
+                ScalarExpression prm2 = fCall.Parameters[1];
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, prm2, outputColumnName, out SourceColumn startdate))
+                {
+                    bool allowNull = number_allowNull.GetValueOrDefault(true)
+                        || startdate.AllowNull.GetValueOrDefault(true)
+                        || false;
+                    outputColumn = new SourceColumn(startdate, DbType.Int32, allowNull);
+                    return true;
+                }
+
+                throw new NotImplementedException(fCall.WhatIsThis());
+            }
+
             throw new NotImplementedException(fCall.WhatIsThis());
         }
         private static bool TryResolveLeftFunctionCall(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, LeftFunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)

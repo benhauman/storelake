@@ -1249,6 +1249,18 @@ END";
                 objectid = default(int?),
             });
         }
+
+        [TestMethod]
+        public void hlsyscal_calculate_difference_formatted()
+        {
+            TestProcedureOutput(new
+            {
+                ResultDaysCompensated = default(int),
+                ResultDiffSecondsCompensated = default(int),
+                ResultTotalSecondsCompensated = default(int?),
+                ResultNothing = default(bool),
+            });
+        }
         // hlseglobalsearch_query_groups
         // 
         // 

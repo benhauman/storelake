@@ -20,11 +20,6 @@ namespace StoreLake.TestStore
 
         internal StoreLakeDbProviderFactory()
         {
-            //CreateConnection_Override = (dbClient) => new StoreLakeDbConnection(dbClient)
-            //{
-
-
-            //};
         }
 
         internal Func<StoreLakeDbProviderFactory, StoreLakeDbConnection> CreateConnection_Override;

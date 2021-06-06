@@ -12,6 +12,9 @@
 
   <ItemGroup>
     <None Remove="SQL\Functions\hlsur_query_surveyresults.sql" />
+    <None Remove="SQL\Functions\hlsyscal_fn_calculate_difference_formatted.sql" />
+    <None Remove="SQL\Functions\hlsyscal_fn_calculate_workday_from_locdt.sql" />
+    <None Remove="SQL\Functions\hlsyscal_query_localtoutcoffset.sql" />
     <None Remove="SQL\Functions\hlsysdefaultattr_query.sql" />
     <None Remove="SQL\Functions\hlsysdefaultattr_query_case.sql" />
     <None Remove="SQL\Functions\hlsysdefaultattr_query_contract.sql" />
@@ -45,6 +48,7 @@
     <None Remove="SQL\Procedures\hlsur_rpt_overview_fivestar.sql" />
     <None Remove="SQL\Procedures\hlsur_surveycontent_insert.sql" />
     <None Remove="SQL\Procedures\hlsysadhocinstanceaction_targetqueue_receive.sql" />
+    <None Remove="SQL\Procedures\hlsyscal_calculate_difference_formatted.sql" />
     <None Remove="SQL\Procedures\hlsyscal_calculate_offset.sql" />
     <None Remove="SQL\Procedures\hlsyscfgchange_targetqueue_receive.sql" />
     <None Remove="SQL\Procedures\hlsyscontract_increment_numberofcalls.sql" />
@@ -80,6 +84,7 @@
     <None Remove="SQL\Tables\hlsysassociationdef.sql" />
     <None Remove="SQL\Tables\hlsysassociationhistory.sql" />
     <None Remove="SQL\Tables\hlsysattrpathodedef.sql" />
+    <None Remove="SQL\Tables\hlsyscalcachecalendarday.sql" />
     <None Remove="SQL\Tables\hlsyscasehistory.sql" />
     <None Remove="SQL\Tables\hlsyscasesystem.sql" />
     <None Remove="SQL\Tables\hlsyscontracthistory.sql" />
@@ -110,6 +115,7 @@
     <None Remove="SQL\Tables\hlsyssvccatproducttocat.sql" />
     <None Remove="SQL\Tables\hlsystemplatedefinition.sql" />
     <None Remove="SQL\Tables\hlsystemplategroup.sql" />
+    <None Remove="SQL\Tables\hlsystimezoneadjustmentrule.sql" />
     <None Remove="SQL\Tables\hlsystranslationvalue.sql" />
     <None Remove="SQL\Tables\hlsyswatchlist.sql" />
     <None Remove="SQL\Tables\hlwfdefrights.sql" />
@@ -134,6 +140,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="SQL\Functions\hlsyscal_query_localtoutcoffset.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsyscalcachecalendarday.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="SQL\Functions\hlsyscal_fn_calculate_difference_formatted.sql" />
+    <EmbeddedResource Include="SQL\Functions\hlsyscal_fn_calculate_workday_from_locdt.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsysum_querybusinessadminorgunitchildren.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsysum_querybusinessadminrootorgunits.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsysum_querycentraladminorgunitchildren.sql" />
@@ -143,6 +156,7 @@
     <EmbeddedResource Include="SQL\Procedures\hlmad_contract_fulltextsearch_query.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlseglobalsearch_query_filters.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsp_approvalfulfilled.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsyscal_calculate_difference_formatted.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssession_connectaddon.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysum_query_adminorgunits.sql" />
   </ItemGroup>
@@ -235,6 +249,7 @@
     <EmbeddedResource Include="SQL\Tables\hlsyssvccatproducttocat.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsystemplatedefinition.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsystemplategroup.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsystimezoneadjustmentrule.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsystranslationvalue.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyswatchlist.sql" />
     <EmbeddedResource Include="SQL\Tables\hlwfdefrights.sql" />
