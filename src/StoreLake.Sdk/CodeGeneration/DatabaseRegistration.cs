@@ -157,7 +157,7 @@ namespace StoreLake.Sdk.CodeGeneration
             for (int i = 0; i < count; i++)
             {
                 // name?
-                if (string.Equals(((Constraint)lst[i]).ConstraintName, fk.ConstraintName))
+                if (string.Equals(((Constraint)lst[i]).ConstraintName, fk.ConstraintName, StringComparison.OrdinalIgnoreCase))
                 {
                     return (ForeignKeyConstraint)lst[i];
                 }

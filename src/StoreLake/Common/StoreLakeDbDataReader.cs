@@ -155,7 +155,7 @@ namespace StoreLake.TestStore
 
         public StoreLakeDbDataReader TestAddRow(params object[] rowValues)
         {
-            if (rowValues == null || rowValues.Length == 0)
+            if (rowValues.Length == 0)
                 throw new InvalidOperationException("No values");
 
             if (Data_Rows == null)

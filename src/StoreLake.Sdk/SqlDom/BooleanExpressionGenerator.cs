@@ -20,10 +20,10 @@ namespace StoreLake.Sdk.SqlDom
 
             BooleanExpression iif_predicate = iif_visitor.result.Predicate;
 
-            if (iif_visitor != null)
-            {
-                //return null; // comment out if it needed
-            }
+            //if (iif_visitor != null)
+            //{
+            //    //return null; // comment out if it needed
+            //}
 
             //Console.WriteLine("");
             //Console.WriteLine("==== " + check_name + " ============");

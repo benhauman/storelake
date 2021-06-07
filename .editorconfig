@@ -1,0 +1,22 @@
+﻿[*.cs]
+
+# CA1309: Use ordinal string comparison
+dotnet_diagnostic.CA1309.severity = error
+
+# CA1813: Avoid unsealed attributes
+dotnet_diagnostic.CA1813.severity = error
+
+# CA1508: Avoid dead conditional code
+dotnet_diagnostic.CA1508.severity = error
+
+# CA2011: Avoid infinite recursion
+dotnet_diagnostic.CA2011.severity = error
+
+# CA2242: Test for NaN correctly
+dotnet_diagnostic.CA2242.severity = error
+
+# CA2245: Do not assign a property to itself
+dotnet_diagnostic.CA2245.severity = error
+
+# CA3001: Review code for SQL injection vulnerabilities
+dotnet_diagnostic.CA3001.severity = error

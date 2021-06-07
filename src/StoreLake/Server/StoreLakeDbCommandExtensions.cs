@@ -69,7 +69,7 @@ namespace StoreLake.TestStore.Server
                 var prm = command.Parameters[ix];
                 if (prm.DbType == DbType.String && prm.Value != DBNull.Value)
                 {
-                    if (string.Equals(value, (string)prm.Value))
+                    if (string.Equals(value, (string)prm.Value, StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }

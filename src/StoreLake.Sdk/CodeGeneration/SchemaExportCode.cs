@@ -52,7 +52,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                         string dacName = Path.GetFileNameWithoutExtension(dacpac.DacPacAssemblyLogicalName);
 
-                        if (!string.IsNullOrEmpty(dacNameFilter) && !string.Equals(dacNameFilter, dacName))
+                        if (!string.IsNullOrEmpty(dacNameFilter) && !string.Equals(dacNameFilter, dacName, StringComparison.OrdinalIgnoreCase))
                         {
                             // ignore 
                             // Console.WriteLine("skip:not in filter.");

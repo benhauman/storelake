@@ -53,7 +53,7 @@ namespace StoreLake.TestStore.Server
                 }
                 else
                 {
-                    isOk = string.Equals(cmd.CommandText, handlerCommandTextX);
+                    isOk = string.Equals(cmd.CommandText, handlerCommandTextX, StringComparison.Ordinal);
                 }
 
 
@@ -101,7 +101,7 @@ namespace StoreLake.TestStore.Server
                 }
                 else
                 {
-                    isOk = string.Equals(cmd.CommandText, handlerCommandTextX);
+                    isOk = string.Equals(cmd.CommandText, handlerCommandTextX, StringComparison.Ordinal);
                 }
 
 
@@ -152,7 +152,7 @@ namespace StoreLake.TestStore.Server
                 }
                 else
                 {
-                    isOk = string.Equals(cmd.CommandText, handlerCommandTextX);
+                    isOk = string.Equals(cmd.CommandText, handlerCommandTextX, StringComparison.Ordinal);
                 }
 
                 if (isOk)

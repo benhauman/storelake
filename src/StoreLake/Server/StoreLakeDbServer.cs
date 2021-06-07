@@ -308,10 +308,10 @@ namespace StoreLake.TestStore.Server
                 if (handlerCommandText == null)
                 {
                     //System.Reflection.MethodInfo accessor_method_x = accessorType.GetMethod(mi.Name);
-                    if (accessor_method == null)
-                    {
-                        return null;
-                    }
+                    //if (accessor_method == null)
+                    //{
+                    //    return null;
+                    //}
 
                     throw new InvalidOperationException(TypedMethodHandler.BuildMismatchMethodExpectionText(mi, accessor_method, "CommandText field '" + mi.Name + "CommandText' could not be found."));
                 }
