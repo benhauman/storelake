@@ -49,10 +49,10 @@ namespace StoreLake.Test.ConsoleApp
                 .Use(TweetExtension.Register)
                 .Build()
                 .SetCommandExecuteHandlerInstanceForHelplineDataProceduresFacade<DemoHandler4_FacadeHandler>();
-                //.SetHandlerForHelplineDataProcedures<DemoHandler4_CommandHandler>()
-                //.SetCommandExecuteHandlerInstanceForHelplineDataProceduresFacade<DemoHandler4>() // SetFacade
-                //.SetCommandExecuteHandlerInstanceForHelplineDataProceduresHandler<DemoHandler4_CommandHandler>()
-                ;
+            //.SetHandlerForHelplineDataProcedures<DemoHandler4_CommandHandler>()
+            //.SetCommandExecuteHandlerInstanceForHelplineDataProceduresFacade<DemoHandler4>() // SetFacade
+            //.SetCommandExecuteHandlerInstanceForHelplineDataProceduresHandler<DemoHandler4_CommandHandler>()
+            ;
             //HelplineDataExtensions.SetCommandExecuteHandlerInstanceForHelplineDataProceduresHandler<DataSet, DemoHandler4_CommandHandler>(db);
             //HelplineDataExtensions.SetCommandExecuteHandlerInstanceForHelplineDataProceduresFacade<DataSet, DemoHandler4_FacadeHandler>(db);
 
@@ -85,18 +85,12 @@ namespace StoreLake.Test.ConsoleApp
 
             StoreLakeDbServer dbServer = new StoreLakeDbServer(db);
 
-            //dbServer.RegisterAddedCommandHandlerContracts(db);
-            //dbServer.RegisterAddedCommandHandlerContract<DemoHandler4>(db);
-            //dbServer.RegisterAddedCommandHandlerContract(db, db.HelplineDataProcedures());
-            dbServer.RegisterAddedCommandHandlerContract(db, db.HelplineDataProceduresHandler());
+            dbServer.RegisterProcedureHandlers<HelplineDataProceduresCommandExecuteHandler>(x => x.HelplineDataProceduresHandler()
+                , HelplineDataProceduresCommandExecuteHandler.TryGetHandlerForCommandExecuteProcedureNonQuery
+                , HelplineDataProceduresCommandExecuteHandler.TryGetHandlerForCommandExecuteProcedureQuery);
 
-            ////AdoClient.SomeComplicatedMultipleResultSetProc(dbServer.CreateDbProviderFactoryInstance());
-            ////dbServer.RegisterHandlerReadWithCommandText((d, c) => DemoHandler1.GetAgentNameById(d, c)); // any / text-static
-            ////dbServer.RegisterHandlerReadForCommandText(typeof(TestDML), (d, c) => DemoHandler1.GetAgentInfoById(d, c)); // static-text / static
-            //dbServer.RegisterCommandHandlerFacade<DemoHandler2Repository>(typeof(Helpline.Repository.Data.HelplineData));
-            //dbServer.RegisterCommandHandlerFacade<DemoHandler2_OnDatabaseAccessor>(typeof(Helpline.Data.HelplineData));
+            // on reflection/discovery (methodname=procedurename) dbServer.RegisterAddedCommandHandlerContract(db, db.HelplineDataProceduresHandler());
             dbServer.RegisterCommandHandlerMethods(typeof(TestDML), typeof(DemoHandler1)); // dml.methods(+text) => handler(+text)
-            ////System.Data.SqlClient.SqlClientFactory
 
             StoreLakeDabaseAccessorGate accessorGate = new StoreLakeDabaseAccessorGate();
 

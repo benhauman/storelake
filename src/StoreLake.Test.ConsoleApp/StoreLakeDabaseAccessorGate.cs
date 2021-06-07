@@ -8,7 +8,7 @@ using System.Reflection;
 
 namespace StoreLake.Test.ConsoleApp
 {
-
+    /*
     class StoreLakeDao2
     {
         private static SortedDictionary<string, IComparable> s_cache = new SortedDictionary<string, IComparable>();
@@ -42,7 +42,7 @@ namespace StoreLake.Test.ConsoleApp
             return commandText;
         }
     }
-
+*/
     public sealed class StoreLakeDabaseAccessorGate
     {
         class MyHandlerRead
@@ -117,6 +117,7 @@ namespace StoreLake.Test.ConsoleApp
 
         }
         private readonly Dictionary<IComparable, MyHandlerRead> handlers_read = new Dictionary<IComparable, MyHandlerRead>();
+        /*
         public void RegisterAccessHandlerFacade<THandlerFacade>(Type databaseAccesorType)
         {
             var handler_methods = typeof(THandlerFacade).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
@@ -162,10 +163,11 @@ namespace StoreLake.Test.ConsoleApp
             MethodCallExpression call = Expression.Call(methodCallExpr.Method, parameter_db, parameter_cmd);// methodCallExpr.Arguments
             Expression<Func<DataSet, IParametersVisitor, object>> lambda = Expression.Lambda<Func<DataSet, IParametersVisitor, object>>(call, parameter_db, parameter_cmd); // visitor.ExtractedParameters
 
-            Func<DataSet, IParametersVisitor, object> handlerMethod = lambda.Compile();*/
+            Func<DataSet, IParametersVisitor, object> handlerMethod = lambda.Compile();* /
 
             handlers_read.Add(handlerCommandText, new MyHandlerRead(methodCallExpr.Method.DeclaringType, methodCallExpr.Method, handlerCommandText));
         }
+        */
         public Func<DataSet, Dibix.ParametersVisitor, object> TryGetHandlerRead(string sql)
         {
             if (handlers_read.TryGetValue(sql, out MyHandlerRead handler))

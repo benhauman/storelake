@@ -6,8 +6,7 @@ dotnet_diagnostic.CA1309.severity = error
 # CA1813: Avoid unsealed attributes
 dotnet_diagnostic.CA1813.severity = error
 
-# CA1508: Avoid dead conditional code
-dotnet_diagnostic.CA1508.severity = error
+
 
 # CA2011: Avoid infinite recursion
 dotnet_diagnostic.CA2011.severity = error

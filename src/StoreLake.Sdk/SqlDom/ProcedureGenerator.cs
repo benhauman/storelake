@@ -7,10 +7,11 @@ namespace StoreLake.Sdk.SqlDom
 {
     public static class ProcedureGenerator
     {
-        public static ProcedureMetadata ParseProcedureBody(string procedure_name, string procedure_body, Dictionary<string, ProcedureCodeParameter> procedureParameters)
+        public static ProcedureMetadata ParseProcedureBody(string procedure_schema, string procedure_name, string procedure_body, Dictionary<string, ProcedureCodeParameter> procedureParameters)
         {
+            string fullName = "[" + procedure_schema + "].[" + procedure_name + "]";
             TSqlFragment sqlF = ScriptDomFacade.Parse(procedure_body);
-            return new ProcedureMetadata(procedure_name, sqlF, procedureParameters);
+            return new ProcedureMetadata(fullName, procedure_name, sqlF, procedureParameters);
         }
         public static ProcedureOutputSet[] IsQueryProcedure(bool resolveColumnType, ISchemaMetadataProvider schemaMetadata, ProcedureMetadata procedure_metadata)
         {

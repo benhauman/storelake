@@ -1,10 +1,45 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 
 namespace Helpline.Data.TestStore
 {
+    static class HelplineDatX
+    {
+        private static readonly IDictionary<string, Func<HelplineDataProceduresCommandExecuteHandler, Func<DataSet, DbCommand, int>>> s_e = InitializeE();
+
+        private static Dictionary<string, Func<HelplineDataProceduresCommandExecuteHandler, Func<DataSet, DbCommand, int>>> InitializeE()
+        {
+            var dict = new Dictionary<string, Func<HelplineDataProceduresCommandExecuteHandler, Func<DataSet, DbCommand, int>>>(StringComparer.OrdinalIgnoreCase);
+            dict.Add("hlsyssec_cache_refresh", x => x.hlsyssec_cache_refresh);
+            return dict;
+        }
+        public static Func<DataSet, DbCommand, int> TryGetHandlerForCommandExecuteProcedureNonQuery(DataSet db, string procedureFullName)
+        {
+            Func<HelplineDataProceduresCommandExecuteHandler, Func<DataSet, DbCommand, int>> handler_reg;
+            if (s_e.TryGetValue(procedureFullName, out handler_reg))
+                return handler_reg(db.HelplineDataProceduresHandler()); // this
+            return null;
+        }
+
+
+        class HandlersTable
+        {
+            private IDictionary<string, Func<DataSet, DbCommand, int>> cached_handlers_exec = new SortedDictionary<string, Func<DataSet, DbCommand, int>>(StringComparer.OrdinalIgnoreCase);
+            internal Func<DataSet, DbCommand, int> TryGetHandlerForProcedureExecuteNonQuery(string schemaName, string procedureName)
+            {
+                //Func<DataSet, DbCommand, int> handler;
+                //if (!cached_handlers_exec.TryGetValue(procedureName, out handler))
+                //{
+                //    if (string.Equals(procedureName, "hlsyssec_canexecuteglobal", StringComparison.OrdinalIgnoreCase))
+                //        return AddCachedHandler(procedureName,  db.HelplineDataProceduresHandler().hlsyssec_canexecuteglobal;
+                //}
+                return null;
+            }
+        }
+    }
     /*
     static class HelplineDataExtensions_X
     {
@@ -42,7 +77,7 @@ namespace Helpline.Data.TestStore
         }
 
     }
-    
+
     public class HelplineDataProcedures
     {
         private readonly IDictionary<string, Func<DataSet, DbCommand, DbDataReader>> read_methods;

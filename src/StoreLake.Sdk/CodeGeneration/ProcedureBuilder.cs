@@ -3,6 +3,7 @@ using System;
 using System.CodeDom;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -32,8 +33,138 @@ namespace StoreLake.Sdk.CodeGeneration
             };
             ns_procedures.Types.Add(procedures_facade_type_decl);
 
-            BuildStoreProceduresHandlerType(rr, dacpac, exttype.extensions_type_decl, ns_procedures, procedures_handler_type_decl, procedures_facade_type_decl, extMethodAccess_HandlerFacade, rr.udt_rows);
+            ProcedureHandlerRegistry hreg = BuildProcedureRegistry(procedures_handler_type_decl);
+
+            BuildStoreProceduresHandlerType(rr, dacpac, exttype.extensions_type_decl, ns_procedures, hreg, procedures_handler_type_decl, procedures_facade_type_decl, extMethodAccess_HandlerFacade, rr.udt_rows);
             BuildStoreProceduresProvider(rr, dacpac, ns_procedures, exttype, procedures_handler_type_decl, extMethodAccess_CommandExecuteHandler, procedures_facade_type_decl, extMethodAccess_HandlerFacade);
+
+            hreg.FinishRegistration();
+        }
+
+        class ProcedureHandlerRegistry
+        {
+            internal CodeVariableReferenceExpression dict_exec_ref;
+            internal CodeVariableReferenceExpression dict_read_ref;
+            internal CodeMemberMethod InitializeExec_decl;
+            internal CodeMemberMethod InitializeRead_decl;
+            private CodeTypeDeclaration procedures_handler_type_decl;
+
+            public ProcedureHandlerRegistry(CodeTypeDeclaration procedures_handler_type_decl)
+            {
+                this.procedures_handler_type_decl = procedures_handler_type_decl;
+            }
+
+            internal void FinishRegistration()
+            {
+                InitializeExec_decl.Statements.Add(new CodeMethodReturnStatement(dict_exec_ref));
+                InitializeRead_decl.Statements.Add(new CodeMethodReturnStatement(dict_read_ref));
+            }
+
+            internal void RegisterProcedureRead(ProcedureMetadata procedure_metadata, CommandHandlerMethod hm)
+            {
+                //dict.Add("hlsyssec_cache_refresh", x => x.hlsyssec_cache_refresh);
+                if (hm.IsQueryProcedure)
+                {
+                    var invoke_Add = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(dict_read_ref, "Add")
+                            , new CodePrimitiveExpression(procedure_metadata.ProcedureFullName)
+                            , new CodeSnippetExpression("x => x." + hm.handler_method_decl.Name)
+                            );
+                    InitializeRead_decl.Statements.Add(invoke_Add);
+                }
+                else
+                {
+                    var invoke_Add = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(dict_exec_ref, "Add")
+                            , new CodePrimitiveExpression(procedure_metadata.ProcedureFullName)
+                            , new CodeSnippetExpression("x => x." + hm.handler_method_decl.Name)
+                            );
+                    InitializeExec_decl.Statements.Add(invoke_Add);
+                }
+            }
+        }
+
+        private static ProcedureHandlerRegistry BuildProcedureRegistry(CodeTypeDeclaration procedures_handler_type_decl)
+        {
+            ProcedureHandlerRegistry hreg = new ProcedureHandlerRegistry(procedures_handler_type_decl);
+            // Exec
+            BuildHandlerRegistryMethod(procedures_handler_type_decl, "s_handlers_exec", "InitializeHandlersExec", "TryGetHandlerForCommandExecuteProcedureNonQuery"
+                , typeof(Func<DataSet, DbCommand, int>)
+                , (InitializeMethod_decl, dict_ref) =>
+            {
+                hreg.InitializeExec_decl = InitializeMethod_decl;
+                hreg.dict_exec_ref = dict_ref;
+            });
+
+            // Read
+            BuildHandlerRegistryMethod(procedures_handler_type_decl, "s_handlers_read", "InitializeHandlersRead", "TryGetHandlerForCommandExecuteProcedureQuery"
+                , typeof(Func<DataSet, DbCommand, DbDataReader>)
+                , (InitializeMethod_decl, dict_ref) =>
+            {
+                hreg.InitializeRead_decl = InitializeMethod_decl;
+                hreg.dict_read_ref = dict_ref;
+            });
+
+
+            return hreg;
+        }
+
+        private static void BuildHandlerRegistryMethod(CodeTypeDeclaration procedures_handler_type_decl, string fieldName
+            , string methodNameInit, string methodNameGet
+            , Type methodSigniture
+            , Action<CodeMemberMethod, CodeVariableReferenceExpression> collector)
+        {
+            var InitializeExec_decl = new CodeMemberMethod() { Name = methodNameInit, Attributes = MemberAttributes.Private | MemberAttributes.Static };
+            procedures_handler_type_decl.Members.Add(InitializeExec_decl);
+
+            //Func<DataSet, DbCommand, int>;
+            CodeTypeReference T_Func__DataSet_DbCommand_int = new CodeTypeReference(methodSigniture);// typeof(Func<DataSet, DbCommand, int>));
+            CodeTypeReference T_Func_Provider = new CodeTypeReference(typeof(Func<,>));
+            T_Func_Provider.TypeArguments.Add(new CodeTypeReference(procedures_handler_type_decl.Name));
+            T_Func_Provider.TypeArguments.Add(T_Func__DataSet_DbCommand_int);
+            CodeTypeReference T_Dictionary = new CodeTypeReference(typeof(Dictionary<,>)); ;//<string, Func_provider>
+            T_Dictionary.TypeArguments.Add(typeof(string));
+            T_Dictionary.TypeArguments.Add(T_Func_Provider);
+
+            var dict_exec_decl = new CodeVariableDeclarationStatement(T_Dictionary, "dct");
+            dict_exec_decl.InitExpression = new CodeObjectCreateExpression(dict_exec_decl.Type, new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(StringComparer)), "OrdinalIgnoreCase"));
+
+            InitializeExec_decl.Statements.Add(dict_exec_decl);
+            var dict_exec_ref = new CodeVariableReferenceExpression(dict_exec_decl.Name);
+
+            InitializeExec_decl.ReturnType = dict_exec_decl.Type;
+
+
+            CodeMemberField s_handlers_exec = new CodeMemberField(dict_exec_decl.Type, fieldName) { Attributes = MemberAttributes.Private | MemberAttributes.Static };
+            s_handlers_exec.InitExpression = new CodeMethodInvokeExpression(null, InitializeExec_decl.Name);
+            procedures_handler_type_decl.Members.Add(s_handlers_exec);
+
+            // TryGet
+            CodeMemberMethod TryGetHandler_decl = new CodeMemberMethod() { Name = methodNameGet, Attributes = MemberAttributes.Public | MemberAttributes.Static };
+            procedures_handler_type_decl.Members.Add(TryGetHandler_decl);
+            var prm_handlers_decl = new CodeParameterDeclarationExpression(procedures_handler_type_decl.Name, "handlers");
+            TryGetHandler_decl.Parameters.Add(prm_handlers_decl);
+            var prm_name_decl = new CodeParameterDeclarationExpression(typeof(string), "name");
+            TryGetHandler_decl.Parameters.Add(prm_name_decl);
+
+            TryGetHandler_decl.ReturnType = new CodeTypeReference(methodSigniture);
+            CodeVariableDeclarationStatement var_handler_decl = new CodeVariableDeclarationStatement(T_Func_Provider, "handler");
+            TryGetHandler_decl.Statements.Add(var_handler_decl);
+
+            var invoke_TryGetValue = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(new CodeFieldReferenceExpression(new CodeTypeReferenceExpression(procedures_handler_type_decl.Name), s_handlers_exec.Name), "TryGetValue"));
+            invoke_TryGetValue.Parameters.Add(new CodeArgumentReferenceExpression(prm_name_decl.Name));
+            CodeDirectionExpression out_handler = new CodeDirectionExpression(FieldDirection.Out, new CodeVariableReferenceExpression(var_handler_decl.Name));
+            invoke_TryGetValue.Parameters.Add(out_handler);
+            TryGetHandler_decl.Statements.Add(invoke_TryGetValue);
+
+            var invoke_Func = new CodeDelegateInvokeExpression(new CodeVariableReferenceExpression(var_handler_decl.Name), new CodeArgumentReferenceExpression(prm_handlers_decl.Name));
+            //TryGetHandler_decl.Statements.Add(invoke_Func);
+
+            var if_TryGetValue = new CodeConditionStatement(invoke_TryGetValue, new CodeMethodReturnStatement(invoke_Func));
+            if_TryGetValue.FalseStatements.Add(new CodeMethodReturnStatement(new CodePrimitiveExpression(null)));
+            TryGetHandler_decl.Statements.Add(if_TryGetValue);
+
+            //TryGetHandler_decl.Statements.Add(new CodeMethodReturnStatement(new CodePrimitiveExpression(null)));
+            collector(InitializeExec_decl, dict_exec_ref);
+
         }
 
         private static void CollectProcedureParameters(RegistrationResult rr, StoreLakeProcedureRegistration procedure, Action<StoreLakeParameterRegistration, string, ProcedureCodeParameter> collector)
@@ -48,7 +179,12 @@ namespace StoreLake.Sdk.CodeGeneration
             }
         }
 
-        private static void BuildStoreProceduresHandlerType(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeNamespace ns_procedures, CodeTypeDeclaration procedures_handler_type_decl, CodeTypeDeclaration procedures_facade_type_decl, string extMethodAccess_HandlerFacade, IDictionary<string, TableTypeRow> udt_rows)
+        private static void BuildStoreProceduresHandlerType(RegistrationResult rr, DacPacRegistration dacpac, CodeTypeDeclaration extensions_type_decl, CodeNamespace ns_procedures
+            , ProcedureHandlerRegistry hreg
+            , CodeTypeDeclaration procedures_handler_type_decl
+            , CodeTypeDeclaration procedures_facade_type_decl
+            , string extMethodAccess_HandlerFacade
+            , IDictionary<string, TableTypeRow> udt_rows)
         {
             AddReadParameterFunctions(procedures_handler_type_decl);
 
@@ -68,7 +204,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         procedureParameters.Add(parameterName, parameterType);
                     });
 
-                    procedure_metadata = SqlDom.ProcedureGenerator.ParseProcedureBody(procedure.ProcedureName, procedure.ProcedureBodyScript, procedureParameters);
+                    procedure_metadata = SqlDom.ProcedureGenerator.ParseProcedureBody(rr.ds.Namespace, procedure.ProcedureName, procedure.ProcedureBodyScript, procedureParameters);
                     procedureOutputResultSets = SqlDom.ProcedureGenerator.IsQueryProcedure(rr.DoResolveColumnTypes, rr.SchemaMetadata(), procedure_metadata);
                     int anno_countOfResultSets = procedure.Annotations.Count(x => x.AnnotationKey == "Return");
                     if (anno_countOfResultSets > 0)
@@ -105,6 +241,8 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         procedureFacadeMethodName = procedure.ProcedureName;
                     }
+
+
                 }
                 catch (Exception ex)
                 {
@@ -116,19 +254,21 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 if (procedureOutputResultSets != null)
                 {
-                    GenerateProcedureDeclaration(rr, extMethodAccess_HandlerFacade, procedures_handler_type_decl, procedure, procedureOutputResultSets, procedureFacadeMethodName, ns_procedures, procedures_facade_type_decl, procedure_metadata, udt_rows);
+                    GenerateProcedureDeclaration(rr, extMethodAccess_HandlerFacade, procedures_handler_type_decl, hreg, procedure, procedureOutputResultSets, procedureFacadeMethodName, ns_procedures, procedures_facade_type_decl, procedure_metadata, udt_rows);
                 }
                 else
                 {
                     s_tracer.TraceEvent(TraceEventType.Warning, 0, "SKIP procedure  [" + procedure.ProcedureName + "] generation failed.");
                 }
-            }
+
+            } // foreach procedure
         }
 
         class CommandHandlerMethod
         {
             internal string handler_type_name;
             internal CodeMemberMethod handler_method_decl;
+            internal bool IsQueryProcedure;
         }
         class CommandFacadeMethod
         {
@@ -144,6 +284,7 @@ namespace StoreLake.Sdk.CodeGeneration
         private static void GenerateProcedureDeclaration(RegistrationResult rr
             , string extMethodAccess_HandlerFacade
             , CodeTypeDeclaration procedures_type_decl
+            , ProcedureHandlerRegistry hreg
             , StoreLakeProcedureRegistration procedure
             , ProcedureOutputSet[] procedureOutputResultSets
             , string facadeMethodName
@@ -166,7 +307,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 : typeof(int);
             //: hasReturnStatements.GetValueOrDefault()
             //    ? typeof(int) : typeof(void);
-
+            hm.IsQueryProcedure = procedureOutputResultSets.Length > 0;
             hm.handler_method_decl.ReturnType = new CodeTypeReference(returnType);
 
             hm.handler_method_decl.Statements.Add(new CodeCommentStatement("Procedure: " + procedure.ProcedureSchemaName + "." + procedure.ProcedureName));
@@ -241,6 +382,9 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 hm.handler_method_decl.Statements.Add(new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(NotImplementedException))));
             }
+
+
+            hreg.RegisterProcedureRead(procedure_metadata, hm);
         }
 
         private static CodeTypeDeclaration BuildCommandFacadeOutputType(string facadeMethodName, ProcedureOutputSet[] procedureOutputResultSets)
@@ -552,7 +696,10 @@ namespace StoreLake.Sdk.CodeGeneration
                 , DacPacRegistration dacpac
                 , CodeNamespace ns
                 , ExtensionsClass exttype
-                , CodeTypeDeclaration procedures_handler_type_decl, string handlerMethod, CodeTypeDeclaration procedures_facade_type_decl, string facadeMethod)
+                , CodeTypeDeclaration procedures_handler_type_decl
+                , string handlerMethod
+                , CodeTypeDeclaration procedures_facade_type_decl
+                , string facadeMethod)
         {
             // 1.DataTable
             // 2.extension method Get
@@ -626,6 +773,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
 
             exttype.extensions_method_InitDataSet.Statements.Add(if_table_not_Exists_Add);
+
         }
 
 

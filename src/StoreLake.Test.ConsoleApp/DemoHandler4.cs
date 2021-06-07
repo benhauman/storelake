@@ -26,6 +26,8 @@ namespace StoreLake.Test.ConsoleApp
     {
         public override CanExecuteResultSets CanExecute(DataSet db, CanExecuteResultSets output, int agentid, int globalid)
         {
+            //if (db != null)
+            //    throw new NotImplementedException();
             return output.AddRow(1);
         }
         public override GetUserInfoResultSets GetUserInfo(DataSet db, GetUserInfoResultSets output, int agentid)

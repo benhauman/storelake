@@ -7,8 +7,9 @@ namespace StoreLake.Sdk.SqlDom
 {
     public sealed class ProcedureMetadata : IBatchParameterMetadata
     {
-        public ProcedureMetadata(string procedureName, TSqlFragment bodyFragment, Dictionary<string, ProcedureCodeParameter> procedureParameters)
+        public ProcedureMetadata(string procedureFullName, string procedureName, TSqlFragment bodyFragment, Dictionary<string, ProcedureCodeParameter> procedureParameters)
         {
+            ProcedureFullName = procedureFullName;
             ProcedureName = procedureName;
             BodyFragment = bodyFragment;
             foreach(var prm in procedureParameters)
@@ -17,6 +18,7 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
+        public string ProcedureFullName { get; private set; }
         public string ProcedureName { get; private set; }
         public TSqlFragment BodyFragment { get; private set; }
 

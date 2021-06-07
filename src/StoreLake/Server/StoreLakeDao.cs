@@ -348,7 +348,7 @@ namespace StoreLake.TestStore.Server
 
         }
 
-        internal void ValidateReadMethod(System.Reflection.MethodInfo a_method)
+        internal bool ValidateReadMethodX(System.Reflection.MethodInfo a_method)
         {
             var h_method = _mi;
 
@@ -366,7 +366,7 @@ namespace StoreLake.TestStore.Server
                     )
                 {
                     // raw handler 
-                    return;
+                    return true;
                 }
                 else
                 {
@@ -397,7 +397,8 @@ namespace StoreLake.TestStore.Server
                     {
                         if (h_prm.ParameterType != typeof(DataSet))
                         {
-                            throw new InvalidOperationException(BuildMismatchMethodExpectionText(a_method, h_method, "First parameter has a wrong type."));
+                            //throw new InvalidOperationException(BuildMismatchMethodExpectionText(a_method, h_method, "First parameter has a wrong type."));
+                            return false;
                         }
                     }
                     else
@@ -416,6 +417,8 @@ namespace StoreLake.TestStore.Server
                     }
                 }
             }
+
+            return true;
         }
 
         private int HandleExec(DataSet db, DbCommand cmd)

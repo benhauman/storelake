@@ -197,7 +197,7 @@ namespace StoreLake.Test
 END
 ";
             Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody("dbo", TestContext.TestName, sql, procedureParameters);
             var schemaMetadata = CreateTestMetadata()
                 .AddTable(new TestTable(null, "@table"))
                 ;
@@ -236,7 +236,7 @@ END
 -- DROP PROCEDURE [dbo].[hlsys_createactioncontext]
 ";
             Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody("dbo", TestContext.TestName, sql, procedureParameters);
             //procedure_metadata.BodyFragment.Accept(new DumpFragmentVisitor());
             var schemaMetadata = CreateTestMetadata();
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
@@ -295,7 +295,7 @@ BEGIN
 END
 ";
             Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody("dbo", TestContext.TestName, sql, procedureParameters);
             var schemaMetadata = CreateTestMetadata();
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
             Assert.AreEqual(1, res.Length);
@@ -337,7 +337,7 @@ WHERE role.roleid=@RoleId
 END";
 
             Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody("dbo", TestContext.TestName, sql, procedureParameters);
             var schemaMetadata = CreateTestMetadata();
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
             Assert.AreEqual(1, res.Length, "OutputSet.Count");
@@ -445,7 +445,7 @@ END";
 END";
 
             Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody("dbo", TestContext.TestName, sql, procedureParameters);
             var schemaMetadata = CreateTestMetadata();
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
             Assert.AreEqual(1, res.Length, "OutputSet.Count");
@@ -504,7 +504,7 @@ BEGIN
 END";
 
             Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
-            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql, procedureParameters);
+            var procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody("dbo", TestContext.TestName, sql, procedureParameters);
             var schemaMetadata = CreateTestMetadata();
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
             Assert.AreEqual(1, res.Length, "OutputSet.Count");
@@ -697,7 +697,7 @@ END";
             }
 
 
-            ProcedureMetadata procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody(TestContext.TestName, sql_body, procedureParameters);
+            ProcedureMetadata procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody("dbo", TestContext.TestName, sql_body, procedureParameters);
 
             CreateProcedureStatement stmt = (CreateProcedureStatement)((TSqlScript)(sqlF)).Batches[0].Statements[0];
             foreach (ProcedureParameter prm in stmt.Parameters)
