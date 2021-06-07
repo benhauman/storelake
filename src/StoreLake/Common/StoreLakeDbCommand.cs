@@ -6,7 +6,7 @@ namespace StoreLake.TestStore
 {
     internal sealed class StoreLakeDbCommand : DbCommand
     {
-        public StoreLakeDbConnection DbConnectionProperty;
+        private StoreLakeDbConnection _dbConnectionProperty;
 
         public StoreLakeDbCommand(DbConnection connection)
         {
@@ -16,11 +16,11 @@ namespace StoreLake.TestStore
         {
             get
             {
-                return DbConnectionProperty;
+                return _dbConnectionProperty;
             }
             set
             {
-                DbConnectionProperty = (StoreLakeDbConnection)value;
+                _dbConnectionProperty = (StoreLakeDbConnection)value;
             }
         }
 
@@ -38,16 +38,16 @@ namespace StoreLake.TestStore
             return new StoreLakeDbParameter();
         }
 
-        internal StoreLakeDbParameterCollection DbParameterCollectionProperty;
+        private StoreLakeDbParameterCollection _dbParameterCollectionProperty;
         protected override DbParameterCollection DbParameterCollection
         {
             get
             {
-                if (DbParameterCollectionProperty == null)
+                if (_dbParameterCollectionProperty == null)
                 {
-                    DbParameterCollectionProperty = new StoreLakeDbParameterCollection();
+                    _dbParameterCollectionProperty = new StoreLakeDbParameterCollection();
                 }
-                return DbParameterCollectionProperty;
+                return _dbParameterCollectionProperty;
             }
         }
 
