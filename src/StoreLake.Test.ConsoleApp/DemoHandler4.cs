@@ -35,10 +35,14 @@ namespace StoreLake.Test.ConsoleApp
             return output.Set1AddRow(id: null, name: null, fullname: null, description: null, isactive: null, hideforrouting: null);
         }
 
-        public override AddToWatchListResultSets AddToWatchList(DataSet db, AddToWatchListResultSets output, int agentid, IEnumerable<hlsys_udt_intthreesetRow> ids)
+        //public override AddToWatchListResultSets AddToWatchList(DataSet db, AddToWatchListResultSets output, int agentid, IEnumerable<hlsys_udt_intthreesetRow> ids)
+        //{
+        //    //return output.AddRow(value: null);
+        //    return output.AddRow(value: 1);
+        //}
+        public override void AddToWatchList(DataSet db, int agentid, IEnumerable<hlsys_udt_intthreesetRow> ids, bool limitreached)
         {
-            //return output.AddRow(value: null);
-            return output.AddRow(value: 1);
+            //
         }
 
         public override void AdministrationRefreshRelationModels(DataSet db)

@@ -121,7 +121,7 @@ namespace StoreLake.Test.ConsoleApp
             test10_udt.Add(1, object_def_A.objectdefid, 3000); // seq, def, objectid
             test10_udt.Add(2, object_def_B.objectdefid, 2000);
             test10_udt.Add(3, object_def_C.objectdefid, 1000);
-            var test10 = Helpline.Data.HelplineData.AddToWatchList(databaseAccessorFactory, agent710.agentid, test10_udt);
+            Helpline.Data.HelplineData.AddToWatchList(databaseAccessorFactory, agent710.agentid, test10_udt, out bool test10);
             Console.WriteLine("test10: " + test10);
 
             Helpline.Data.HelplineData.AdministrationRefreshRelationModels(databaseAccessorFactory);

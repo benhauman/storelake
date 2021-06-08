@@ -1225,7 +1225,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt64(mqe, 0);
                 var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64, true);
-                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64, false);
                 return true;
             }
 
@@ -1233,7 +1233,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt64(mqe, 0);
                 var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64, true);
-                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64, false);
                 return true;
             }
 
@@ -1351,6 +1351,14 @@ namespace StoreLake.Sdk.SqlDom
                 throw new NotImplementedException(fCall.WhatIsThis());
             }
 
+            if (string.Equals(functionName, "RANK", StringComparison.OrdinalIgnoreCase))
+            {
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt64(mqe, 0);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64, false);
+                return true;
+
+            }
             throw new NotImplementedException(fCall.WhatIsThis());
         }
         private static bool TryResolveLeftFunctionCall(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, LeftFunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)
