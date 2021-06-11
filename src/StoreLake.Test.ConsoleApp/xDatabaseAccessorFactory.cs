@@ -137,6 +137,11 @@ namespace StoreLake.Test.ConsoleApp
             throw new NotImplementedException();
         }
 
+        IEnumerable<TReturn> IDatabaseAccessor.QueryMany<TReturn, TSecond, TThird, TFourth>(string sql, CommandType commandType, ParametersVisitor parameters, string splitOn)
+        {
+            throw new NotImplementedException();
+        }
+
         Task<IEnumerable<T>> IDatabaseAccessor.QueryManyAsync<T>(string sql, CommandType commandType, ParametersVisitor parameters, bool buffered, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();

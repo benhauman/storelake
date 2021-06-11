@@ -73,7 +73,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 asm = Assembly.ReflectionOnlyLoad(asmName.ToString());// Assembly.Load(asmName); // ReflectionOnly?
             }
 
-            return CacheAssembly(asmName, asm);
+            return CacheAssembly(asm);
         }
         internal string ResolveLocationByName(AssemblyName assemblyName)
         {
@@ -95,16 +95,17 @@ namespace StoreLake.Sdk.CodeGeneration
                 asm = Assembly.ReflectionOnlyLoad(asmName.ToString()); // Assembly.Load(asmName); // ReflectionOnly?
             }
 
-            return CacheAssembly(asmName, asm);
+            return CacheAssembly(asm);
         }
 
         internal Assembly CacheType(Type type)
         {
-            CacheAssembly(type.Assembly.GetName(), type.Assembly);
+            CacheAssembly(type.Assembly);
             return type.Assembly;
         }
-        private Assembly CacheAssembly(AssemblyName asmName, Assembly asm)
+        private Assembly CacheAssembly(Assembly asm)
         {
+            AssemblyName asmName = asm.GetName();
             if (!name_asm.ContainsKey(asmName.FullName))
             {
                 name_asm.Add(asmName.FullName, asm);
