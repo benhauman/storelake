@@ -254,7 +254,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 if (procedureOutputResultSets != null)
                 {
-                    GenerateProcedureDeclaration(rr, extMethodAccess_HandlerFacade, procedures_handler_type_decl, hreg, procedure, procedureOutputResultSets, procedureFacadeMethodName, ns_procedures, procedures_facade_type_decl, procedure_metadata, udt_rows);
+                    GenerateProcedureDeclaration(rr, dacpac, extMethodAccess_HandlerFacade, procedures_handler_type_decl, hreg, procedure, procedureOutputResultSets, procedureFacadeMethodName, ns_procedures, procedures_facade_type_decl, procedure_metadata, udt_rows);
                 }
                 else
                 {
@@ -282,6 +282,7 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
         private static void GenerateProcedureDeclaration(RegistrationResult rr
+            , DacPacRegistration dacpac
             , string extMethodAccess_HandlerFacade
             , CodeTypeDeclaration procedures_type_decl
             , ProcedureHandlerRegistry hreg
@@ -368,7 +369,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 facade_output_type_decl = null;
             }
 
-            CommandFacadeMethod fm = BuildCommandFacadeMethod(procedures_facade_type_decl.Name, facadeMethodName, procedure, facade_output_type_decl, procedureOutputResultSets, procedure_metadata, udt_rows);
+            CommandFacadeMethod fm = BuildCommandFacadeMethod(dacpac, procedures_facade_type_decl.Name, facadeMethodName, procedure, facade_output_type_decl, procedureOutputResultSets, procedure_metadata, udt_rows);
             if (fm != null)
             {
                 procedures_facade_type_decl.Members.Add(fm.facade_method_decl);
@@ -877,7 +878,7 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static CommandFacadeMethod BuildCommandFacadeMethod(string facade_type_name, string procedureMethodName, StoreLakeProcedureRegistration procedure, CodeTypeDeclaration facade_output_type_decl, ProcedureOutputSet[] procedureOutputResultSets, SqlDom.ProcedureMetadata procedure_metadata, IDictionary<string, TableTypeRow> udt_rows)
+        private static CommandFacadeMethod BuildCommandFacadeMethod(DacPacRegistration dacpac, string facade_type_name, string procedureMethodName, StoreLakeProcedureRegistration procedure, CodeTypeDeclaration facade_output_type_decl, ProcedureOutputSet[] procedureOutputResultSets, SqlDom.ProcedureMetadata procedure_metadata, IDictionary<string, TableTypeRow> udt_rows)
         {
             bool? hasReturnStatements = ProcedureGenerator.HasReturnStatement(procedure_metadata);
 
@@ -906,7 +907,10 @@ namespace StoreLake.Sdk.CodeGeneration
                 CodeParameterDeclarationExpression code_param_decl = new CodeParameterDeclarationExpression() { Name = parameterType.ParameterCodeName };
                 if (parameter.ParameterDbType == SqlDbType.Structured) // IEnumerable<udtRow>
                 {
-                    var udtRow = udt_rows[parameter.ParameterTypeFullName];
+                    if (!udt_rows.TryGetValue(parameter.ParameterTypeFullName, out TableTypeRow udtRow))
+                    {
+                        throw new StoreLakeSdkException("Table type could not be found:" + parameter.ParameterTypeFullName + " Procedure:" + procedure.ProcedureName + ", dacpac:" + dacpac.DacPacAssemblyLogicalName);
+                    }
                     code_param_decl.Type = new CodeTypeReference(typeof(IEnumerable<>));
                     code_param_decl.Type.TypeArguments.Add(new CodeTypeReference(udtRow.ClrFullTypeName));
                 }

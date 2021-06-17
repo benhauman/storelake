@@ -96,6 +96,9 @@ namespace StoreLake.Sdk.CodeGeneration
                 column.AllowDBNull = creg.IsNullable;
                 column.AutoIncrement = creg.IsIdentity;
 
+                if (creg.IsIdentity)
+                    column.AutoIncrementSeed = 1;
+
             }
         }
 
