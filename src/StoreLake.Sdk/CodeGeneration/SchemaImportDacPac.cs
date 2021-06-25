@@ -1,4 +1,5 @@
-﻿using StoreLake.Sdk.SqlDom;
+﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
+using StoreLake.Sdk.SqlDom;
 using System;
 using System.CodeDom;
 using System.Collections.Generic;
@@ -850,6 +851,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 procedure_reg.ProcedureName = sonProcedure.ObjectName;
                 procedure_reg.ProcedureBodyScript = xcdata.Value.Trim(); //xProperty_BodyScript_Value == null ? null : xProperty_BodyScript.Value;
 
+                IList<ProcedureParameter> proc_params = null;
                 var xSysCommentsObjectAnnotation = xProcedure.Elements().Single(e => e.Name.LocalName == "Annotation" && e.Attributes().Any(t => t.Name.LocalName == "Type" && t.Value == "SysCommentsObjectAnnotation"));
                 if (xSysCommentsObjectAnnotation != null)
                 {
@@ -864,6 +866,16 @@ namespace StoreLake.Sdk.CodeGeneration
                             procedure_reg.Annotations.Add(new StoreLakeAnnotationRegistration() { AnnotationKey = key, AnnotationValue = value });
 
                         });
+
+                        //HeaderContentTokens = comments.Split(';');
+
+                        // hlsp_approvalfulfilled
+                        string proc_decl = comments + " SELECT 1";
+
+                        TSqlScript sqlF = (TSqlScript)ScriptDomFacade.Parse(proc_decl);
+
+                        CreateProcedureStatement stmt = (CreateProcedureStatement)sqlF.Batches[0].Statements[0];
+                        proc_params = stmt.Parameters;
                     }
                 }
 
@@ -871,6 +883,28 @@ namespace StoreLake.Sdk.CodeGeneration
                 // <Relationship Name="Parameters">
                 CollectRelationParameters(sonProcedure, xProcedure, (StoreLakeParameterRegistration parameter) =>
                 {
+                    if (proc_params != null)
+                    {
+                        var proc_param = proc_params.FirstOrDefault(x => string.Equals(x.VariableName.Value, parameter.ParameterName, StringComparison.OrdinalIgnoreCase));
+                        if (proc_param.Nullable != null && proc_param.Nullable.Nullable)
+                        {
+                            // hlsp_approvalfulfilled
+                            parameter.IsNULLSpecified = true;
+                            parameter.AllowNull = true;
+                        }
+
+                        if (proc_param.Value != null)
+                        {
+                            // hlsp_approvalfulfilled
+                            if (proc_param.Value is IntegerLiteral intLit)
+                            {
+                            }
+                            else
+                            {
+                                NullLiteral nullLit = (NullLiteral)proc_param.Value;
+                            }
+                        }
+                    }
                     procedure_reg.Parameters.Add(parameter);
                 });
 
