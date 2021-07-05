@@ -963,7 +963,7 @@ END";
             TestProcedureOutput(2, 0, new
             {
                 suid = default(int?),
-                suindex = default(Int64?), // ??????? DENSE_RANK
+                suindex = default(Int64), // ??????? DENSE_RANK
                 type = default(int),
                 kind = default(short?), // ELSE [apo].[attr_type]
                 displayname = "", //??
