@@ -180,6 +180,7 @@ namespace StoreLake.Sdk.SqlDom
             || (node is SelectFunctionReturnType) //  SELECT dv.[defaultattrpathid]
             || (node is LeftFunctionCall) //  LEFT([cd].[description], 100)
             || (node is HavingClause) //  HAVING MIN([fullfillment].[state]) < 2 AND MAX([fullfillment].[state]) >= 2
+            || (node is TryCastCall) //  TRY_CAST(settingvalue AS INT)
             )
             {
                 if (node is SelectInsertSource)

@@ -1,0 +1,5 @@
+storelake / facade parameters: 
+	-- nullable : CaseInsertInstance
+	-- , out
+
+AutoIncrement:seed = 1

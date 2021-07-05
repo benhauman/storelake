@@ -1359,6 +1359,20 @@ namespace StoreLake.Sdk.SqlDom
                 return true;
 
             }
+            if (string.Equals(functionName, "PATHNAME", StringComparison.OrdinalIgnoreCase))
+            {
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnString(mqe);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.String, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.String, true);
+                return true;
+            }
+            if (string.Equals(functionName, "GET_FILESTREAM_TRANSACTION_CONTEXT", StringComparison.OrdinalIgnoreCase))
+            {
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnBytes(mqe);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Binary, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Binary, true);
+                return true;
+            }
             throw new NotImplementedException(fCall.WhatIsThis());
         }
         private static bool TryResolveLeftFunctionCall(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, LeftFunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)

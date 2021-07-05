@@ -568,7 +568,10 @@ END";
         }
         */
         // T parameter_values
-
+        private void TestProcedureNoOutput()
+        {
+            TestProcedureOutputCore(0, 0, new { });
+        }
         private void TestProcedureOutput<T>(int outputSetCount, int outputSetIndex, T expected_columns)
         {
             TestProcedureOutputCore(outputSetCount, outputSetIndex, expected_columns);
@@ -622,12 +625,12 @@ END";
                         }
                         else
                         {
-                            Assert.AreEqual(expected_AllowNull, column.AllowNull.Value, "'" + outputColumnName + "' " + " (" + column.ColumnDbType.Value + ")");
+                            Assert.AreEqual(expected_AllowNull, column.AllowNull.Value, "AllowNull  '" + outputColumnName + "' " + " (" + column.ColumnDbType.Value + ")");
                         }
                     }
                     else
                     {
-                        Assert.AreEqual(expected_AllowNull, column.AllowNull.Value, "'" + outputColumnName + "' " + " (" + column.ColumnDbType.Value + ")");
+                        Assert.AreEqual(expected_AllowNull, column.AllowNull.Value, "AllowNull '" + outputColumnName + "' " + " (" + column.ColumnDbType.Value + ")");
                     }
                 }
             });
@@ -728,27 +731,33 @@ END";
             var res = Sdk.SqlDom.ProcedureGenerator.IsQueryProcedure(true, schemaMetadata, procedure_metadata);
             Assert.AreEqual(outputSetCount, res.Length, "OutputSet.Count");
 
-            var outputSet = res[outputSetIndex];
-            // use: SELECT * FROM sys.dm_exec_describe_first_result_set('dbo.hlomobjectinfo_query', NULL, 0)
-            Assert.AreEqual(columnCount, outputSet.ColumnCount, "ColumnCount");
-
-            IDictionary<string, ProcedureOutputColumn> outputColumnNames = new SortedDictionary<string, ProcedureOutputColumn>(StringComparer.OrdinalIgnoreCase);
-            for (int ix = 0; ix < outputSet.ColumnCount; ix++)
+            if (outputSetCount == 0 && outputSetIndex == 0)
             {
-                ProcedureOutputColumn outputColumn = outputSet.ColumnAt(ix);
-                Assert.IsNotNull(outputColumn, "ix:" + ix);
-
-                string outputColumnName = ProcedureOutputSet.PrepareOutputColumnName(outputSet, outputColumn, outputColumnNames.Keys, ix);
-                outputColumnNames.Add(outputColumnName, outputColumn);
-
-                Assert.IsTrue(outputColumn.ColumnDbType.HasValue, "(" + ix + ") column [" + outputColumnName + "]");
-
-                Sdk.CodeGeneration.TypeMap.ResolveColumnClrType(outputColumn.ColumnDbType.Value);
-                Assert.IsFalse(string.IsNullOrEmpty(outputColumnName), "(" + ix + ") column [" + outputColumnName + "]");
-
-                column_assert(outputColumnName, outputColumn);
+                // no output expected. outputSetIndex must be 0
             }
+            else
+            {
+                var outputSet = res[outputSetIndex];
+                // use: SELECT * FROM sys.dm_exec_describe_first_result_set('dbo.hlomobjectinfo_query', NULL, 0)
+                Assert.AreEqual(columnCount, outputSet.ColumnCount, "ColumnCount");
 
+                IDictionary<string, ProcedureOutputColumn> outputColumnNames = new SortedDictionary<string, ProcedureOutputColumn>(StringComparer.OrdinalIgnoreCase);
+                for (int ix = 0; ix < outputSet.ColumnCount; ix++)
+                {
+                    ProcedureOutputColumn outputColumn = outputSet.ColumnAt(ix);
+                    Assert.IsNotNull(outputColumn, "ix:" + ix);
+
+                    string outputColumnName = ProcedureOutputSet.PrepareOutputColumnName(outputSet, outputColumn, outputColumnNames.Keys, ix);
+                    outputColumnNames.Add(outputColumnName, outputColumn);
+
+                    Assert.IsTrue(outputColumn.ColumnDbType.HasValue, "(" + ix + ") column [" + outputColumnName + "]");
+
+                    Sdk.CodeGeneration.TypeMap.ResolveColumnClrType(outputColumn.ColumnDbType.Value);
+                    Assert.IsFalse(string.IsNullOrEmpty(outputColumnName), "(" + ix + ") column [" + outputColumnName + "]");
+
+                    column_assert(outputColumnName, outputColumn);
+                }
+            }
         }
 
         private static SqlDbType ResolveToSqlType(DbType parameterDbType)
@@ -955,7 +964,7 @@ END";
             {
                 suid = default(int?),
                 suindex = default(Int64?), // ??????? DENSE_RANK
-                type = default(int), 
+                type = default(int),
                 kind = default(short?), // ELSE [apo].[attr_type]
                 displayname = "", //??
                 datatype = default(int?),
@@ -1261,6 +1270,46 @@ END";
                 ResultNothing = default(bool),
             });
         }
+
+        [TestMethod]
+        public void spBlobSelect() // PathName, GET_FILESTREAM_TRANSACTION_CONTEXT
+        {
+            TestProcedureOutput(new
+            {
+                Path = default(string),
+                TransactionContext = default(byte[])
+            });
+        }
+
+        [TestMethod]
+        public void hlsyssession_connectportal() // TRY_CAST
+        {
+            TestProcedureOutput(new
+            {
+                AgentId = default(int?), // 1 !?! Nullable variable => TODO evaluate variable initialization
+                AgentName = default(string), // 2
+                PersonId = default(int?), // 3
+                PersonDefId = default(int?), // 4
+                PersonSurname = default(string), // 5
+                PersonGivenName = default(string), // 6
+                PersonMail = default(string), // 7
+                EnvironmentName = default(string), // 8
+                ReferenceNoFormat = default(string), // 9
+                ShowTaskDesks = default(bool?), // 10
+                PortalSessionTimeout = default(string), // 11
+                SessionId = default(Guid?), // 12
+                Result = default(byte?), // 13
+                DaysSinceSaasExpiration = default(int?), // 14
+
+            });
+        }
+        // 
+        [TestMethod]
+        public void hlnewseditorial_merge() // udt
+        {
+            TestProcedureNoOutput();
+        }
+
         // hlseglobalsearch_query_groups
         // 
         // 
