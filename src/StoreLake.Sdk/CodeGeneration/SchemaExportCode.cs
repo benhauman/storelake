@@ -134,7 +134,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
             CodeCompileUnit ccu_main = new CodeCompileUnit();
             CodeCompileUnit ccu_tables = new CodeCompileUnit();
-            CodeCompileUnit ccu_tabletables = new CodeCompileUnit();
+            CodeCompileUnit ccu_tabletypes = new CodeCompileUnit();
             CodeCompileUnit ccu_procedures = new CodeCompileUnit();
             CodeCompileUnit ccu_accessors = new CodeCompileUnit();
 
@@ -162,7 +162,21 @@ namespace StoreLake.Sdk.CodeGeneration
                 //}
                 //=================================================================================
 
-                Adjust_CCU(assemblyResolver, comparam, rr, dacpac, ccu_tables, ccu_tabletables, ccu_procedures, storeSuffix);
+
+                CodeNamespace ns_tabletypes = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
+                ccu_tabletypes.Namespaces.Add(ns_tabletypes);
+                BuildUdts(rr, dacpac, ns_tabletypes);
+
+                ExtensionsClass exttype = Adjust_CCU(assemblyResolver, comparam, rr, dacpac, ccu_tables, ccu_tabletypes, ccu_procedures, storeSuffix);
+
+                CodeNamespace ns_procedures = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
+                ccu_procedures.Namespaces.Add(ns_procedures);
+                ProcedureBuilder.BuildProcedures(rr, dacpac, ns_procedures, exttype);
+            }
+            else
+            {
+                CodeNamespace ns_tabletypes = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
+                BuildUdts(rr, dacpac, ns_tabletypes);
             }
             //dacpac.TestStoreAssemblyNamespace
 
@@ -214,14 +228,14 @@ namespace StoreLake.Sdk.CodeGeneration
                 {
                     GenerateCodeFile(tempDirInfo, codeProvider, codeFileNames, fileName, ccu_main, "Main");
                     GenerateCodeFile(tempDirInfo, codeProvider, codeFileNames, fileName, ccu_tables, "Tables");
-                    GenerateCodeFile(tempDirInfo, codeProvider, codeFileNames, fileName, ccu_tabletables, "Udts");
+                    GenerateCodeFile(tempDirInfo, codeProvider, codeFileNames, fileName, ccu_tabletypes, "Udts");
                     GenerateCodeFile(tempDirInfo, codeProvider, codeFileNames, fileName, ccu_procedures, "Procedures");
                     GenerateCodeFile(tempDirInfo, codeProvider, codeFileNames, fileName, ccu_accessors, "Accessors");
                 }
 
                 int count_of_types = ccu_main.CountOfType()
                     + ccu_tables.CountOfType()
-                    + ccu_tabletables.CountOfType()
+                    + ccu_tabletypes.CountOfType()
                     + ccu_procedures.CountOfType()
                     + ccu_accessors.CountOfType()
                     ;
@@ -291,7 +305,7 @@ namespace StoreLake.Sdk.CodeGeneration
             internal CodeTypeDeclaration Member;
         }
 
-        private static void Adjust_CCU(AssemblyResolver assemblyResolver, CompilerParameters comparam, RegistrationResult rr, DacPacRegistration dacpac
+        private static ExtensionsClass Adjust_CCU(AssemblyResolver assemblyResolver, CompilerParameters comparam, RegistrationResult rr, DacPacRegistration dacpac
             , CodeCompileUnit ccu_tables
             , CodeCompileUnit ccu_tabletypes
             , CodeCompileUnit ccu_procedures
@@ -302,18 +316,12 @@ namespace StoreLake.Sdk.CodeGeneration
                 throw new StoreLakeSdkException("Multiple namespaces");
             }
 
-            //InitializeStoreNamespaceName(dacpac, storeSuffix);
 
             ExtensionsClass exttype = new ExtensionsClass();
             CodeNamespace ns_old = ccu_tables.Namespaces[0];
             ccu_tables.Namespaces.Clear();
             CodeNamespace ns_tables = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
             ccu_tables.Namespaces.Add(ns_tables);
-            CodeNamespace ns_tabletypes = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
-            ccu_tabletypes.Namespaces.Add(ns_tabletypes);
-
-            CodeNamespace ns_procedures = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
-            ccu_procedures.Namespaces.Add(ns_procedures);
 
             {
                 exttype.extensions_type_decl = CreateStaticClass(dacpac.TestStoreExtensionSetName + "Extensions");
@@ -420,13 +428,10 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
             }
 
-            //rr.udt_rows = new SortedDictionary<string, TableTypeRow>();
-            BuildUdts(rr, dacpac, ns_tabletypes, rr.udt_rows);
-
-            ProcedureBuilder.BuildProcedures(rr, dacpac, ns_procedures, exttype);
+            return exttype;
         }
 
-        private static void BuildUdts(RegistrationResult rr, DacPacRegistration dacpac, CodeNamespace ns_tabletypes, IDictionary<string, TableTypeRow> udt_rows)
+        private static void BuildUdts(RegistrationResult rr, DacPacRegistration dacpac, CodeNamespace ns_tabletypes)
         {
             foreach (var udt_reg in dacpac.registered_tabletypes.Values)
             {
@@ -439,7 +444,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 BuildUdtRow(udt_reg, udtRow);
 
-                udt_rows.Add(udt_reg.TableTypeSqlFullName, udtRow);
+                rr.udt_rows.Add(udt_reg.TableTypeSqlFullName, udtRow);
             }
         }
 
