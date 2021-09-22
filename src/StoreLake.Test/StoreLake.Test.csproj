@@ -61,6 +61,7 @@
     <None Remove="SQL\Procedures\hlsyslic_getpendingbooklicenserequest.sql" />
     <None Remove="SQL\Procedures\hlsysportal_query_casetable_data_user.sql" />
     <None Remove="SQL\Procedures\hlsyssec_qyery_agentdynamicsystemaccessacl.sql" />
+    <None Remove="SQL\Procedures\hlsyssec_write_objecthierarchyacl.sql" />
     <None Remove="SQL\Procedures\hlsyssession_connectaddon.sql" />
     <None Remove="SQL\Procedures\hlsyssession_connectportal.sql" />
     <None Remove="SQL\Procedures\hlsyssession_getdisconnectedsessions.sql" />
@@ -152,6 +153,7 @@
     <EmbeddedResource Include="SQL\Functions\hlsys_splitstring.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlnewseditorial_merge.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysdialog_query_prioritycondition.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsyssec_write_objecthierarchyacl.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssession_connectportal.sql" />
     <EmbeddedResource Include="SQL\Procedures\spBlobSelect.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyscalcachecalendarday.sql" />

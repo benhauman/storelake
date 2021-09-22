@@ -1320,6 +1320,13 @@ END";
                 CheckConditionPriority = default(bool)
             });
         }
+
+        [TestMethod]
+        public void hlsyssec_write_objecthierarchyacl() // checkpoint
+        {
+            TestProcedureNoOutput();
+        }
+        
         // hlseglobalsearch_query_groups
         // 
         // 

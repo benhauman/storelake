@@ -181,6 +181,7 @@ namespace StoreLake.Sdk.SqlDom
             || (node is LeftFunctionCall) //  LEFT([cd].[description], 100)
             || (node is HavingClause) //  HAVING MIN([fullfillment].[state]) < 2 AND MAX([fullfillment].[state]) >= 2
             || (node is TryCastCall) //  TRY_CAST(settingvalue AS INT)
+            || (node is CheckpointStatement) //  CHECKPOINT;
             )
             {
                 if (node is SelectInsertSource)
