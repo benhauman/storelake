@@ -739,7 +739,7 @@ END";
             {
                 var outputSet = res[outputSetIndex];
                 // use: SELECT * FROM sys.dm_exec_describe_first_result_set('dbo.hlomobjectinfo_query', NULL, 0)
-                Assert.AreEqual(columnCount, outputSet.ColumnCount, "ColumnCount");
+                Assert.AreEqual(columnCount, outputSet.ColumnCount, "ColumnCount on outputSetIndex:" + outputSetIndex);
 
                 IDictionary<string, ProcedureOutputColumn> outputColumnNames = new SortedDictionary<string, ProcedureOutputColumn>(StringComparer.OrdinalIgnoreCase);
                 for (int ix = 0; ix < outputSet.ColumnCount; ix++)
@@ -939,7 +939,9 @@ END";
             TestProcedureOutput(3, 2, new
             {
                 blobid = default(int?),
-                name = default(string),
+                filename = default(string),
+                displayname = default(string),
+                embeddedcontentid = default(Guid?),
                 blobsize = default(int?),
                 blobtype = default(string),
             });

@@ -1373,6 +1373,14 @@ namespace StoreLake.Sdk.SqlDom
                 outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Binary, true);
                 return true;
             }
+            if (string.Equals(functionName, "CHARINDEX", StringComparison.OrdinalIgnoreCase))
+            {
+                // CHARINDEX ( expressionToFind , expressionToSearch [ , start_location ] )  
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt64(mqe, 0);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64, true);
+                return true;
+            }
             throw new NotImplementedException(fCall.WhatIsThis());
         }
         private static bool TryResolveLeftFunctionCall(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, LeftFunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)

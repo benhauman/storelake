@@ -40,8 +40,9 @@ namespace StoreLake.Test
             return body;
         }
 
-        internal static string ExtractFunctionBody(string ddl)
+        internal static string ExtractFunctionBody(string ddlX)
         {
+            string ddl = RemoveTrailingBlockComment(ddlX);
             string begin = "RETURN" + "\r\n";
             var idx = ddl.IndexOf(begin);
             if (idx < 0)
@@ -68,6 +69,30 @@ namespace StoreLake.Test
                 }
             }
             return body;
+        }
+
+        private static string RemoveTrailingBlockComment(string ddl)
+        {
+            if (ddl.TrimEnd().EndsWith("*/"))
+            {
+                int lastBlockStart = ddl.LastIndexOf("/*");
+                int lastBlockEnd = ddl.LastIndexOf("*/");
+                if (lastBlockStart>0 && lastBlockEnd> lastBlockStart)
+                {
+                    string new_ddl = ddl.Substring(0, lastBlockStart);
+                    return new_ddl;
+                }
+                else
+                {
+                    // block comment start could not be found?
+                    return ddl;
+                }
+            }
+            else
+            {
+                // no trailing block comment
+                return ddl;
+            }
         }
 
         internal static TestTable LoadTable(string tableFileName)

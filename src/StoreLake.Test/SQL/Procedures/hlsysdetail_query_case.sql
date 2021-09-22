@@ -137,7 +137,8 @@ BEGIN
             INNER JOIN [dbo].[hlsyssuassociation] AS [sual] ON [sual].[suid]             = [su].[suid]
                                                            AND [sual].[associationdefid] = [f].[associationdefid]
                                                            AND [sual].[objecttypeb]      = [f].[objecttypeb]
-            CROSS APPLY [dbo].[hlsyssec_query_agentobjectprmread] (@agentid, [sual].[objectidb], [sual].[objectdefidb], [sual].[objecttypeb] /* 3, 4 or 5 */ + 783) AS [s]
+            CROSS APPLY [dbo].[hlsyssec_globalaclidforobjectdef]([sual].[objectdefidb]) AS [og]
+            CROSS APPLY [dbo].[hlsyssec_query_agentpopcprmread] (@agentid, [sual].[objectidb], [sual].[objectdefidb], [og].[objectglobalid]) AS [s]
             OUTER APPLY (
                 SELECT [v].[defaultvalue]
                 FROM [dbo].[hlsysdefaultattr_query_person] ([sual].[objectdefidb], [sual].[objectidb], @lcid) AS [v]
@@ -187,11 +188,14 @@ BEGIN
         WHERE @true = 0
     END
     
-    SELECT [a].[blobid]
-         , [a].[name]
-         , [a].[blobsize]
-         , [a].[blobtype]
+    SELECT [blobid]            = [a].[blobid]
+         , [filename]          = [a].[name]
+         , [displayname]       = [af].[displayname]
+         , [embeddedcontentid] = [af].[contentid]
+         , [blobsize]          = [a].[blobsize]
+         , [blobtype]          = [a].[blobtype]
     FROM [dbo].[hlsyscaseattachmentvw] AS [a]
+    CROSS APPLY [dbo].[hlsysattachment_parse_filename]([a].[name]) AS [af]
     WHERE [a].[casedefid] = @casedefid AND [a].[caseid] = @caseid AND ISNULL([a].[blobsize], 0) > 0 -- Links are not supported
 END
 --GO
