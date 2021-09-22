@@ -1381,6 +1381,19 @@ namespace StoreLake.Sdk.SqlDom
                 outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64, true);
                 return true;
             }
+            if (string.Equals(functionName, "value", StringComparison.OrdinalIgnoreCase))
+            {
+                //value(XQuery, SQLType)
+                var prm_SQLType = (StringLiteral)fCall.Parameters[1];
+                if (string.Equals(prm_SQLType.Value, "INT", StringComparison.OrdinalIgnoreCase))
+                {
+                    string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt32(mqe, 0);
+                    var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int32, true);
+                    outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int32, true);
+                    return true;
+                }
+                throw new NotImplementedException("xQyery value(,'" + prm_SQLType.Value + "')." + fCall.WhatIsThis());
+            }
             throw new NotImplementedException(fCall.WhatIsThis());
         }
         private static bool TryResolveLeftFunctionCall(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, LeftFunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)

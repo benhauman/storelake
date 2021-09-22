@@ -1311,7 +1311,15 @@ END";
         {
             TestProcedureNoOutput();
         }
-
+        
+        [TestMethod]
+        public void hlsysdialog_query_prioritycondition() // xquery;
+        {
+            TestProcedureOutput(new
+            {
+                CheckConditionPriority = default(bool)
+            });
+        }
         // hlseglobalsearch_query_groups
         // 
         // 

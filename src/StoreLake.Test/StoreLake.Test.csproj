@@ -56,6 +56,7 @@
     <None Remove="SQL\Procedures\hlsyscfgchange_targetqueue_receive.sql" />
     <None Remove="SQL\Procedures\hlsyscontract_increment_numberofcalls.sql" />
     <None Remove="SQL\Procedures\hlsysdetail_query_su.sql" />
+    <None Remove="SQL\Procedures\hlsysdialog_query_prioritycondition.sql" />
     <None Remove="SQL\Procedures\hlsysdxi_generate_objecthistory.sql" />
     <None Remove="SQL\Procedures\hlsyslic_getpendingbooklicenserequest.sql" />
     <None Remove="SQL\Procedures\hlsysportal_query_casetable_data_user.sql" />
@@ -92,6 +93,7 @@
     <None Remove="SQL\Tables\hlsyscalcachecalendarday.sql" />
     <None Remove="SQL\Tables\hlsyscasehistory.sql" />
     <None Remove="SQL\Tables\hlsyscasesystem.sql" />
+    <None Remove="SQL\Tables\hlsysconfiguration.sql" />
     <None Remove="SQL\Tables\hlsyscontracthistory.sql" />
     <None Remove="SQL\Tables\hlsysdetailcfgfieldassoc.sql" />
     <None Remove="SQL\Tables\hlsysdetailcfgfieldattr.sql" />
@@ -149,6 +151,7 @@
     <EmbeddedResource Include="SQL\Functions\hlsyscal_query_localtoutcoffset.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsys_splitstring.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlnewseditorial_merge.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsysdialog_query_prioritycondition.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssession_connectportal.sql" />
     <EmbeddedResource Include="SQL\Procedures\spBlobSelect.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyscalcachecalendarday.sql" />
@@ -231,6 +234,7 @@
     <EmbeddedResource Include="SQL\Tables\hlsysattrpathodedef.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyscasehistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyscasesystem.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysconfiguration.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyscontracthistory.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysdetailcfgfieldassoc.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysdetailcfgfieldattr.sql" />
