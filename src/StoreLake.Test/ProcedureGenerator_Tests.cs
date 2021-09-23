@@ -679,9 +679,11 @@ END";
                 if (prm.DataType.Name.Count == 2)
                 {
                     //SqlDbType sqlType = SqlDbType.Structured;
+                    string schema = prm.DataType.Name.SchemaIdentifier.Dequote();
+                    string name = prm.DataType.Name.BaseIdentifier.Dequote(); ;
                     string fullName = prm.DataType.Name.SchemaIdentifier.Dequote()
                         + "." + prm.DataType.Name.BaseIdentifier.Dequote();
-                    parameterType = new ProcedureCodeParameter(fullName, DbType.Object);
+                    parameterType = new ProcedureCodeParameter(fullName, DbType.Object, schema, name);
                 }
                 else
                 {
@@ -710,9 +712,11 @@ END";
                 if (prm.DataType.Name.Count == 2)
                 {
                     //SqlDbType sqlType = SqlDbType.Structured;
+                    string schema = prm.DataType.Name.SchemaIdentifier.Dequote();
+                    string name = prm.DataType.Name.BaseIdentifier.Dequote();
                     string fullName = prm.DataType.Name.SchemaIdentifier.Dequote()
                         + "." + prm.DataType.Name.BaseIdentifier.Dequote();
-                    parameterType = new ProcedureCodeParameter(fullName, DbType.Object);
+                    parameterType = new ProcedureCodeParameter(fullName, DbType.Object, schema, name);
                 }
                 else
                 {
@@ -1326,7 +1330,26 @@ END";
         {
             TestProcedureNoOutput();
         }
-        
+        [TestMethod]
+        public void hlsyssearch_apply_agentcaseprm() // @ids parameter
+        {
+            TestProcedureOutput(new
+            {
+                objectid = default(int?),
+                objectdefid = default(int?)
+            });
+        }
+
+        //view outputcolumn is not correct name ist wrong. a view has a select source and not a table source [TestMethod]
+        public void hlsyssec_load_agentallglobalpermissions() //gp.globalid
+        {
+            TestProcedureOutput(new
+            {
+                globalid = default(int?),
+                accessmask = default(short?)
+            });
+        }
+
         // hlseglobalsearch_query_groups
         // 
         // 

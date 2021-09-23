@@ -60,6 +60,8 @@
     <None Remove="SQL\Procedures\hlsysdxi_generate_objecthistory.sql" />
     <None Remove="SQL\Procedures\hlsyslic_getpendingbooklicenserequest.sql" />
     <None Remove="SQL\Procedures\hlsysportal_query_casetable_data_user.sql" />
+    <None Remove="SQL\Procedures\hlsyssearch_apply_agentcaseprm.sql" />
+    <None Remove="SQL\Procedures\hlsyssec_load_agentallglobalpermissions.sql" />
     <None Remove="SQL\Procedures\hlsyssec_qyery_agentdynamicsystemaccessacl.sql" />
     <None Remove="SQL\Procedures\hlsyssec_write_objecthierarchyacl.sql" />
     <None Remove="SQL\Procedures\hlsyssession_connectaddon.sql" />
@@ -100,6 +102,7 @@
     <None Remove="SQL\Tables\hlsysdetailcfgfieldattr.sql" />
     <None Remove="SQL\Tables\hlsysdetailcfgfielddisplayname.sql" />
     <None Remove="SQL\Tables\hlsysglobalacl.sql" />
+    <None Remove="SQL\Tables\hlsysglobalpolicy.sql" />
     <None Remove="SQL\Tables\hlsysglobalsetting.sql" />
     <None Remove="SQL\Tables\hlsysimage.sql" />
     <None Remove="SQL\Tables\hlsyslistitem.sql" />
@@ -127,10 +130,13 @@
     <None Remove="SQL\Tables\hlsystranslationvalue.sql" />
     <None Remove="SQL\Tables\hlsyswatchlist.sql" />
     <None Remove="SQL\Tables\hlwfdefrights.sql" />
+    <None Remove="SQL\Types\hlsys_udt_inttwoset.sql" />
     <None Remove="SQL\Types\hlsys_udt_objectqueueitemchanges.sql" />
     <None Remove="SQL\Views\hlcmcontactvw.sql" />
+    <None Remove="SQL\Views\hlsysagentaclglobalvw.sql" />
     <None Remove="SQL\Views\hlsyscaseattachmentvw.sql" />
     <None Remove="SQL\Views\hlsyscasevw.sql" />
+    <None Remove="SQL\Views\hlsysgroupaclglobalvw.sql" />
     <None Remove="SQL\Views\hlsysorgunitnamevw.sql" />
     <None Remove="SQL\Views\hlsyspersoncityvw.sql" />
     <None Remove="SQL\Views\hlsyspersoncountryvw.sql" />
@@ -153,6 +159,8 @@
     <EmbeddedResource Include="SQL\Functions\hlsys_splitstring.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlnewseditorial_merge.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysdialog_query_prioritycondition.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsyssearch_apply_agentcaseprm.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsyssec_load_agentallglobalpermissions.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssec_write_objecthierarchyacl.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssession_connectportal.sql" />
     <EmbeddedResource Include="SQL\Procedures\spBlobSelect.sql" />
@@ -242,6 +250,7 @@
     <EmbeddedResource Include="SQL\Tables\hlsysdetailcfgfieldattr.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysdetailcfgfielddisplayname.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysglobalacl.sql" />
+    <EmbeddedResource Include="SQL\Tables\hlsysglobalpolicy.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysglobalsetting.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsysimage.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyslistitem.sql" />
@@ -269,10 +278,13 @@
     <EmbeddedResource Include="SQL\Tables\hlsystranslationvalue.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyswatchlist.sql" />
     <EmbeddedResource Include="SQL\Tables\hlwfdefrights.sql" />
+    <EmbeddedResource Include="SQL\Types\hlsys_udt_inttwoset.sql" />
     <EmbeddedResource Include="SQL\Types\hlsys_udt_objectqueueitemchanges.sql" />
     <EmbeddedResource Include="SQL\Views\hlcmcontactvw.sql" />
+    <EmbeddedResource Include="SQL\Views\hlsysagentaclglobalvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyscaseattachmentvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyscasevw.sql" />
+    <EmbeddedResource Include="SQL\Views\hlsysgroupaclglobalvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsysorgunitnamevw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyspersoncityvw.sql" />
     <EmbeddedResource Include="SQL\Views\hlsyspersoncountryvw.sql" />

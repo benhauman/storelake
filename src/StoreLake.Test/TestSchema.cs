@@ -253,7 +253,7 @@ namespace StoreLake.Test
             throw new NotImplementedException(parameterName);
         }
 
-        internal void AddViewColumn(string outputColumnName, DbType columnDbType, bool allowNull)
+        internal void AddViewColumn(string outputColumnName, DbType columnDbType, bool allowNull, string sourceColumnNameOrNull)
         {
             AddSourceColumn(outputColumnName, columnDbType, allowNull);
         }

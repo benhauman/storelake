@@ -58,13 +58,20 @@ namespace StoreLake.Sdk.CodeGeneration
 
         internal static ProcedureCodeParameter GetParameterClrType(StoreLakeParameterRegistration parameter)
         {
+            if (parameter.ParameterDbType == SqlDbType.Structured)
+            {
+                return ProcedureCodeParameter.CreateUdt(parameter.ParameterTypeFullName, parameter.StructureTypeSchemaName, parameter.StructureTypeName);
+            }
             return GetParameterClrType(parameter.ParameterDbType, parameter.ParameterTypeFullName);
         }
         public static ProcedureCodeParameter GetParameterClrType(SqlDbType parameter_ParameterDbType, string parameter_ParameterTypeFullName)
         {
             // https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/sql-server-data-type-mappings
             if (parameter_ParameterDbType == SqlDbType.Structured)
-                return ProcedureCodeParameter.CreateUdt(parameter_ParameterTypeFullName);
+            {
+                var name_tokens = ReadSchemaObjectName(1, parameter_ParameterTypeFullName);
+                return ProcedureCodeParameter.CreateUdt(parameter_ParameterTypeFullName, name_tokens.SchemaName, name_tokens.ObjectName);
+            }
             if (parameter_ParameterDbType == SqlDbType.Bit)
                 return ProcedureCodeParameter.Create<bool, bool?>(DbType.Boolean);
             if (parameter_ParameterDbType == SqlDbType.NVarChar)
@@ -94,6 +101,67 @@ namespace StoreLake.Sdk.CodeGeneration
 
             throw new NotImplementedException("" + parameter_ParameterDbType);
         }
+
+        private sealed class SchemaObjectXName
+        {
+            internal string FullName;
+            internal int PartsCount;
+
+            internal string SchemaName; // 0
+            internal string ObjectName; // 1
+            internal string ItemName; // 2 column or parameter
+        }
+
+        private static SchemaObjectXName ReadSchemaObjectName(int min, string fullName)
+        {
+            string[] name_tokens = fullName.Split('.');
+            if (name_tokens.Length < min)
+            {
+                throw new InvalidOperationException("Too less parts specified. Expected:" + min + " :" + fullName);
+            }
+
+            SchemaObjectXName soName = new SchemaObjectXName() { FullName = fullName, PartsCount = name_tokens.Length };
+
+            if (name_tokens.Length == 1)
+            {
+                soName.SchemaName = "dbo";
+                soName.ObjectName = DequoteName(name_tokens[0]);
+                soName.ItemName = null;
+            }
+            else if (name_tokens.Length == 2)
+            {
+                soName.SchemaName = DequoteName(name_tokens[0]);
+                soName.ObjectName = DequoteName(name_tokens[1]);
+                soName.ItemName = null;
+            }
+            else if (name_tokens.Length == 3)
+            {
+                soName.SchemaName = DequoteName(name_tokens[0]);
+                soName.ObjectName = DequoteName(name_tokens[1]);
+                soName.ItemName = DequoteName(name_tokens[2]);
+            }
+            else
+            {
+                throw new NotSupportedException(fullName);
+            }
+            //if (soName.SchemaName[0] != '[')
+            //{
+            //    // Schema name must be the same as in DataSet.Namespace otherwise problem in DataSet schema generation
+            //}
+            return soName;
+        }
+
+        private static string DequoteName(string quotedName)
+        {
+            if (string.IsNullOrEmpty(quotedName))
+                return quotedName;
+            if (quotedName[0] == '[' && quotedName[quotedName.Length - 1] == ']')
+            {
+                return quotedName.Substring(1, quotedName.Length - 2);
+            }
+            return quotedName;
+        }
+
 
         public static Type ResolveColumnClrType(DbType columnDbType)
         {

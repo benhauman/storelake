@@ -1412,7 +1412,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 var xProperty_BodyScript_Value = xProperty_BodyScript.Elements().Single(e => e.Name.LocalName == "Value");
                 XCData xcdata = (XCData)xProperty_BodyScript_Value.FirstNode;
 
-                function_reg.FunctionBodyScript = xcdata.Value.Trim();
+                function_reg.FunctionBodyScript = ProcedureGenerator.RemoveTrailingBlockComment(xcdata.Value.Trim());
 
                 CollectRelationParameters(sonFunction, xFunction, (StoreLakeParameterRegistration parameter) =>
                 {
@@ -1451,7 +1451,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 var xProperty_BodyScript_Value = xProperty_BodyScript.Elements().Single(e => e.Name.LocalName == "Value");
                 XCData xcdata = (XCData)xProperty_BodyScript_Value.FirstNode;
 
-                function_reg.FunctionBodyScript = xcdata.Value.Trim();
+                function_reg.FunctionBodyScript = ProcedureGenerator.RemoveTrailingBlockComment(xcdata.Value.Trim());
 
                 CollectRelationParameters(sonFunction, xFunction, (StoreLakeParameterRegistration parameter) =>
                 {

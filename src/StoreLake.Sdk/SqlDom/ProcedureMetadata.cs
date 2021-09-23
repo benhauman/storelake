@@ -29,7 +29,15 @@ namespace StoreLake.Sdk.SqlDom
             var pt = TryGetParameterTypeX(parameterName, out ProcedureCodeParameter prm);
             if (pt.HasValue)
             {
-                return new ColumnTypeMetadata(pt.Value, true);
+                if (pt.Value == DbType.Object)// || pt.Value == DbType.Structured)
+                {
+                    //udt
+                    return new ColumnTypeMetadata(false, prm.UserDefinedTableTypeSqlSchemaName, prm.UserDefinedTableTypeSqlName);
+                }
+                else
+                {
+                    return new ColumnTypeMetadata(pt.Value, true);
+                }
             }
 
             return null;
@@ -39,6 +47,11 @@ namespace StoreLake.Sdk.SqlDom
         { 
             if (parameters.TryGetValue(parameterName, out prm))
             {
+                if (prm.TypeNotNull == null && prm.ParameterDbType == DbType.Object) // ?udt
+                {
+                    // udt?
+                    return prm.ParameterDbType; // hlsyssearch_apply_agentcaseprm
+                }
                 if (prm.TypeNotNull == typeof(int))
                 {
                     return DbType.Int32;
@@ -81,6 +94,8 @@ namespace StoreLake.Sdk.SqlDom
     {
         internal readonly bool IsUserDefinedTableType;
         internal readonly string UserDefinedTableTypeSqlFullName;
+        internal readonly string UserDefinedTableTypeSqlSchemaName;
+        internal readonly string UserDefinedTableTypeSqlName;
         internal readonly Type TypeNotNull;
         internal readonly Type TypeNull;
         internal readonly DbType ParameterDbType;
@@ -90,11 +105,13 @@ namespace StoreLake.Sdk.SqlDom
             TypeNull = typeNull;
             ParameterDbType = parameterDbType;
         }
-        public ProcedureCodeParameter(string userDefinedTybleTypeFullName, DbType parameterDbType)
+        public ProcedureCodeParameter(string userDefinedTybleTypeFullName, DbType parameterDbType, string schema, string name)
         {
             IsUserDefinedTableType = true;
             UserDefinedTableTypeSqlFullName = userDefinedTybleTypeFullName;
             ParameterDbType = parameterDbType;
+            UserDefinedTableTypeSqlSchemaName = schema;
+            UserDefinedTableTypeSqlName = name;
         }
 
         internal string ParameterCodeName { get;  set; }
@@ -103,9 +120,9 @@ namespace StoreLake.Sdk.SqlDom
         {
             return new ProcedureCodeParameter(typeof(TNotNull), typeof(TNull), parameterDbType);
         }
-        internal static ProcedureCodeParameter CreateUdt(string userDefinedTybleTypeFullName)
+        internal static ProcedureCodeParameter CreateUdt(string userDefinedTybleTypeFullName, string schema, string name)
         {
-            return new ProcedureCodeParameter(userDefinedTybleTypeFullName, DbType.Object);
+            return new ProcedureCodeParameter(userDefinedTybleTypeFullName, DbType.Object, schema, name);
         }
 
     }

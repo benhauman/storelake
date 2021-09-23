@@ -18,10 +18,23 @@ namespace StoreLake.Sdk.SqlDom
     {
         public readonly DbType ColumnDbType;
         public readonly bool AllowNull;
+        public readonly string UserDefinedTableTypeSchema;
+        public readonly string UserDefinedTableTypeName;
+        public readonly bool IsUserDefinedTableType;
+
         public ColumnTypeMetadata(DbType columnDbType, bool allowNull)
         {
             ColumnDbType = columnDbType;
             AllowNull = allowNull;
+            IsUserDefinedTableType = false;
+        }
+        public ColumnTypeMetadata(bool allowNull, string userDefinedTableTypeSchema, string userDefinedTableTypeName)
+        {
+            ColumnDbType = DbType.Object;
+            AllowNull = allowNull;
+            UserDefinedTableTypeSchema = userDefinedTableTypeSchema;
+            UserDefinedTableTypeName = userDefinedTableTypeName;
+            IsUserDefinedTableType = true;
         }
     }
 

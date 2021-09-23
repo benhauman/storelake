@@ -357,8 +357,33 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
+        public static string RemoveTrailingBlockComment(string ddl)
+        {
+            if (ddl != null && ddl.TrimEnd().EndsWith("*/"))
+            {
+                int lastBlockStart = ddl.LastIndexOf("/*");
+                int lastBlockEnd = ddl.LastIndexOf("*/");
+                if (lastBlockStart > 0 && lastBlockEnd > lastBlockStart)
+                {
+                    string new_ddl = ddl.Substring(0, lastBlockStart);
+                    return new_ddl;
+                }
+                else
+                {
+                    // block comment start could not be found?
+                    return ddl;
+                }
+            }
+            else
+            {
+                // no trailing block comment
+                return ddl;
+            }
+        }
+
         public static void LoadFunctionOutputColumns(ISchemaMetadataProvider schemaMetadata, IBatchParameterMetadata parameterMetadata, string functionBodyScript, Action<OutputColumnDescriptor> collector)
         {
+            functionBodyScript = RemoveTrailingBlockComment(functionBodyScript);
             if (functionBodyScript.Trim()[0] == '(')
             {
                 int idx = functionBodyScript.IndexOf('(');

@@ -66,6 +66,15 @@ namespace StoreLake.Sdk.SqlDom
                 IColumnSourceMetadata udt_metadata = SchemaMetadata.TryGetUserDefinedTableTypeMetadata(vstor.VariableDataType.Name.SchemaIdentifier.Dequote(), vstor.VariableDataType.Name.BaseIdentifier.Dequote());
                 return udt_metadata;
             }
+            var prm = parameters.TryGetParameterType(vstor.VariableName);
+            if (prm != null && prm.IsUserDefinedTableType)
+            {
+                IColumnSourceMetadata udt = SchemaMetadata.TryGetUserDefinedTableTypeMetadata(prm.UserDefinedTableTypeSchema, prm.UserDefinedTableTypeName);
+                if (udt != null)
+                {
+                    return udt;
+                }
+            }
             //BodyFragment.Accept(new DumpFragmentVisitor(true));
             throw new NotImplementedException(variableName);
         }
@@ -102,17 +111,17 @@ namespace StoreLake.Sdk.SqlDom
 
         class TableVariableDeclarionVisitor : DumpFragmentVisitor
         {
-            private readonly string variableName;
+            internal readonly string VariableName;
             internal TableDefinition variableDefinition;
             internal DataTypeReference VariableDataType;
             public TableVariableDeclarionVisitor(string variableName) : base(false)
             {
-                this.variableName = variableName;
+                this.VariableName = variableName;
             }
 
             public override void ExplicitVisit(DeclareTableVariableBody node)
             {
-                if (string.Equals(node.VariableName.Value, variableName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(node.VariableName.Value, VariableName, StringComparison.OrdinalIgnoreCase))
                 {
                     variableDefinition = node.Definition;
                 }
@@ -125,7 +134,7 @@ namespace StoreLake.Sdk.SqlDom
 
             public override void ExplicitVisit(DeclareVariableElement node)
             {
-                if (string.Equals(node.VariableName.Value, variableName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(node.VariableName.Value, VariableName, StringComparison.OrdinalIgnoreCase))
                 {
                     VariableDataType = node.DataType;
                     //variableDefinition = node.Definition;
