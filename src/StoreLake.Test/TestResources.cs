@@ -1,105 +1,12 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using StoreLake.Sdk.SqlDom;
 using System;
+using System.Text;
 
 namespace StoreLake.Test
 {
     internal static class TestResources
     {
-        internal static string LoadProcedureBody(string ddl)
-        {
-            string begin = "AS" + "\r\n";
-            var idx = ddl.IndexOf(begin);
-            if (idx < 0)
-            {
-                begin = "AS" + " ";
-                idx = ddl.IndexOf(begin);
-                if (idx < 0)
-                {
-                    throw new NotImplementedException();
-                }
-            }
-            string body = ddl.Substring(idx + begin.Length);
-            return body;
-        }
-
-        internal static string ExtractViewDefinition(string ddl)
-        {
-            string begin = "AS" + "\r\n";
-            var idx = ddl.IndexOf(begin);
-            if (idx < 0)
-            {
-                begin = "AS" + " ";
-                idx = ddl.IndexOf(begin);
-                if (idx < 0)
-                {
-                    throw new NotImplementedException();
-                }
-            }
-            string body = ddl.Substring(idx + begin.Length);
-            return body;
-        }
-
-        internal static string ExtractFunctionBody(string ddlX)
-        {
-            string ddl = RemoveTrailingBlockComment(ddlX);
-            string begin = "RETURN" + "\r\n";
-            var idx = ddl.IndexOf(begin);
-            if (idx < 0)
-            {
-                begin = "RETURN" + " ";
-                idx = ddl.IndexOf(begin);
-                if (idx < 0)
-                {
-                    throw new NotImplementedException();
-                }
-            }
-
-            string body = ddl.Substring(idx + begin.Length);
-
-            // eliminate enclosing '(' & ')'
-            idx = body.IndexOf('(');
-            if (idx >= 0 && idx < 20)
-            {
-                var txt = body.Substring(0, idx);
-                if (txt.Trim() == "")
-                {
-                    int lastix = body.LastIndexOf(')');
-                    body = body.Substring(idx + 1, lastix - idx - 2);
-                }
-            }
-            return body;
-        }
-
-        private static string RemoveTrailingBlockComment(string ddl)
-        {
-            if (ddl.TrimEnd().EndsWith("*/"))
-            {
-                int lastBlockStart = ddl.LastIndexOf("/*");
-                int lastBlockEnd = ddl.LastIndexOf("*/");
-                if (lastBlockStart>0 && lastBlockEnd> lastBlockStart)
-                {
-                    string new_ddl = ddl.Substring(0, lastBlockStart);
-                    return new_ddl;
-                }
-                else
-                {
-                    // block comment start could not be found?
-                    return ddl;
-                }
-            }
-            else
-            {
-                // no trailing block comment
-                return ddl;
-            }
-        }
-
-        internal static TestTable LoadTable(string tableFileName)
-        {
-            var ddl = ResourceHelper.GetSql("SQL.Tables." + tableFileName);
-            return LoadTableFromDDL(ddl);
-        }
         private static TestTable LoadTableFromDDL(string ddl)
         {
             TSqlFragment sqlF = ScriptDomFacade.Parse(ddl);
@@ -194,13 +101,14 @@ namespace StoreLake.Test
             string schemaName = stmt_CreateFunction.Name.SchemaIdentifier.Dequote();
             string functionName = stmt_CreateFunction.Name.BaseIdentifier.Dequote();
 
-            if (stmt_CreateFunction.ReturnType != null && stmt_CreateFunction.StatementList != null)
+            if (stmt_CreateFunction.StatementList != null)
             {
+                // 'hlsyssec_query_agentsystemacl'
                 return LoadMultiStatementTableValuedFunction(schemaName, functionName, stmt_CreateFunction);
             }
 
-            string functionBody = ExtractFunctionBody(ddl);
-            TSqlFragment sqlFB = ScriptDomFacade.Parse(functionBody);
+            // inline 'hlsur_query_surveyresults'
+            string functionBody = GetFragmentStreamAsText(((SelectFunctionReturnType)stmt_CreateFunction.ReturnType).SelectStatement);
 
             var function = new TestFunction(schemaName, functionName, functionBody, f => LoadFunctionOutputColumns(schema, f, stmt_CreateFunction));
             foreach (ProcedureParameter prm in stmt_CreateFunction.Parameters)
@@ -241,21 +149,15 @@ namespace StoreLake.Test
 
         private static TestView LoadViewMetatadaFromDDL(TestSchema schema, string ddl)
         {
-            string body = ExtractViewDefinition(ddl);
-
             TSqlFragment sqlF = ScriptDomFacade.Parse(ddl);
             CreateViewStatement stmt_CreateFunction = (CreateViewStatement)((TSqlScript)sqlF).Batches[0].Statements[0];
+            //string body = ExtractViewDefinition(ddl);
+            string body = GetFragmentStreamAsText(stmt_CreateFunction.SelectStatement);
 
             string schemaName = stmt_CreateFunction.SchemaObjectName.SchemaIdentifier.Dequote();
             string functionName = stmt_CreateFunction.SchemaObjectName.BaseIdentifier.Dequote();
             var function = new TestView(schemaName, functionName, body, f => LoadViewOutputColumnsX(schema, f, stmt_CreateFunction));
-            //foreach (ProcedureParameter prm in stmt_CreateFunction.Parameters)
-            //{
-            //    string parameterName = prm.VariableName.Dequote();
-            //    var parameterDbType = ProcedureGenerator.ResolveToDbDataType(prm.DataType);
-            //
-            //    function.AddParameter(parameterName, parameterDbType);
-            //}
+
 
             return function;
 
@@ -303,6 +205,16 @@ namespace StoreLake.Test
                     throw new NotImplementedException(se.WhatIsThis());
                 }
             }
+        }
+
+        internal static string GetFragmentStreamAsText(TSqlFragment fragment)
+        {
+            StringBuilder text = new StringBuilder();
+            for (var ix = fragment.FirstTokenIndex; ix <= fragment.LastTokenIndex; ix++)
+            {
+                text.Append(fragment.ScriptTokenStream[ix].Text);
+            }
+            return text.ToString();
         }
     }
 }

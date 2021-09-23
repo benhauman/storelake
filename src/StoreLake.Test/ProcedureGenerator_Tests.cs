@@ -668,9 +668,16 @@ END";
 
             TSqlFragment sqlF = ScriptDomFacade.Parse(ddl);
 
-            string sql_body = TestResources.LoadProcedureBody(ddl);
+            //string sql_body2 = TestResources.LoadProcedureBody(ddl);
 
             CreateProcedureStatement stmt_CreateFunction = (CreateProcedureStatement)((TSqlScript)sqlF).Batches[0].Statements[0];
+            string sql_body = TestResources.GetFragmentStreamAsText(stmt_CreateFunction.StatementList);
+            //if (sql_body != sql_body2)
+            {
+                //throw new NotImplementedException();
+            }
+
+
             Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
 
             foreach (ProcedureParameter prm in stmt_CreateFunction.Parameters)
@@ -1340,7 +1347,7 @@ END";
             });
         }
 
-        //view outputcolumn is not correct name ist wrong. a view has a select source and not a table source [TestMethod]
+        // !!! [TestMethod] - view outputcolumn is not correct name ist wrong. a view has a select source and not a table source [TestMethod]
         public void hlsyssec_load_agentallglobalpermissions() //gp.globalid
         {
             TestProcedureOutput(new
@@ -1350,6 +1357,13 @@ END";
             });
         }
 
+        [TestMethod]
+        public void hlsyscase_insert_instance() // wrong generated c# procedure with SQL body instead of c# parameters
+        {
+            TestProcedureNoOutput();
+        }
+
+        
         // hlseglobalsearch_query_groups
         // 
         // 

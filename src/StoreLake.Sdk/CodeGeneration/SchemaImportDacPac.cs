@@ -914,7 +914,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
         private static void CollectProcedureAnnotations(string comments, Action<string, string> collector)
         {
-            string[] lines = comments.Split(new string[] { System.Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+            string[] lines = comments.Split(new string[] { "\n" }, StringSplitOptions.RemoveEmptyEntries);
             for (int ix = 0; ix < lines.Length; ix++)
             {
                 string line = lines[ix].Trim();

@@ -53,6 +53,7 @@
     <None Remove="SQL\Procedures\hlsysadhocinstanceaction_targetqueue_receive.sql" />
     <None Remove="SQL\Procedures\hlsyscal_calculate_difference_formatted.sql" />
     <None Remove="SQL\Procedures\hlsyscal_calculate_offset.sql" />
+    <None Remove="SQL\Procedures\hlsyscase_insert_instance.sql" />
     <None Remove="SQL\Procedures\hlsyscfgchange_targetqueue_receive.sql" />
     <None Remove="SQL\Procedures\hlsyscontract_increment_numberofcalls.sql" />
     <None Remove="SQL\Procedures\hlsysdetail_query_su.sql" />
@@ -158,6 +159,7 @@
     <EmbeddedResource Include="SQL\Functions\hlsyscal_query_localtoutcoffset.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsys_splitstring.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlnewseditorial_merge.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsyscase_insert_instance.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysdialog_query_prioritycondition.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssearch_apply_agentcaseprm.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssec_load_agentallglobalpermissions.sql" />

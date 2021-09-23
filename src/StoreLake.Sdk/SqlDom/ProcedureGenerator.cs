@@ -189,7 +189,7 @@ namespace StoreLake.Sdk.SqlDom
 
             private bool HasMissingColumnInfo()
             {
-                foreach (var xxx in resultHasOutputResultSet)
+                foreach (ProcedureOutputSet xxx in resultHasOutputResultSet)
                 {
                     if (xxx.HasMissingColumnInfo())
                     {
@@ -221,8 +221,8 @@ namespace StoreLake.Sdk.SqlDom
 
                 for (int ixCol = 0; ixCol < setT.ColumnCount; ixCol++)
                 {
-                    var colT = setT.ColumnAt(ixCol);
-                    var colE = setE.ColumnAt(ixCol);
+                    ProcedureOutputColumn colT = setT.ColumnAt(ixCol);
+                    ProcedureOutputColumn colE = setE.ColumnAt(ixCol);
                     if (colT.HasMissingInformation)
                     {
                         if (!colE.HasMissingInformation)
@@ -275,9 +275,9 @@ namespace StoreLake.Sdk.SqlDom
                 if (node.QueryExpression is BinaryQueryExpression bqe) // UNION?
                 {
                     // premature optimization : without visitor
-                    var vstorF = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
+                    SelectElementVisitor vstorF = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
                     QuerySpecification qspecF = (QuerySpecification)bqe.FirstQueryExpression;
-                    foreach (var selectEl in qspecF.SelectElements)
+                    foreach (SelectElement selectEl in qspecF.SelectElements)
                     {
                         selectEl.Accept(vstorF);
                     }
@@ -285,9 +285,9 @@ namespace StoreLake.Sdk.SqlDom
                     {
                         if (vstorF.ResultOutput.HasMissingColumnInfo())
                         {
-                            var vstorS = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
+                            SelectElementVisitor vstorS = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
                             QuerySpecification qspecS = (QuerySpecification)bqe.SecondQueryExpression;
-                            foreach (var selectEl in qspecS.SelectElements)
+                            foreach (SelectElement selectEl in qspecS.SelectElements)
                             {
                                 selectEl.Accept(vstorS);
                             }
@@ -301,9 +301,9 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
-                    var vstor = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
+                    SelectElementVisitor vstor = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
                     QuerySpecification qspec = (QuerySpecification)node.QueryExpression;
-                    foreach (var selectEl in qspec.SelectElements)
+                    foreach (SelectElement selectEl in qspec.SelectElements)
                     {
                         selectEl.Accept(vstor);
                     }
@@ -321,7 +321,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (node.UpdateSpecification != null && node.UpdateSpecification.OutputClause != null)
                 {
-                    var vstor = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
+                    SelectElementVisitor vstor = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
                     node.UpdateSpecification.OutputClause.Accept(vstor);
                     if (vstor.HasOutput)
                     {
@@ -334,7 +334,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (node.InsertSpecification != null && node.InsertSpecification.OutputClause != null)
                 {
-                    var vstor = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
+                    SelectElementVisitor vstor = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
                     node.InsertSpecification.OutputClause.Accept(vstor);
                     if (vstor.HasOutput)
                     {
@@ -347,7 +347,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (node.DeleteSpecification != null && node.DeleteSpecification.OutputClause != null)
                 {
-                    var vstor = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
+                    SelectElementVisitor vstor = new SelectElementVisitor(resolveColumnType, columnTypeResolver, node);
                     node.DeleteSpecification.OutputClause.Accept(vstor);
                     if (vstor.HasOutput)
                     {
@@ -403,7 +403,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (se is SelectScalarExpression scalarExpr)
                 {
-                    var col = resolver.ResolveSelectScalarExpression(scalarExpr);
+                    OutputColumnDescriptor col = resolver.ResolveSelectScalarExpression(scalarExpr);
                     collector(col);
                 }
                 else
@@ -450,7 +450,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (se is SelectScalarExpression scalarExpr)
                 {
-                    var col = resolver.ResolveSelectScalarExpression(scalarExpr);
+                    OutputColumnDescriptor col = resolver.ResolveSelectScalarExpression(scalarExpr);
                     collector(col);
                 }
                 else
