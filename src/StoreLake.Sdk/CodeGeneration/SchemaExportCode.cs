@@ -26,7 +26,7 @@ namespace StoreLake.Sdk.CodeGeneration
             return s_tracer;
         }
 
-        internal static void ExportTypedDataSetCode(AssemblyResolver assemblyResolver, RegistrationResult rr, string libdir, string inputdir, string outputdir, string dacNameFilter, string storeSuffix, bool writeSchemaFile, string tempdir)
+        internal static void ExportTypedDataSetCode(AssemblyResolver assemblyResolver, RegistrationResult rr, string[] libdirs, string inputdir, string outputdir, string dacNameFilter, string storeSuffix, bool writeSchemaFile, string tempdir)
         {
             AssemblyName an_Dibix = new AssemblyName("Dibix"); // no version
             //AssemblyName an_Dibix = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.dll"));
@@ -82,7 +82,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                 //string schemaContent = File.ReadAllText(schemaFileName);
                             }
 
-                            ImportSchemasAsDataSets(dbx, assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName, storeSuffix, tempdir, libdir);
+                            ImportSchemasAsDataSets(dbx, assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName, storeSuffix, tempdir, libdirs);
                         }
                     }
 
@@ -97,7 +97,7 @@ namespace StoreLake.Sdk.CodeGeneration
         }
 
 
-        private static void ImportSchemasAsDataSets(KnownDibixTypes dbx, AssemblyResolver assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir, string libdir)
+        private static void ImportSchemasAsDataSets(KnownDibixTypes dbx, AssemblyResolver assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir, string[] libdirs)
         {
             string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
             InitializeStoreNamespaceName(dacpac, storeSuffix);
@@ -240,7 +240,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     + ccu_accessors.CountOfType()
                     ;
 
-                CompileCode(dacpac, comparam, libdir, outputdir, fileName, fullFileName_dll, tempDirInfo, codeFileNames.ToArray(), count_of_types);
+                CompileCode(dacpac, comparam, libdirs, outputdir, fileName, fullFileName_dll, tempDirInfo, codeFileNames.ToArray(), count_of_types);
             }
             assemblyResolver.ResolveAssembyByLocation(fullFileName_dll);
             dacpac.TestStoreAssemblyFullFileName = fullFileName_dll;
@@ -2032,7 +2032,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
         }
 
-        private static void CompileCode(DacPacRegistration dacpac, CompilerParameters comparam, string libdir, string outputFolder, string fileName, string outputAssemblyFullFileName, DirectoryInfo tempDirInfo, string[] codeFileNames, int count_of_types)
+        private static void CompileCode(DacPacRegistration dacpac, CompilerParameters comparam, string[] libdirs, string outputFolder, string fileName, string outputAssemblyFullFileName, DirectoryInfo tempDirInfo, string[] codeFileNames, int count_of_types)
         {
             string errorsFullFileName = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".errors.txt");
             string tmpDllFullFileName = System.IO.Path.Combine(tempDirInfo.FullName, fileName + ".dll");
@@ -2041,7 +2041,10 @@ namespace StoreLake.Sdk.CodeGeneration
 
             StringBuilder compilerOpt = new StringBuilder();
             compilerOpt.Append("/target:library ");
-            compilerOpt.AppendFormat("/lib:{0} ", libdir);
+            foreach (var libdir in libdirs)
+            {
+                compilerOpt.AppendFormat("/lib:{0} ", libdir);
+            }
             compilerOpt.AppendFormat("/keyfile:\"{0}\" ", snkPath);
             //CompilerParameters comparam = new CompilerParameters(new string[] { });
             comparam.CompilerOptions = compilerOpt.ToString(); // "/optimize";

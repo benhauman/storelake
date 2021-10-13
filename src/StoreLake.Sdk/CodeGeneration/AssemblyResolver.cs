@@ -9,11 +9,11 @@ namespace StoreLake.Sdk.CodeGeneration
     internal sealed class AssemblyResolver
     {
         private static readonly TraceSource s_tracer = SchemaExportCode.CreateTraceSource();
-        private readonly string _libdir;
+        private readonly string[] _libdirs;
         private readonly string _outputdir;
-        public AssemblyResolver(string libdir, string outputdir)
+        public AssemblyResolver(string[] libdirs, string outputdir)
         {
-            _libdir = libdir ?? string.Empty;
+            _libdirs = libdirs ?? new string[0] ;
             _outputdir = outputdir ?? string.Empty;
         }
         internal System.Reflection.Assembly OnAssemblyResolve(object sender, ResolveEventArgs args)
@@ -21,11 +21,14 @@ namespace StoreLake.Sdk.CodeGeneration
             s_tracer.TraceInformation("OnAssemblyResolve : " + args.Name);
 
             AssemblyName asmName = new AssemblyName(args.Name); // Dibix.Http.Server, Version=1.0.0.0, Culture=neutral, PublicKeyToken=5b039a7bf8dc383e
-            string fileName = Path.Combine(_libdir, asmName.Name + ".dll");
-            if (File.Exists(fileName))
+            foreach (var libdir in _libdirs)
             {
-                s_tracer.TraceInformation("OnAssemblyResolve (load) : " + fileName);
-                return Assembly.Load(AssemblyName.GetAssemblyName(fileName));
+                string fileName = Path.Combine(libdir, asmName.Name + ".dll");
+                if (File.Exists(fileName))
+                {
+                    s_tracer.TraceInformation("OnAssemblyResolve (load) : " + fileName);
+                    return Assembly.Load(AssemblyName.GetAssemblyName(fileName));
+                }
             }
             return null;
         }
@@ -38,18 +41,23 @@ namespace StoreLake.Sdk.CodeGeneration
             s_tracer.TraceInformation("OnReflectionOnlyAssemblyResolve : " + args_Name);
 
             AssemblyName asmName = new AssemblyName(args_Name); // Dibix.Http.Server, Version=1.0.0.0, Culture=neutral, PublicKeyToken=5b039a7bf8dc383e
-            string fileName = Path.Combine(_libdir, asmName.Name + ".dll");
-            if (File.Exists(fileName))
+            foreach (var libdir in _libdirs)
             {
-                s_tracer.TraceInformation("OnReflectionOnlyAssemblyResolve (load) : " + fileName);
-                return Assembly.ReflectionOnlyLoadFrom(fileName);
+                string fileName = Path.Combine(libdir, asmName.Name + ".dll");
+                if (File.Exists(fileName))
+                {
+                    s_tracer.TraceInformation("OnReflectionOnlyAssemblyResolve (load) : " + fileName);
+                    return Assembly.ReflectionOnlyLoadFrom(fileName);
+                }
             }
 
-            fileName = Path.Combine(_outputdir, asmName.Name + ".dll");
-            if (File.Exists(fileName))
             {
-                s_tracer.TraceInformation("OnReflectionOnlyAssemblyResolve (load) : " + fileName);
-                return Assembly.ReflectionOnlyLoadFrom(fileName);
+                string fileName = Path.Combine(_outputdir, asmName.Name + ".dll");
+                if (File.Exists(fileName))
+                {
+                    s_tracer.TraceInformation("OnReflectionOnlyAssemblyResolve (load) : " + fileName);
+                    return Assembly.ReflectionOnlyLoadFrom(fileName);
+                }
             }
             return null;
         }

@@ -12,7 +12,7 @@ namespace StoreLake.Sdk.CodeGeneration
     {
         public string InputDirectory { get; set; }
         public string OutputDirectory { get; set; }
-        public string LibraryDirectory { get; set; }
+        public string[] LibraryDirectories { get; set; }
         public string DacpacFileName { get; set; }
         public string StoreNameAssemblySuffix { get; set; }
         public bool? GenerateSchema { get; set; }
@@ -72,7 +72,10 @@ namespace StoreLake.Sdk.CodeGeneration
                 {
                     if (string.Equals(kv[0], "libdir", StringComparison.Ordinal))
                     {
-                        targs.LibraryDirectory = kv[1];
+                        if (kv[1] != null)
+                        {
+                            targs.LibraryDirectories = kv[1].Split(';');
+                        }
                     }
                     else
                     {
@@ -153,9 +156,9 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 throw new StoreLakeSdkException("'OutputDirectory' is not specified");
             }
-            if (string.IsNullOrEmpty(targs.LibraryDirectory))
+            if ((targs.LibraryDirectories == null) || (targs.LibraryDirectories.Length == 0))
             {
-                throw new StoreLakeSdkException("'LibraryDirectory' is not specified");
+                throw new StoreLakeSdkException("'LibraryDirectories' is not specified");
             }
 
             if (string.IsNullOrEmpty(targs.DacpacFileName))
@@ -176,12 +179,12 @@ namespace StoreLake.Sdk.CodeGeneration
             }
             targs.InputDirectory = ExpandPath(targs.InputDirectory);
             targs.OutputDirectory = ExpandPath(targs.OutputDirectory);
-            targs.LibraryDirectory = ExpandPath(targs.LibraryDirectory);
             targs.TempDirectory = ExpandPath(targs.TempDirectory);
+            targs.LibraryDirectories = targs.LibraryDirectories.Select(x => ExpandPath(x)).ToArray();
 
             s_tracer.TraceInformation("InputDirectory=" + targs.InputDirectory);
             s_tracer.TraceInformation("OutputDirectory=" + targs.OutputDirectory);
-            s_tracer.TraceInformation("LibraryDirectory=" + targs.LibraryDirectory);
+            s_tracer.TraceInformation("LibraryDirectories=" + string.Join(";", targs.LibraryDirectories));
             s_tracer.TraceInformation("DacpacFileName=" + targs.DacpacFileName);
             s_tracer.TraceInformation("StoreNameAssemblySuffix=" + targs.StoreNameAssemblySuffix);
             s_tracer.TraceInformation("GenerateSchema=" + targs.GenerateSchema);
@@ -189,7 +192,7 @@ namespace StoreLake.Sdk.CodeGeneration
             s_tracer.TraceInformation("ForceReferencePackageRegeneration=" + targs.ForceReferencePackageRegeneration);
             s_tracer.TraceInformation("GenerateMissingReferences=" + targs.GenerateMissingReferences);
 
-            AssemblyResolver assemblyResolver = new AssemblyResolver(targs.LibraryDirectory, targs.OutputDirectory);
+            AssemblyResolver assemblyResolver = new AssemblyResolver(targs.LibraryDirectories, targs.OutputDirectory);
             AppDomain.CurrentDomain.AssemblyResolve += assemblyResolver.OnAssemblyResolve;
             AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += assemblyResolver.OnReflectionOnlyAssemblyResolve;
             try
@@ -200,7 +203,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 string filter = null;
                 //filter = "HelplineData";
                 //filter = "SLM.Database.Data";
-                SchemaExportCode.ExportTypedDataSetCode(assemblyResolver, rr, targs.LibraryDirectory, targs.InputDirectory, targs.OutputDirectory, filter, targs.StoreNameAssemblySuffix, targs.GenerateSchema.Value, targs.TempDirectory);
+                SchemaExportCode.ExportTypedDataSetCode(assemblyResolver, rr, targs.LibraryDirectories, targs.InputDirectory, targs.OutputDirectory, filter, targs.StoreNameAssemblySuffix, targs.GenerateSchema.Value, targs.TempDirectory);
             }
             finally
             {
