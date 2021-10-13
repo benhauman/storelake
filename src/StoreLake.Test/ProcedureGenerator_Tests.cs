@@ -668,9 +668,16 @@ END";
 
             TSqlFragment sqlF = ScriptDomFacade.Parse(ddl);
 
-            string sql_body = TestResources.LoadProcedureBody(ddl);
+            //string sql_body2 = TestResources.LoadProcedureBody(ddl);
 
             CreateProcedureStatement stmt_CreateFunction = (CreateProcedureStatement)((TSqlScript)sqlF).Batches[0].Statements[0];
+            string sql_body = TestResources.GetFragmentStreamAsText(stmt_CreateFunction.StatementList);
+            //if (sql_body != sql_body2)
+            {
+                //throw new NotImplementedException();
+            }
+
+
             Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
 
             foreach (ProcedureParameter prm in stmt_CreateFunction.Parameters)
@@ -679,9 +686,11 @@ END";
                 if (prm.DataType.Name.Count == 2)
                 {
                     //SqlDbType sqlType = SqlDbType.Structured;
+                    string schema = prm.DataType.Name.SchemaIdentifier.Dequote();
+                    string name = prm.DataType.Name.BaseIdentifier.Dequote(); ;
                     string fullName = prm.DataType.Name.SchemaIdentifier.Dequote()
                         + "." + prm.DataType.Name.BaseIdentifier.Dequote();
-                    parameterType = new ProcedureCodeParameter(fullName, DbType.Object);
+                    parameterType = new ProcedureCodeParameter(fullName, DbType.Object, schema, name);
                 }
                 else
                 {
@@ -710,9 +719,11 @@ END";
                 if (prm.DataType.Name.Count == 2)
                 {
                     //SqlDbType sqlType = SqlDbType.Structured;
+                    string schema = prm.DataType.Name.SchemaIdentifier.Dequote();
+                    string name = prm.DataType.Name.BaseIdentifier.Dequote();
                     string fullName = prm.DataType.Name.SchemaIdentifier.Dequote()
                         + "." + prm.DataType.Name.BaseIdentifier.Dequote();
-                    parameterType = new ProcedureCodeParameter(fullName, DbType.Object);
+                    parameterType = new ProcedureCodeParameter(fullName, DbType.Object, schema, name);
                 }
                 else
                 {
@@ -1326,6 +1337,32 @@ END";
         {
             TestProcedureNoOutput();
         }
+        [TestMethod]
+        public void hlsyssearch_apply_agentcaseprm() // @ids parameter
+        {
+            TestProcedureOutput(new
+            {
+                objectid = default(int?),
+                objectdefid = default(int?)
+            });
+        }
+
+        // !!! [TestMethod] - view outputcolumn is not correct name ist wrong. a view has a select source and not a table source [TestMethod]
+        public void hlsyssec_load_agentallglobalpermissions() //gp.globalid
+        {
+            TestProcedureOutput(new
+            {
+                globalid = default(int?),
+                accessmask = default(short?)
+            });
+        }
+
+        [TestMethod]
+        public void hlsyscase_insert_instance() // wrong generated c# procedure with SQL body instead of c# parameters
+        {
+            TestProcedureNoOutput();
+        }
+
         
         // hlseglobalsearch_query_groups
         // 

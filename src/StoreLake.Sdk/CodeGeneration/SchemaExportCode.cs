@@ -2095,7 +2095,7 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 var err = compres.Errors[0];
                 string fn = Path.GetFileName(err.FileName);
-                throw new StoreLakeSdkException("Compile failed: " + fn + " (" + err.Line + "," + err.Column + "): error " + err.ErrorNumber + " : " + err.ErrorText);
+                throw new StoreLakeSdkException("Compile failed: " + fn + " (" + err.Line + "," + err.Column + "): error " + err.ErrorNumber + " : " + err.ErrorText + "   generated file location:" + err.FileName);
             }
 
             s_tracer.TraceEvent(TraceEventType.Verbose, 0, "  Copy generated assembly : " + outputAssemblyFullFileName);
