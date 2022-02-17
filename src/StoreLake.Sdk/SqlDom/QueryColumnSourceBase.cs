@@ -351,17 +351,17 @@ namespace StoreLake.Sdk.SqlDom
     }
 
 
-    [DebuggerDisplay("NSQ: {DebuggerText}")] // NamedSubCueryOrCte
-    internal sealed class QuerySourceOnQuery : QueryColumnSourceBase
+    [DebuggerDisplay("NSQ: {DebuggerText}")] // NamedSubQueryOrCte
+    internal sealed class QuerySourceOnDerivedTable : QueryColumnSourceBase
     {
         private IQueryModel query;
         private bool _isRecursive;
-        public QuerySourceOnQuery(int id, string alias)
+        public QuerySourceOnDerivedTable(int id, string alias)
             : base(id, alias)
         {
         }
 
-        internal QuerySourceOnQuery SetQuery(IQueryModel query)
+        internal QuerySourceOnDerivedTable SetQuery(IQueryModel query)
         {
             this.query = query;
             return this;
@@ -378,7 +378,96 @@ namespace StoreLake.Sdk.SqlDom
 
         internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
-            if (this.query.TryGetQueryOutputColumn(batchResolver, sourceColumnName, out QueryColumnBase outputColumn))
+            if (this.query.TryGetQueryOutputColumnByName(batchResolver, sourceColumnName, out QueryColumnBase outputColumn))
+            {
+                if (outputColumn.ColumnDbType.HasValue)
+                {
+                    columnType = new SourceColumnType(this, sourceColumnName, outputColumn.ColumnDbType.Value, outputColumn.AllowNull.GetValueOrDefault(true));
+                    return true;
+                }
+                else
+                {
+                    columnType = new SourceColumnType(this, sourceColumnName);//  DbType.Object;
+                    return true;
+                }
+            }
+            columnType = null;// DbType.Object;
+            return false;
+        }
+
+        internal void SetAsRecursive()
+        {
+            _isRecursive = true;
+        }
+
+        internal bool IsRecursive()
+        {
+            return _isRecursive;
+        }
+    }
+
+    [DebuggerDisplay("NSQ: {DebuggerText}")] // NamedSubQueryOrCte
+    internal sealed class QuerySourceOnCte : QueryColumnSourceBase
+    {
+        private IList<Identifier> _cteColumns;
+        private IQueryModel query;
+        private bool _isRecursive;
+        public QuerySourceOnCte(int id, string alias)
+            : base(id, alias)
+        {
+        }
+
+        internal QuerySourceOnCte SetCteQuery(IList<Identifier> cteColumns, IQueryModel query)
+        {
+            if (cteColumns == null)
+            {
+                throw new ArgumentNullException(nameof(_cteColumns));
+            }
+            this._cteColumns = cteColumns;
+            this.query = query;
+            return this;
+        }
+
+        private string DebuggerText
+        {
+            get
+            {
+                return "(...)"
+                    + (Alias == null ? "" : " AS [" + Alias + "]");
+            }
+        }
+
+        internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
+        {
+
+            for (int idx = 0; idx < _cteColumns.Count; idx++)
+            {
+                Identifier col = _cteColumns[idx];
+                if (string.Equals(sourceColumnName, col.Dequote(), StringComparison.OrdinalIgnoreCase))
+                {
+                    // get the query's output column on this index
+                    if (this.query.TryGetQueryOutputColumnAt(batchResolver, idx, out QueryColumnBase outputColumnX))
+                    {
+                        if (outputColumnX.ColumnDbType.HasValue)
+                        {
+                            columnType = new SourceColumnType(this, sourceColumnName, outputColumnX.ColumnDbType.Value, outputColumnX.AllowNull.GetValueOrDefault(true));
+                            return true;
+                        }
+                        else
+                        {
+                            columnType = new SourceColumnType(this, sourceColumnName);//  DbType.Object;
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        columnType = null;
+                        return false;
+                    }
+                }
+            }
+
+            if (this.query.TryGetQueryOutputColumnByName(batchResolver, sourceColumnName, out QueryColumnBase outputColumn))
             {
                 if (outputColumn.ColumnDbType.HasValue)
                 {
@@ -457,8 +546,8 @@ namespace StoreLake.Sdk.SqlDom
     [DebuggerDisplay("Rcs: {DebuggerText}")] // NamedSubCueryOrCte
     internal sealed class QueryOnReqursiveCte : QueryColumnSourceBase
     {
-        private readonly QuerySourceOnQuery Cte;
-        public QueryOnReqursiveCte(int id, string key, QuerySourceOnQuery cte)
+        private readonly QuerySourceOnCte Cte;
+        public QueryOnReqursiveCte(int id, string key, QuerySourceOnCte cte)
             : base(id, key)
         {
             Cte = cte;

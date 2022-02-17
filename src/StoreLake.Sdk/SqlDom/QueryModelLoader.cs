@@ -55,15 +55,15 @@ namespace StoreLake.Sdk.SqlDom
                 Ctes = ctes;
             }
 
-            private readonly IDictionary<string, QuerySourceOnQuery> loading_ctes = new SortedDictionary<string, QuerySourceOnQuery>(StringComparer.OrdinalIgnoreCase);
-            internal void PushCte(string name, QuerySourceOnQuery cte_source)
+            private readonly IDictionary<string, QuerySourceOnCte> loading_ctes = new SortedDictionary<string, QuerySourceOnCte>(StringComparer.OrdinalIgnoreCase);
+            internal void PushCte(string name, QuerySourceOnCte cte_source)
             {
                 loading_ctes.Add(name, cte_source);
             }
 
-            internal QuerySourceOnQuery IsRecursiveCTE(string cteName)
+            internal QuerySourceOnCte IsRecursiveCTE(string cteName)
             {
-                return loading_ctes.TryGetValue(cteName, out QuerySourceOnQuery cte)
+                return loading_ctes.TryGetValue(cteName, out QuerySourceOnCte cte)
                     ? cte
                     : null;
             }
@@ -406,7 +406,7 @@ namespace StoreLake.Sdk.SqlDom
 
                 string key = node.Alias != null ? node.Alias.Dequote() : node.SchemaObject.BaseIdentifier.Dequote();
 
-                QuerySourceOnQuery cte_source = null;// ctx.IsRecursiveCTE(cteName);
+                //QuerySourceOnCte cte_source = null;// ctx.IsRecursiveCTE(cteName);
                 //if (cte_source != null) // if recursive => take the first one and ignore the 'recursive'/second query
                 //{
                 //    cte_source.SetAsRecursive();
@@ -416,7 +416,7 @@ namespace StoreLake.Sdk.SqlDom
                 //}
                 //else
                 {
-                    cte_source = sourceFactory.NewSourceOnCte(parent, key);
+                    QuerySourceOnCte cte_source = sourceFactory.NewSourceOnCte(parent, key);
                     //ctx.PushCte(cteName, cte_source);
 
                     IQueryModel cte_qmodel = QueryModelLoader.LoadModelCore(ctex_ctx, cteName, cte_QueryExpression, ctes);
@@ -424,7 +424,7 @@ namespace StoreLake.Sdk.SqlDom
                     //{
                     //    ((QueryUnionModel)cte_qmodel).SetAsRecursive();
                     //}
-                    cte_source.SetQuery(cte_qmodel);
+                    cte_source.SetCteQuery(cte.Columns, cte_qmodel);
 
                     collector(cte_source);
                 }
@@ -608,7 +608,7 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     foreach (IQueryModel qry in unionModel.union_queries)
                     {
-                        if (qry.TryGetQueryOutputColumn(ctx.BatchResolver, col.OutputColumnName, out QueryColumnBase outputColumnX))
+                        if (qry.TryGetQueryOutputColumnByName(ctx.BatchResolver, col.OutputColumnName, out QueryColumnBase outputColumnX))
                         {
                             if (outputColumnX.ColumnDbType.HasValue && !col.ColumnDbType.HasValue)
                             {
@@ -841,7 +841,7 @@ namespace StoreLake.Sdk.SqlDom
             QueryLoadingContext q_ctx = new QueryLoadingContext(ctx);
             IQueryModel qmodel = QueryModelLoader.LoadModelCore(q_ctx, qName, scalarQry.QueryExpression, ctes);
 
-            if (qmodel.TryGetQueryOutputColumn(ctx.BatchResolver, outputColumnName, out QueryColumnBase col))
+            if (qmodel.TryGetQueryOutputColumnByName(ctx.BatchResolver, outputColumnName, out QueryColumnBase col))
             {
                 column = new SourceColumn(col.Source, outputColumnName, col.ColumnDbType.Value, col.AllowNull.Value);
                 return true;
@@ -1147,13 +1147,20 @@ namespace StoreLake.Sdk.SqlDom
                 SourceColumn functionOutputType = null;
                 for (int ix = 0; ix < fCall.Parameters.Count; ix++)
                 {
-                    var prm = fCall.Parameters[0];
+                    ScalarExpression prm = fCall.Parameters[0];
 
                     if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, prm, outputColumnName, out SourceColumn outputColumn1))
                     {
                         if (functionOutputType == null)
                         {
                             functionOutputType = outputColumn1;
+                        }
+                    }
+                    else
+                    {
+                        if (fCall.Parameters.Count == 1)
+                        {
+                            // last parameter : oops
                         }
                     }
 

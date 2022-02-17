@@ -15,9 +15,9 @@ namespace StoreLake.Sdk.SqlDom
         QueryColumnSourceNT NewQueryColumnSourceNT(QuerySpecificationModel parent, NamedTableReference ntRef);
         QueryColumnSourceNT NewQueryColumnSourceNT(QueryOnModificationOutputModel parent, NamedTableReference ntRef);
         QueryColumnSourceVALUES NewQueryColumnSourceValues(QuerySpecificationModel parent, InlineDerivedTable derivedTable);
-        QuerySourceOnQuery NewSourceOnCte(QuerySpecificationModel parent, string key);
-        QueryOnReqursiveCte NewSourceOnRecursiveCte(QuerySpecificationModel parent, string key, QuerySourceOnQuery cte);
-        QuerySourceOnQuery NewSourceOnQueryDerivedTable(QuerySpecificationModel parent, string key, IQueryModel queryModel);
+        QuerySourceOnCte NewSourceOnCte(QuerySpecificationModel parent, string key);
+        QueryOnReqursiveCte NewSourceOnRecursiveCte(QuerySpecificationModel parent, string key, QuerySourceOnCte cte);
+        QuerySourceOnDerivedTable NewSourceOnQueryDerivedTable(QuerySpecificationModel parent, string key, IQueryModel queryModel);
         QuerySourceOnConstant NewConstantSource(QuerySpecificationModel parent, string key, DbType constantType, bool allowNull);
 
         QuerySourceOnNull NewNullSource(QuerySpecificationModel parent, string key);
@@ -86,9 +86,14 @@ namespace StoreLake.Sdk.SqlDom
             return new QueryColumnSourceVALUES(NewId(parent), derivedTable);
         }
 
-        public QuerySourceOnQuery NewSourceOnCte(QuerySpecificationModel parent, string key)
+        public QuerySourceOnCte NewSourceOnCte(QuerySpecificationModel parent, string key)
         {
-            return new QuerySourceOnQuery(NewId(parent), key);
+            return new QuerySourceOnCte(NewId(parent), key);
+        }
+
+        public QuerySourceOnDerivedTable NewSourceOnDerivedTable(QuerySpecificationModel parent, string key)
+        {
+            return new QuerySourceOnDerivedTable(NewId(parent), key);
         }
 
         public QuerySourceOnConstant NewConstantSource(QuerySpecificationModel parent, string key, DbType constantType, bool allowNull)
@@ -119,12 +124,12 @@ namespace StoreLake.Sdk.SqlDom
             return "?" + NewId(parent) + "?";
         }
 
-        public QuerySourceOnQuery NewSourceOnQueryDerivedTable(QuerySpecificationModel parent, string key, IQueryModel cte_qmodel)
+        public QuerySourceOnDerivedTable NewSourceOnQueryDerivedTable(QuerySpecificationModel parent, string key, IQueryModel cte_qmodel)
         {
-            return new QuerySourceOnQuery(NewId(parent), key).SetQuery(cte_qmodel);
+            return new QuerySourceOnDerivedTable(NewId(parent), key).SetQuery(cte_qmodel);
         }
 
-        public QueryOnReqursiveCte NewSourceOnRecursiveCte(QuerySpecificationModel parent, string key, QuerySourceOnQuery cte)
+        public QueryOnReqursiveCte NewSourceOnRecursiveCte(QuerySpecificationModel parent, string key, QuerySourceOnCte cte)
         {
             return new QueryOnReqursiveCte(NewId(parent), key, cte);
         }

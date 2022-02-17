@@ -21,12 +21,17 @@ namespace StoreLake.Sdk.SqlDom
             Id = id;
             Key = key;
         }
-        bool IQueryModel.TryGetQueryOutputColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn)
+        bool IQueryModel.TryGetQueryOutputColumnByName(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn)
         {
-            return IQueryModel_TryGetQueryOutputColumn(batchResolver, outputColumnName, out outputColumn);
+            return IQueryModel_TryGetQueryOutputColumnByName(batchResolver, outputColumnName, out outputColumn);
+        }
+        bool IQueryModel.TryGetQueryOutputColumnAt(BatchOutputColumnTypeResolver batchResolver, int outputColumnIndex, out QueryColumnBase outputColumn)
+        {
+            return IQueryModel_TryGetQueryOutputColumnAt(batchResolver, outputColumnIndex, out outputColumn);
         }
 
-        protected abstract bool IQueryModel_TryGetQueryOutputColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn);
+        protected abstract bool IQueryModel_TryGetQueryOutputColumnByName(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn);
+        protected abstract bool IQueryModel_TryGetQueryOutputColumnAt(BatchOutputColumnTypeResolver batchResolver, int outputColumnIndex, out QueryColumnBase outputColumn);
 
         bool IQueryModel.TryGetQuerySingleOutputColumn(BatchOutputColumnTypeResolver batchResolver, out QueryColumnBase outputColumn)
         {
@@ -49,6 +54,7 @@ namespace StoreLake.Sdk.SqlDom
         }
 
         internal readonly Dictionary<string, QueryColumnBase> resolved_OutputColumns = new Dictionary<string, QueryColumnBase>(StringComparer.OrdinalIgnoreCase);
+        internal readonly IDictionary<int, string> resolved_OutputColumnIndexes = new SortedDictionary<int, string>();
         private bool _queryOutputResolved;
         private void MarkAsOutputResolved() { _queryOutputResolved = true; }
         internal bool IsQueryOutputResolved => _queryOutputResolved;
@@ -116,7 +122,9 @@ namespace StoreLake.Sdk.SqlDom
 
         private QueryColumnBase AddResolveOutputColumn(QueryColumnBase resolved_column)
         {
+            int index = resolved_OutputColumnIndexes.Count;
             resolved_OutputColumns.Add(resolved_column.OutputColumnName, resolved_column);
+            resolved_OutputColumnIndexes.Add(index, resolved_column.OutputColumnName);
             return resolved_column;
         }
 
@@ -193,7 +201,17 @@ namespace StoreLake.Sdk.SqlDom
             MarkAsOutputResolved();
         }
 
-        protected override bool IQueryModel_TryGetQueryOutputColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn)
+        protected override bool IQueryModel_TryGetQueryOutputColumnAt(BatchOutputColumnTypeResolver batchResolver, int outputColumnIndex, out QueryColumnBase outputColumn)
+        {
+            if (_queryOutputResolved)
+            {
+                string outputColumnName = resolved_OutputColumnIndexes[outputColumnIndex];
+                return IQueryModel_TryGetQueryOutputColumnByName(batchResolver, outputColumnName, out outputColumn);
+            }
+            throw new NotImplementedException("outputColumnIndex:" + outputColumnIndex);
+        }
+
+        protected override bool IQueryModel_TryGetQueryOutputColumnByName(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn)
         {
             if (IsOutputColumnResolved(outputColumnName, out outputColumn))
             {
@@ -231,7 +249,12 @@ namespace StoreLake.Sdk.SqlDom
             union_queries.Add(query);
         }
 
-        protected override bool IQueryModel_TryGetQueryOutputColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn)
+        protected override bool IQueryModel_TryGetQueryOutputColumnAt(BatchOutputColumnTypeResolver batchResolver, int outputColumnIndex, out QueryColumnBase outputColumn)
+        {
+            throw new NotImplementedException("outputColumnIndex:" + outputColumnIndex);
+        }
+
+        protected override bool IQueryModel_TryGetQueryOutputColumnByName(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn)
         {
             foreach (var sub_mqe in union_queries)
             {
@@ -274,12 +297,20 @@ namespace StoreLake.Sdk.SqlDom
         }
 
         private readonly IDictionary<string, QueryColumnBase> _outputColumns = new SortedDictionary<string, QueryColumnBase>(StringComparer.OrdinalIgnoreCase);
+        private readonly IDictionary<int, string> _outputColumnIndex = new SortedDictionary<int, string>();
         internal void AddOutputColumn(QueryColumnBase column)
         {
+            int index = _outputColumnIndex.Count;
             _outputColumns.Add(column.OutputColumnName, column);
+            _outputColumnIndex.Add(index, column.OutputColumnName);
         }
 
-        protected override bool IQueryModel_TryGetQueryOutputColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn)
+        protected override bool IQueryModel_TryGetQueryOutputColumnAt(BatchOutputColumnTypeResolver batchResolver, int outputColumnIndex, out QueryColumnBase outputColumn)
+        {
+            string outputColumnName = _outputColumnIndex[outputColumnIndex];
+            return IQueryModel_TryGetQueryOutputColumnByName(batchResolver, outputColumnName, out outputColumn);
+        }
+        protected override bool IQueryModel_TryGetQueryOutputColumnByName(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, out QueryColumnBase outputColumn)
         {
             if (_outputColumns.TryGetValue(outputColumnName, out outputColumn))
             {

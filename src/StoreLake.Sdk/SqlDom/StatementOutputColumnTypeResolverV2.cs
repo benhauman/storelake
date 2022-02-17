@@ -50,7 +50,7 @@ namespace StoreLake.Sdk.SqlDom
             IQueryModel model = EnsureModel();
             if (TryGetOutputColumnName(node, out string outputColumnName))
             {
-                if (model.TryGetQueryOutputColumn(batchResolver, outputColumnName, out QueryColumnBase col))
+                if (model.TryGetQueryOutputColumnByName(batchResolver, outputColumnName, out QueryColumnBase col))
                 {
                     return ColumnModelToDescriptor(col);
                 }
@@ -162,7 +162,7 @@ namespace StoreLake.Sdk.SqlDom
                 string sourceNameOrAlias = node.MultiPartIdentifier[0].Dequote();
                 string columnName = node.MultiPartIdentifier[1].Dequote();
 
-                if (model.TryGetQueryOutputColumn(this.batchResolver, columnName, out col))
+                if (model.TryGetQueryOutputColumnByName(this.batchResolver, columnName, out col))
                 {
                     return true;
                 }
@@ -175,7 +175,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 // no source only column name => traverse all source and find t
                 string columnName = node.MultiPartIdentifier[0].Dequote();
-                if (model.TryGetQueryOutputColumn(this.batchResolver, columnName, out col))
+                if (model.TryGetQueryOutputColumnByName(this.batchResolver, columnName, out col))
                 {
                     return true;
                 }

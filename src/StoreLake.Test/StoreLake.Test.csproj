@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
@@ -27,6 +27,7 @@
     <None Remove="SQL\Functions\hlsysdetail_query_view_su.sql" />
     <None Remove="SQL\Functions\hlsysportal_query_casetable_fieldvalue.sql" />
     <None Remove="SQL\Functions\hlsysportal_query_casetable_ids_user.sql" />
+    <None Remove="SQL\Functions\hlsyssec_query_agentglobalmsk.sql" />
     <None Remove="SQL\Functions\hlsyssec_query_agentobjectdefprmsearch.sql" />
     <None Remove="SQL\Functions\hlsyssec_query_agentsystemacl_udf.sql" />
     <None Remove="SQL\Functions\hlsyssec_query_agentwfdefprmcreate.sql" />
@@ -63,6 +64,7 @@
     <None Remove="SQL\Procedures\hlsysportal_query_casetable_data_user.sql" />
     <None Remove="SQL\Procedures\hlsyssearch_apply_agentcaseprm.sql" />
     <None Remove="SQL\Procedures\hlsyssec_load_agentallglobalpermissions.sql" />
+    <None Remove="SQL\Procedures\hlsyssec_load_agentglobalsetpermissions.sql" />
     <None Remove="SQL\Procedures\hlsyssec_qyery_agentdynamicsystemaccessacl.sql" />
     <None Remove="SQL\Procedures\hlsyssec_write_objecthierarchyacl.sql" />
     <None Remove="SQL\Procedures\hlsyssession_connectaddon.sql" />
@@ -131,6 +133,7 @@
     <None Remove="SQL\Tables\hlsystranslationvalue.sql" />
     <None Remove="SQL\Tables\hlsyswatchlist.sql" />
     <None Remove="SQL\Tables\hlwfdefrights.sql" />
+    <None Remove="SQL\Types\hlsys_udt_idset.sql" />
     <None Remove="SQL\Types\hlsys_udt_inttwoset.sql" />
     <None Remove="SQL\Types\hlsys_udt_objectqueueitemchanges.sql" />
     <None Remove="SQL\Views\hlcmcontactvw.sql" />
@@ -157,12 +160,14 @@
   <ItemGroup>
     <EmbeddedResource Include="SQL\Functions\hlsysattachment_parse_filename.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsyscal_query_localtoutcoffset.sql" />
+    <EmbeddedResource Include="SQL\Functions\hlsyssec_query_agentglobalmsk.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsys_splitstring.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlnewseditorial_merge.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyscase_insert_instance.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysdialog_query_prioritycondition.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssearch_apply_agentcaseprm.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssec_load_agentallglobalpermissions.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlsyssec_load_agentglobalsetpermissions.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssec_write_objecthierarchyacl.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyssession_connectportal.sql" />
     <EmbeddedResource Include="SQL\Procedures\spBlobSelect.sql" />
@@ -280,6 +285,7 @@
     <EmbeddedResource Include="SQL\Tables\hlsystranslationvalue.sql" />
     <EmbeddedResource Include="SQL\Tables\hlsyswatchlist.sql" />
     <EmbeddedResource Include="SQL\Tables\hlwfdefrights.sql" />
+    <EmbeddedResource Include="SQL\Types\hlsys_udt_idset.sql" />
     <EmbeddedResource Include="SQL\Types\hlsys_udt_inttwoset.sql" />
     <EmbeddedResource Include="SQL\Types\hlsys_udt_objectqueueitemchanges.sql" />
     <EmbeddedResource Include="SQL\Views\hlcmcontactvw.sql" />

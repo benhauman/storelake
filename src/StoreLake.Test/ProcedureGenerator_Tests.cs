@@ -1363,7 +1363,16 @@ END";
             TestProcedureNoOutput();
         }
 
-        
+        [TestMethod]
+        public void hlsyssec_load_agentglobalsetpermissions() // FunctionCall # MAX(aprm.perm01)
+        {
+            TestProcedureOutput(new
+            {
+                globalid = default(int?),
+                accessmask = default(short)
+            });
+        }
+
         // hlseglobalsearch_query_groups
         // 
         // 
