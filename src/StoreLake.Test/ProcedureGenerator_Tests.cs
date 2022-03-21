@@ -625,7 +625,7 @@ END";
                         }
                         else
                         {
-                            Assert.AreEqual(expected_AllowNull, column.AllowNull.Value, "AllowNull  '" + outputColumnName + "' " + " (" + column.ColumnDbType.Value + ")");
+                            Assert.AreEqual(expected_AllowNull, column.AllowNull.Value, "AllowNull  '" + outputColumnName + "' " + " (" + column.ColumnDbType.Value + ")" + " >> use empty string for required string");
                         }
                     }
                     else
@@ -761,7 +761,7 @@ END";
                     string outputColumnName = ProcedureOutputSet.PrepareOutputColumnName(outputSet, outputColumn, outputColumnNames.Keys, ix);
                     outputColumnNames.Add(outputColumnName, outputColumn);
 
-                    Assert.IsTrue(outputColumn.ColumnDbType.HasValue, "(" + ix + ") column [" + outputColumnName + "]");
+                    Assert.IsTrue(outputColumn.ColumnDbType.HasValue, "No ColumnType for index (" + ix + ") column [" + outputColumnName + "]");
 
                     Sdk.CodeGeneration.TypeMap.ResolveColumnClrType(outputColumn.ColumnDbType.Value);
                     Assert.IsFalse(string.IsNullOrEmpty(outputColumnName), "(" + ix + ") column [" + outputColumnName + "]");
@@ -1373,8 +1373,99 @@ END";
             });
         }
 
+        [TestMethod]
+        public void tc_001_isnull_args1() // wrong number of ISNULL arguments
+        {
+            TestProcedureOutput(new
+            {
+                x = default(int?)
+            });
+        }
+
+        [TestMethod]
+        public void hlpcm_query_processinfo_v1a()
+        {
+            TestProcedureOutput(new
+            {
+                processtype = default(int),
+                defid = default(int),
+                defname = "", // required
+                displayname = "", // required
+                allowcreate = default(int),
+                allowsearch = default(bool),
+                imageindex = default(int?),
+                canstartfromprocessmenu = default(int),
+                version                    = default(int?),
+                isactive                   = default(int),
+                cancreate                  = default(int?),
+                servicerequired            = default(int?),
+                usescontractmanagement     = default(bool?),
+                usescontractagreement      = default(bool?),
+                allowdefaultserviceusage   = default(bool?),
+                prioritymatrixkind         = default(int),
+                prioritymatrixpathpriority = default(string)
+
+
+            });
+        }
+
+        [TestMethod]
+        public void hlpcm_query_processinfo_v1b()
+        {
+            TestProcedureOutput(new
+            {
+                processtype = default(int),
+                defid = default(int),
+                defname = "", // required
+                displayname = "", // required
+                allowcreate = default(int),
+                allowsearch = default(bool?), //!!!
+                imageindex = default(int?),
+                canstartfromprocessmenu = default(bool?), //!!!
+                version = default(int), //!!!
+                isactive = default(bool), //!!!
+                cancreate = default(int), //!!!
+                servicerequired = default(int), //!!!
+                usescontractmanagement = default(bool?),
+                usescontractagreement = default(bool?),
+                allowdefaultserviceusage = default(bool?),
+                prioritymatrixkind = default(int),
+                prioritymatrixpathpriority = default(string)
+
+
+            });
+        }
+
+        [TestMethod]
+        public void hlpcm_query_processinfo_v2()
+        {
+            TestProcedureOutput(new
+            {
+                processtype = default(int),
+                defid = default(int),
+                defname = "", // required
+                displayname = "", // required
+                allowcreate = default(int),
+                allowsearch = default(bool?), //!!!
+                imageindex = default(int?),
+                canstartfromprocessmenu = default(bool?), //!!!
+                version = default(int), //!!!
+                isactive = default(bool), //!!!
+                cancreate = default(int), //!!!
+                servicerequired = default(int), //!!!
+                usescontractmanagement = default(bool?),
+                usescontractagreement = default(bool?),
+                allowdefaultserviceusage = default(bool?),
+                prioritymatrixkind = default(int),
+                prioritymatrixpathpriority = default(string)
+
+
+            });
+        }
         // hlseglobalsearch_query_groups
         // 
         // 
+
+
     }
 }

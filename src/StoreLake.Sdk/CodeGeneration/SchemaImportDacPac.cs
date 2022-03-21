@@ -1762,6 +1762,7 @@ namespace StoreLake.Sdk.CodeGeneration
         }
     }
 
+    [Serializable]
     public sealed class StoreLakeSdkException : Exception
     {
         public StoreLakeSdkException(string message) : base(message)

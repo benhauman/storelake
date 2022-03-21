@@ -355,7 +355,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 // read
                 //try
                 //{
-                facade_output_type_decl = BuildCommandFacadeOutputType(facadeMethodName, procedureOutputResultSets);
+                facade_output_type_decl = BuildCommandFacadeOutputType(procedure, facadeMethodName, procedureOutputResultSets);
                 ns_procedures.Types.Add(facade_output_type_decl);
                 //}
                 //catch (Exception ex)
@@ -388,7 +388,7 @@ namespace StoreLake.Sdk.CodeGeneration
             hreg.RegisterProcedureRead(procedure_metadata, hm);
         }
 
-        private static CodeTypeDeclaration BuildCommandFacadeOutputType(string facadeMethodName, ProcedureOutputSet[] procedureOutputResultSets)
+        private static CodeTypeDeclaration BuildCommandFacadeOutputType(StoreLakeProcedureRegistration procedure, string facadeMethodName, ProcedureOutputSet[] procedureOutputResultSets)
         {
             CodeTypeDeclaration output_type_decl = new CodeTypeDeclaration() { Name = facadeMethodName + "ResultSets" };
 
@@ -438,7 +438,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     ctor.Statements.Add(assign_table_ref);
 
                     // setup table columns....
-                    SetupOutputSetTableColumns(ctor.Statements, procedureOutputResultSet, var_table_ref, (ix + 1));
+                    SetupOutputSetTableColumns(procedure, ctor.Statements, procedureOutputResultSet, var_table_ref, (ix + 1));
 
                     // put into the array
                     CodeArrayIndexerExpression table_at = new CodeArrayIndexerExpression(field_tables_ref, new CodePrimitiveExpression(ix));
@@ -467,7 +467,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 method_reader.Statements.Add(new CodeMethodReturnStatement(new CodeObjectCreateExpression(typeof(DataTableReader), field_table_ref)));
 
                 // setup table columns....
-                SetupOutputSetTableColumns(ctor.Statements, procedureOutputResultSet, field_table_ref, 1);
+                SetupOutputSetTableColumns(procedure, ctor.Statements, procedureOutputResultSet, field_table_ref, 1);
 
 
                 CodeMemberProperty prop_Table = new CodeMemberProperty() { Name = "OutputTable", Type = new CodeTypeReference(typeof(DataTable)), Attributes = MemberAttributes.Public | MemberAttributes.Final };
@@ -481,7 +481,7 @@ namespace StoreLake.Sdk.CodeGeneration
             return output_type_decl;
         }
 
-        private static void SetupOutputSetTableColumns(CodeStatementCollection statements, ProcedureOutputSet outputResultSet, CodeExpression tableRef, int outputSetIndex)
+        private static void SetupOutputSetTableColumns(StoreLakeProcedureRegistration procedure, CodeStatementCollection statements, ProcedureOutputSet outputResultSet, CodeExpression tableRef, int outputSetIndex)
         {
             var table_Columns = new CodePropertyReferenceExpression(tableRef, "Columns");
 
@@ -491,6 +491,10 @@ namespace StoreLake.Sdk.CodeGeneration
                 ProcedureOutputColumn outputColumn = outputResultSet.ColumnAt(ix);
                 string outputColumnName = ProcedureOutputSet.PrepareOutputColumnName(outputResultSet, outputColumn, outputColumnNames.Keys, ix);
                 outputColumnNames.Add(outputColumnName, outputColumn);
+                if (!outputColumn.ColumnDbType.HasValue)
+                {
+                    throw new InvalidOperationException("Output column type could not be resolved. Column:" + outputColumn.OutputColumnName + " Procedure:" + procedure.ProcedureName);
+                }
                 Type columnClrType = TypeMap.ResolveColumnClrType(outputColumn.ColumnDbType.Value);
 
                 // System.Data.DataColumn t1_id = new System.Data.DataColumn("id", typeof(int));

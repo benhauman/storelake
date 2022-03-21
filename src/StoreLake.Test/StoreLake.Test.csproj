@@ -47,6 +47,9 @@
     <None Remove="SQL\Procedures\hlmad_contract_fulltextsearch_query.sql" />
     <None Remove="SQL\Procedures\hlnewseditorial_merge.sql" />
     <None Remove="SQL\Procedures\hlom_query_possibleactions.sql" />
+    <None Remove="SQL\Procedures\hlpcm_query_processinfo_v1a.sql" />
+    <None Remove="SQL\Procedures\hlpcm_query_processinfo_v1b.sql" />
+    <None Remove="SQL\Procedures\hlpcm_query_processinfo_v2.sql" />
     <None Remove="SQL\Procedures\hlseglobalsearch_query_filters.sql" />
     <None Remove="SQL\Procedures\hlsp_approvalfulfilled.sql" />
     <None Remove="SQL\Procedures\hlsur_rpt_overview_fivestar.sql" />
@@ -79,6 +82,7 @@
     <None Remove="SQL\Procedures\hlsys_query_templates.sql" />
     <None Remove="SQL\Procedures\hlsys_store_objectqueue.sql" />
     <None Remove="SQL\Procedures\spBlobSelect.sql" />
+    <None Remove="SQL\Procedures\tc_001_isnull_args1.sql" />
     <None Remove="SQL\Tables\hlaiwebrequestsolutionresponse.sql" />
     <None Remove="SQL\Tables\hlaiwebrequestsolutionresponsesuggestion.sql" />
     <None Remove="SQL\Tables\hlbiattributeconfig.sql" />
@@ -162,6 +166,10 @@
     <EmbeddedResource Include="SQL\Functions\hlsyscal_query_localtoutcoffset.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsyssec_query_agentglobalmsk.sql" />
     <EmbeddedResource Include="SQL\Functions\hlsys_splitstring.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlpcm_query_processinfo_v1b.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlpcm_query_processinfo_v1a.sql" />
+    <EmbeddedResource Include="SQL\Procedures\hlpcm_query_processinfo_v2.sql" />
+    <EmbeddedResource Include="SQL\Procedures\tc_001_isnull_args1.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlnewseditorial_merge.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyscase_insert_instance.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsysdialog_query_prioritycondition.sql" />
