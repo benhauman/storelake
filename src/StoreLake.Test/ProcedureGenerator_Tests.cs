@@ -1446,7 +1446,7 @@ END";
                 defname = "", // required
                 displayname = "", // required
                 allowcreate = default(int),
-                allowsearch = default(bool?), //!!!
+                allowsearch = default(bool), //!!!
                 imageindex = default(int?),
                 canstartfromprocessmenu = default(bool?), //!!!
                 version = default(int), //!!!

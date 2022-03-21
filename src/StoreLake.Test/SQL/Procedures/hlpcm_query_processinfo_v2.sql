@@ -20,7 +20,7 @@ BEGIN
          , [defname]                    = [wf].[name]
          , [displayname]                = ISNULL([wfd].[name], [wf].[name])
          , [allowcreate]                = ISNULL([wfs].[cancreate], 0)
-         , [allowsearch]                = CAST(NULL AS BIT) -- Not relevant for workflows, since search is performed on object definitions
+         , [allowsearch]                = CAST(0 AS BIT) -- Not relevant for workflows, since search is performed on object definitions
          , [imageindex]                 = ISNULL([ix].[imageindex], -1)
          , [canstartfromprocessmenu]    = [wf].[allowstartwithoutcontext]
          , [version]                    = [wf].[version]
