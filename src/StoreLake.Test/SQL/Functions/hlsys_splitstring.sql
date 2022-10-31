@@ -1,31 +1,28 @@
-﻿--@lubo: The suffix 'a' means ANSI and NOT unicode @delimiter und @source parameter types. (like c++ suffices for ANSI)
---       For an unicode type use/define another function: 'hlsys_splitstringw'. (like c++ suffices for UNICODE)
--- @return: column 'id' can be used in the caller ordering expression predicates.
-CREATE FUNCTION [dbo].[hlsys_splitstring] 
-(
-	@delimiter NCHAR(1), 
-	@source NVARCHAR(MAX) -- ANSI!!!!
-)
+﻿CREATE
+--OR ALTER
+FUNCTION [dbo].[hlsys_splitstring](@delimiter NVARCHAR(10), @source NVARCHAR(MAX))
 RETURNS TABLE AS RETURN 
 (
-    WITH csvtbl([start], [stop], depth) AS 
+    WITH [cte]([start], [stop], [depth], [length]) AS 
     (
-	   SELECT [start] = CONVERT(BIGINT, 1)
-			, [stop] = CHARINDEX(@delimiter, @source + CONVERT(NVARCHAR(MAX), @delimiter))
-			, [depth] = CONVERT(BIGINT, 0)
+       SELECT [start]  = CONVERT(BIGINT, 1)
+            , [stop]   = CHARINDEX(@delimiter, @source + CONVERT(NVARCHAR(MAX), @delimiter))
+            , [depth]  = CONVERT(BIGINT, 0)
+            , [length] = IIF([x].[length] = 0, CAST(N'Empty delimiter' AS INT), [x].[length])
+       FROM (VALUES (DATALENGTH(@delimiter) / 2 /* Unicode */)) AS [x]([length])
+     --FROM (VALUES (LEN(@delimiter))) AS [x]([length]) -- LEN does not include trailing spaces, therefore this function won't work with ' ' as a delimiter, for example
 
-	   UNION ALL
+       UNION ALL
 
-	   SELECT [start] = [hy].[stop] + 1
-		    , [stop] = CHARINDEX(@delimiter, @source + CONVERT(NVARCHAR(MAX), @delimiter), [hy].[stop] + 1)
-		    , [depth] = [depth] + 1
-	   FROM   csvtbl AS hy
-	   WHERE  [hy].[stop] > 0
+       SELECT [start]  = [x].[stop] + [x].[length]
+            , [stop]   = CHARINDEX(@delimiter, @source + CONVERT(NVARCHAR(MAX), @delimiter), [x].[stop] + [x].[length])
+            , [depth]  = [x].[depth] + 1
+            , [length] = [x].[length]
+       FROM [cte] AS [x]
+       WHERE [x].[stop] > 0
     )
-    SELECT sq.depth AS id
-		  , CONVERT(NVARCHAR(MAX), SUBSTRING(@source, sq.[start],
-				    CASE WHEN sq.[stop] > 0 THEN sq.[stop] - sq.[start] ELSE 0 END)
-		  ) AS value
-    FROM   csvtbl AS sq
-    WHERE  [stop] > 0
+    SELECT [id]    = [x].[depth]
+         , [value] = CONVERT(NVARCHAR(MAX), SUBSTRING(@source, [x].[start], IIF([x].[stop] > 0, [x].[stop] - [x].[start], 0)))
+    FROM [cte] AS [x]
+    WHERE [x].[stop] > 0
 )

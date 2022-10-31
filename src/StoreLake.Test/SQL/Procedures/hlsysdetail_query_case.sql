@@ -1,9 +1,9 @@
 ﻿-- @Namespace ObjectManagement.Details
 -- @Name GetCaseDetails
 -- @MergeGridResult
--- @Return ClrTypes:ObjectManagement.Details.ObjectDetailResult Mode:Single
--- @Return ClrTypes:ObjectManagement.Details.ObjectDetailValue Name:Values
--- @Return ObjectManagement.Details.ObjectDetailAttachment Name:Attachments
+-- @Return ClrTypes:ObjectDetailResult Mode:Single
+-- @Return ClrTypes:ObjectDetailValue Name:Values
+-- @Return ObjectDetailAttachment Name:Attachments
 CREATE 
 --OR ALTER
 PROCEDURE [dbo].[hlsysdetail_query_case] @casedefid INT, @caseid INT, @agentid INT, @lcid INT, @channelid SMALLINT, @prefertextvalue BIT NULL = NULL

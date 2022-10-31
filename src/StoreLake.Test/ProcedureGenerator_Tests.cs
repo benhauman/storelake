@@ -1322,7 +1322,7 @@ END";
         {
             TestProcedureNoOutput();
         }
-        
+
         [TestMethod]
         public void hlsysdialog_query_prioritycondition() // xquery;
         {
@@ -1395,14 +1395,14 @@ END";
                 allowsearch = default(bool),
                 imageindex = default(int?),
                 canstartfromprocessmenu = default(int),
-                version                    = default(int?),
-                isactive                   = default(int),
-                cancreate                  = default(int?),
-                servicerequired            = default(int?),
-                usescontractmanagement     = default(bool?),
-                usescontractagreement      = default(bool?),
-                allowdefaultserviceusage   = default(bool?),
-                prioritymatrixkind         = default(int),
+                version = default(int?),
+                isactive = default(int),
+                cancreate = default(int?),
+                servicerequired = default(int?),
+                usescontractmanagement = default(bool?),
+                usescontractagreement = default(bool?),
+                allowdefaultserviceusage = default(bool?),
+                prioritymatrixkind = default(int),
                 prioritymatrixpathpriority = default(string)
 
 

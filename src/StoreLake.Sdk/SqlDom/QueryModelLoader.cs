@@ -864,6 +864,7 @@ namespace StoreLake.Sdk.SqlDom
              || (binaryExpr.BinaryExpressionType == BinaryExpressionType.Multiply) //Multiply: 0x0100*MAX(IIF(aoa_g.am & 0x0100 = 0x0100, 1, 0))
              || (binaryExpr.BinaryExpressionType == BinaryExpressionType.Subtract) //Subtract: settingid - 100
              || (binaryExpr.BinaryExpressionType == BinaryExpressionType.BitwiseAnd) //BitwiseAnd: OAA.accessmask & 512
+             || (binaryExpr.BinaryExpressionType == BinaryExpressionType.Divide) //Divide: DATALENGTH(@delimiter) / 2
                 )
             {
                 SourceColumn result = null;
@@ -1400,6 +1401,22 @@ namespace StoreLake.Sdk.SqlDom
                     return true;
                 }
                 throw new NotImplementedException("xQyery value(,'" + prm_SQLType.Value + "')." + fCall.WhatIsThis());
+            }
+
+            if (string.Equals(functionName, "DATALENGTH", StringComparison.OrdinalIgnoreCase))
+            {
+                // MSDN:
+                // DATALENGTH ( expression )   
+                // bigint if expression has an nvarchar(max), varbinary(max), or varchar(max) data type; otherwise int.
+                ScalarExpression prm = fCall.Parameters[0];
+                if (TryResolveScalarExpression(ctx, ctes, sourceFactory, mqe, prm, outputColumnName, out SourceColumn startdate))
+                {
+                }
+
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt64(mqe, 0);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64, true);
+                return true;
             }
             throw new NotImplementedException(fCall.WhatIsThis());
         }

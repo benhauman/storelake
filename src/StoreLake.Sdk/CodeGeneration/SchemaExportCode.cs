@@ -1357,12 +1357,63 @@ namespace StoreLake.Sdk.CodeGeneration
                 if (column.DataType.IsValueType || column.DataType == typeof(string) || column.DataType == typeof(byte[]))
                 {
                     Adjust_Row_Column_Accessor_Nullable_Get(table.TableName, column, member_property);
+                    Adjust_Row_Column_Accessor_Nullable_Set(table.TableName, column, member_property);
                 } // IsValueType
                 else
                 {
                     throw new NotImplementedException(column.DataType.Name);
                 }
             }// AllowDBNull
+        }
+
+        private static void Adjust_Row_Column_Accessor_Nullable_Set(string tableName, DataColumn column, CodeMemberProperty member_property)
+        {
+            var DBNull_Value = new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(DBNull)), "Value");
+
+            CodeAssignStatement assign_base_ColumnValue_to_ParameterValue = (CodeAssignStatement)member_property.SetStatements[0];
+            CodeAssignStatement assign_base_ColumnValue_to_DBNull = new CodeAssignStatement(assign_base_ColumnValue_to_ParameterValue.Left, DBNull_Value);
+
+            CodePropertySetValueReferenceExpression prm_value_ref = new CodePropertySetValueReferenceExpression();
+
+            var null_expr = new_CodePrimitiveExpression(null);
+            var conditionExpr =
+                new CodeBinaryOperatorExpression(prm_value_ref,
+                    CodeBinaryOperatorType.ValueEquality,
+                    null_expr);
+
+            CodeConditionStatement ifNull_set_DBNull = new CodeConditionStatement(condition: conditionExpr
+                , trueStatements: new CodeStatement[] {
+                    assign_base_ColumnValue_to_DBNull
+                }
+                , falseStatements: new CodeStatement[] {
+                    assign_base_ColumnValue_to_ParameterValue
+                }
+                );
+
+            member_property.SetStatements.Clear();
+            member_property.SetStatements.Add(ifNull_set_DBNull);
+
+            /*
+                        CodeFieldReferenceExpression field_table_ref = new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "table" + tableName);
+                        CodePropertyReferenceExpression table_col_ref = new CodePropertyReferenceExpression(field_table_ref, member_property.Name + "Column");
+
+                        CodeIndexerExpression indexer = new CodeIndexerExpression(new CodeBaseReferenceExpression(), table_col_ref);
+
+                        CodeVariableDeclarationStatement var_value_decl = new CodeVariableDeclarationStatement(typeof(object), "raw_value", indexer);
+                        CodeVariableReferenceExpression var_value_ref = new CodeVariableReferenceExpression(var_value_decl.Name);
+                        var conditionExpr =
+                            new CodeBinaryOperatorExpression(prm_value_ref,
+                                CodeBinaryOperatorType.ValueEquality,
+                                new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(DBNull)), "Value"));
+
+                        CodeConditionStatement ifNull_return_Null = new CodeConditionStatement(conditionExpr, new CodeMethodReturnStatement(new_CodePrimitiveExpression(null)));
+                        member_property.GetStatements.Clear();
+
+                        member_property.GetStatements.Add(var_value_decl);
+                        member_property.GetStatements.Add(ifNull_return_Null);
+                        member_property.GetStatements.Add(new CodeMethodReturnStatement(new CodeCastExpression(value_type, var_value_ref)));
+            */
+            //throw new NotImplementedException("[" + tableName + "] (" + column.ColumnName + ") " + column.DataType.Name);
         }
 
         private static void Adjust_Row_Column_Accessor_Nullable_Get(string tableName, DataColumn column, CodeMemberProperty member_property)
