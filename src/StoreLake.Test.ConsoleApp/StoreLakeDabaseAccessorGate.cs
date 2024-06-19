@@ -69,7 +69,7 @@ namespace StoreLake.Test.ConsoleApp
             internal object HandleRead(DataSet db, Dibix.ParametersVisitor parameters)
             {
                 IDictionary<string, InvokeParameter> parameters_values = new SortedDictionary<string, InvokeParameter>();
-                parameters.VisitInputParameters((string name, DbType type, object value, bool isOutput) =>
+                parameters.VisitInputParameters((string name, DbType type, object value, int? size, bool isOutput, CustomInputType customInputType) =>
                 {
                     parameters_values.Add(name, new InvokeParameter() { name = name, type = type, value = value, isOutput = isOutput });
                 });

@@ -72,7 +72,7 @@ namespace StoreLake.Test.ConsoleApp
             // AutoIncrement?
             // ReadOnlyPK
             var agent2 = db.hlsysagent().AddRowWithValues(712, "InternetAgent2", null, null, 1); //e.active = 1; see 'DF_hlsysagent_active'
-            db.hlsysagentroutingblacklist().AddRowWithValues(712);
+            //db.hlsysagentroutingblacklist().AddRowWithValues(712);
 
             var group700 = db.hlsysgroup().AddRowWithValues(700, "Administrators");
 
@@ -102,12 +102,12 @@ namespace StoreLake.Test.ConsoleApp
             var test12 = Helpline.Data.HelplineData.GetAttributesOfCmdbFlows(databaseAccessorFactory);
             */
 
-            var test11 = Helpline.Repository.Data.HelplineData.GetUserInfo(databaseAccessorFactory, agent710.agentid);
-            Console.WriteLine("Test11:  UserInfo.Agents : Count = " + test11.Agents.Count);
-            foreach (var agent in test11.Agents)
-            {
-                Console.WriteLine("    " + agent.Id + ", " + agent.Name + ", HideForRouting=" + agent.HideForRouting);
-            }
+            //var test11 = Helpline.Repository.Data.HelplineData.GetUserInfo(databaseAccessorFactory, agent710.agentid);
+            //Console.WriteLine("Test11:  UserInfo.Agents : Count = " + test11.Agents.Count);
+            //foreach (var agent in test11.Agents)
+            //{
+            //    Console.WriteLine("    " + agent.Id + ", " + agent.Name + ", HideForRouting=" + agent.HideForRouting);
+            //}
 
             db.hlsysobjectbasetype().AddRowWithValues(2, "p");
             var object_def_A = db.hlsysobjectdef().AddRowWithValues(101, "OD_A", 2);

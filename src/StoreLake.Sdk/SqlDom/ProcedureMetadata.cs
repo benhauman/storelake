@@ -74,7 +74,11 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 if (prm.TypeNotNull == typeof(string))
                 {
-                    return DbType.String;
+                    return DbType.String; // parameter @sessionid for [hlsyssession_connectimplementation]
+                }
+                if (prm.TypeNotNull == typeof(Guid))
+                {
+                    return DbType.Guid;
                 }
                 throw new NotImplementedException(prm.TypeNotNull.Name);
             }

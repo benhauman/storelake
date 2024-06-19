@@ -242,7 +242,14 @@ namespace StoreLake.Sdk.CodeGeneration
                         procedureFacadeMethodName = procedure.ProcedureName;
                     }
 
-
+                    if (procedureOutputResultSets != null)
+                    {
+                        GenerateProcedureDeclaration(rr, dacpac, extMethodAccess_HandlerFacade, procedures_handler_type_decl, hreg, procedure, procedureOutputResultSets, procedureFacadeMethodName, ns_procedures, procedures_facade_type_decl, procedure_metadata, udt_rows);
+                    }
+                    else
+                    {
+                        s_tracer.TraceEvent(TraceEventType.Warning, 0, "SKIP procedure  [" + procedure.ProcedureName + "] generation failed.");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -252,14 +259,6 @@ namespace StoreLake.Sdk.CodeGeneration
                     procedure_metadata = null;
                 }
 
-                if (procedureOutputResultSets != null)
-                {
-                    GenerateProcedureDeclaration(rr, dacpac, extMethodAccess_HandlerFacade, procedures_handler_type_decl, hreg, procedure, procedureOutputResultSets, procedureFacadeMethodName, ns_procedures, procedures_facade_type_decl, procedure_metadata, udt_rows);
-                }
-                else
-                {
-                    s_tracer.TraceEvent(TraceEventType.Warning, 0, "SKIP procedure  [" + procedure.ProcedureName + "] generation failed.");
-                }
 
             } // foreach procedure
         }
@@ -467,14 +466,23 @@ namespace StoreLake.Sdk.CodeGeneration
                 method_reader.Statements.Add(new CodeMethodReturnStatement(new CodeObjectCreateExpression(typeof(DataTableReader), field_table_ref)));
 
                 // setup table columns....
-                SetupOutputSetTableColumns(procedure, ctor.Statements, procedureOutputResultSet, field_table_ref, 1);
+                try
+                {
+                    SetupOutputSetTableColumns(procedure, ctor.Statements, procedureOutputResultSet, field_table_ref, 1);
 
 
-                CodeMemberProperty prop_Table = new CodeMemberProperty() { Name = "OutputTable", Type = new CodeTypeReference(typeof(DataTable)), Attributes = MemberAttributes.Public | MemberAttributes.Final };
-                prop_Table.GetStatements.Add(new CodeMethodReturnStatement(field_table_ref));
-                output_type_decl.Members.Add(prop_Table);
+                    CodeMemberProperty prop_Table = new CodeMemberProperty() { Name = "OutputTable", Type = new CodeTypeReference(typeof(DataTable)), Attributes = MemberAttributes.Public | MemberAttributes.Final };
+                    prop_Table.GetStatements.Add(new CodeMethodReturnStatement(field_table_ref));
+                    output_type_decl.Members.Add(prop_Table);
 
-                BuildFacadeOutputTableAddRow(procedureOutputResultSet, output_type_decl, "AddRow", field_table_ref);
+                    BuildFacadeOutputTableAddRow(procedureOutputResultSet, output_type_decl, "AddRow", field_table_ref);
+                }
+                catch (Exception ex)
+                {
+                    // hlsyssession_connectimplementation
+                    s_tracer.TraceEvent(TraceEventType.Warning, 0, "Procedure  [" + procedure.ProcedureName + "] generation failed." + ex.Message);
+                }
+                
             }
 
 
@@ -493,6 +501,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 outputColumnNames.Add(outputColumnName, outputColumn);
                 if (!outputColumn.ColumnDbType.HasValue)
                 {
+                    // ["hlsyssession_connectimplementation"], 'DaysSinceSaasExpiration' 
                     throw new InvalidOperationException("Output column type could not be resolved. Column:" + outputColumn.OutputColumnName + " Procedure:" + procedure.ProcedureName);
                 }
                 Type columnClrType = TypeMap.ResolveColumnClrType(outputColumn.ColumnDbType.Value);

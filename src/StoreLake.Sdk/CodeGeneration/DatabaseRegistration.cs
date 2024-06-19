@@ -222,6 +222,11 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         //column.DefaultValue = defaultContraint.ValueBytes;
                     }
+                    else if (column.DataType == typeof(DateTime) && defaultContraint.IsBuiltInFunctionExpression && defaultContraint.DefaultExpressionScript == "GETDATEX" && defaultContraint.ValueInt32.HasValue) // DEFAULT (0)
+                    {
+                        var dt0 = new DateTime(1900, 01, 01, 00, 00, 00, 000, DateTimeKind.Utc); // '1900-01-01 00:00:00.000'SELECT CAST(0 AS DATETIME)
+                        column.DefaultValue = dt0.AddDays(defaultContraint.ValueInt32.Value);
+                    }
                     else
                     {
                         throw new StoreLakeSdkException("NotImplemented:" + "Column type table [" + table.TableName + "] column [" + column.ColumnName + "] type (" + column.DataType.Name + ")");

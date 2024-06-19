@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net45</TargetFramework>
@@ -8,6 +8,7 @@
     <Authors>BenHauman</Authors>
     <Company>BenHauman</Company>
 	  <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	  <PackageReadmeFile>..\..\readme.md</PackageReadmeFile>
   </PropertyGroup>
 
   <PropertyGroup>

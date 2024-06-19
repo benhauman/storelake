@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
+using System.Text;
 
 namespace StoreLake.Sdk.SqlDom
 {
@@ -210,14 +212,14 @@ namespace StoreLake.Sdk.SqlDom
                     ProcedureOutputSet setT = resultHasOutputResultSet[ixSet];
                     ProcedureOutputSet setE = else_outputResultSets[ixSet];
                     string setinfo = "set_" + (ixSet + 1) + "_" + resultHasOutputResultSet.Count;
-                    MergeMissingColumnInformation(setinfo,  setT, setE);
+                    MergeMissingColumnInformation(setinfo, setT, setE);
                 }
             }
 
             private static void MergeMissingColumnInformation(string setinfo, ProcedureOutputSet setT, ProcedureOutputSet setE)
             {
                 if (setT.ColumnCount != setT.ColumnCount)
-                    throw new NotImplementedException("Mismatched output column count. (" + setinfo  + ") Expected:" + setT.ColumnCount + " Actual:" + setE.ColumnCount);
+                    throw new NotImplementedException("Mismatched output column count. (" + setinfo + ") Expected:" + setT.ColumnCount + " Actual:" + setE.ColumnCount);
 
                 for (int ixCol = 0; ixCol < setT.ColumnCount; ixCol++)
                 {
@@ -380,19 +382,52 @@ namespace StoreLake.Sdk.SqlDom
                 return ddl;
             }
         }
-
-        public static void LoadFunctionOutputColumns(ISchemaMetadataProvider schemaMetadata, IBatchParameterMetadata parameterMetadata, string functionBodyScript, Action<OutputColumnDescriptor> collector)
+        private static string[] GetLines(string str, bool removeEmptyLines = false)
         {
-            functionBodyScript = RemoveTrailingBlockComment(functionBodyScript);
+            return str.Split(new[] { "\r\n", "\r", "\n" },
+                removeEmptyLines ? StringSplitOptions.RemoveEmptyEntries : StringSplitOptions.None);
+        }
+        public static void LoadFunctionOutputColumns(ISchemaMetadataProvider schemaMetadata, IBatchParameterMetadata parameterMetadata, string functionBodyScriptIn, Action<OutputColumnDescriptor> collector)
+        {
+            string functionBodyScript = RemoveTrailingBlockComment(functionBodyScriptIn);
             if (functionBodyScript.Trim()[0] == '(')
             {
+                string[] lines = GetLines(functionBodyScript);
+                StringBuilder buffer = new StringBuilder();
+                StringWriter swriter = new StringWriter(buffer);
+                foreach (var line in lines)
+                {
+                    if (line.TrimStart().StartsWith("--"))
+                    {
+                        // skip it
+                    }
+                    else
+                    {
+                        swriter.WriteLine(line);
+                    }
+                }
+                swriter.Flush();
+                functionBodyScript = buffer.ToString();
+                //using (var sreader = new StringReader(functionBodyScript))
+                //{
+                //    string line;
+                //    do
+                //    {
+                //        line = sreader.ReadLine();
+                //        if (line != null)
+                //        {
+                //
+                //        }
+                //    }
+                //    while (line != null);
+
                 int idx = functionBodyScript.IndexOf('(');
                 int lastix = functionBodyScript.LastIndexOf(')');
 
                 functionBodyScript = functionBodyScript.Substring(idx + 1, lastix - idx - 2);
                 functionBodyScript = functionBodyScript.Trim();
             }
-            TSqlFragment sqlF = ScriptDomFacade.Parse(functionBodyScript);
+            TSqlFragment sqlF = ScriptDomFacade.Load(new StringReader(functionBodyScript));
             SelectStatement stmt_sel = (SelectStatement)((TSqlScript)sqlF).Batches[0].Statements[0];
 
             BatchOutputColumnTypeResolver batchResolver = new BatchOutputColumnTypeResolver(schemaMetadata, sqlF, parameterMetadata);

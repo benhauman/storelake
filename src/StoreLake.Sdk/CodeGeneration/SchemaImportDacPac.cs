@@ -1050,6 +1050,12 @@ namespace StoreLake.Sdk.CodeGeneration
                 df_reg.TableName = defining_table.ObjectName;
                 df_reg.TableSchema = defining_table.SchemaName;
 
+                var table = ds.Tables[df_reg.TableName, df_reg.TableSchema];
+                var column = table.Columns[df_reg.ColumnName];
+                if (column == null)
+                {
+                    throw new StoreLakeSdkException("Column not found. Table [" + table.TableName + "] column [" + df_reg.ColumnName + "]");
+                }
 
                 // (180 /* Open */)
                 var xDefaultExpressionScript = xDefaultConstraint.Elements().Single(e => e.Name.LocalName == "Property" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "DefaultExpressionScript"));
@@ -1113,7 +1119,11 @@ namespace StoreLake.Sdk.CodeGeneration
                     throw new StoreLakeSdkException("Oops [" + df_reg.ConstraintName + "] " + defaultExpressionScript_Value + "");
                 }
 
-
+                if (df_reg.IsScalarValue && column.DataType == typeof(DateTime) && df_reg.ValueInt32.HasValue) // DEFAULT (0)
+                {
+                    df_reg.IsBuiltInFunctionExpression = true;
+                    df_reg.DefaultExpressionScript = "GETDATEX";
+                }
 
                 if (skip_df)
                 {

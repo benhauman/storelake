@@ -682,7 +682,7 @@ namespace StoreLake.Sdk.SqlDom
             }
             else if (scalarExpr is FunctionCall fCall)
             {
-                return TryResolveFunctionCall(ctx, ctes, sourceFactory, mqe, fCall, outputColumnName, out column);
+                return TryResolveScalarFunctionCall(ctx, ctes, sourceFactory, mqe, fCall, outputColumnName, out column);
             }
             else if (scalarExpr is IntegerLiteral intLit)
             {
@@ -1136,7 +1136,7 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        private static bool TryResolveFunctionCall(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, FunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)
+        private static bool TryResolveScalarFunctionCall(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, FunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)
         {
             string functionName = fCall.FunctionName.Dequote();
             if (string.Equals(functionName, "ISNULL", StringComparison.OrdinalIgnoreCase)
@@ -1260,6 +1260,13 @@ namespace StoreLake.Sdk.SqlDom
                 return true;
             }
             if (string.Equals(functionName, "SUBSTRING", StringComparison.OrdinalIgnoreCase))
+            {
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnString(mqe);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.String, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.String, true);
+                return true;
+            }
+            if (string.Equals(functionName, "REPLACE", StringComparison.OrdinalIgnoreCase))
             {
                 string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnString(mqe);
                 var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.String, true);
@@ -1418,6 +1425,28 @@ namespace StoreLake.Sdk.SqlDom
                 outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64, true);
                 return true;
             }
+            if (string.Equals(functionName, "GETUTCDATE", StringComparison.OrdinalIgnoreCase))
+            {
+                string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnDateTime(mqe);
+                var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.DateTime, true);
+                outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.DateTime, true);
+                return true;
+            }
+            if (fCall.CallTarget != null && fCall.CallTarget is MultiPartIdentifierCallTarget mpiCallTarget && mpiCallTarget.MultiPartIdentifier != null && mpiCallTarget.MultiPartIdentifier.Count == 1 && mpiCallTarget.MultiPartIdentifier[0].Value == "dbo")
+            {
+                // dbo.hlsysagent_query_language(@agentid, @primaryclientlanguage)
+                if (functionName == "hlsysagent_query_language" && fCall.Parameters != null && fCall.Parameters.Count == 2)
+                {
+                    var prm_agentid = (VariableReference)fCall.Parameters[0];
+                    var prm_languag = (VariableReference)fCall.Parameters[1];
+
+                    string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnInt32(mqe, 0);
+                    var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int32, true);
+                    outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int32, true);
+                    return true;
+                }
+            }
+
             throw new NotImplementedException(fCall.WhatIsThis());
         }
         private static bool TryResolveLeftFunctionCall(QueryLoadingContext ctx, WithCtesAndXmlNamespaces ctes, IQueryColumnSourceFactory sourceFactory, QuerySpecificationModel mqe, LeftFunctionCall fCall, string outputColumnName, out SourceColumn outputColumn)

@@ -28,5 +28,12 @@ namespace StoreLake.Test
             DataTable table = new DataTable() { TableName = "tst" };
             Do(table, "CONVERT(BIT,[dbo].[hlspdefinition_check_cmdb_assignment]([sptaskid],[cmdbflowid]))=(0)");
         }
+
+        [TestMethod]
+        public void CK_zztest_validate_thumbnailhash()
+        {
+            DataTable table = new DataTable() { TableName = "zztest" };
+            Do(table, "CONVERT(BIT,[dbo].[hlspdefinition_check_cmdb_assignment]([sptaskid],[cmdbflowid]))=(0)");
+        }
     }
 }
