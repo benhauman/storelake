@@ -6,7 +6,7 @@
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<!--<PackageReadmeFile>..\..\README.md</PackageReadmeFile>-->
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -46,12 +46,12 @@
 		</Content>
 	</ItemGroup>
 
-	<ItemGroup>
+	<!--<ItemGroup>
 	  <None Include="..\..\README.md">
 	    <Pack>True</Pack>
 	    <PackagePath>\</PackagePath>
 	  </None>
-	</ItemGroup>
+	</ItemGroup>-->
 
 	<!--
 	<ItemGroup>
@@ -93,7 +93,7 @@
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.dll" TargetPath="StoreLake.Sdk.dll" />  
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.pdb" TargetPath="StoreLake.Sdk.pdb" />
 		<BuildOutputInPackage Include="$(ProjectDir)..\ThirdParty\Microsoft.SqlServer.TransactSql.ScriptDom.dll" TargetPath="Microsoft.SqlServer.TransactSql.ScriptDom.dll" />
-
+        <!--<BuildOutputInPackage Include="..\..\README.md" TargetPath="README.md" />-->
 	</ItemGroup>
   </Target>
 </Project>

@@ -8,7 +8,7 @@
     <Authors>BenHauman</Authors>
     <Company>BenHauman</Company>
 	  <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-	  <PackageReadmeFile>..\..\readme.md</PackageReadmeFile>
+	  <!--<PackageReadmeFile>..\..\readme.md</PackageReadmeFile>-->
   </PropertyGroup>
 
   <PropertyGroup>

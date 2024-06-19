@@ -21,3 +21,6 @@
 /src/StoreLake.Test/obj
 *.user
 /src/StoreLake.Test/bin/Debug/net48
+src/StoreLake.Sdk/bin
+src/StoreLake.Versioning/bin
+src/StoreLake.Test/bin

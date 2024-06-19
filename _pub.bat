@@ -6,6 +6,7 @@ IF NOT %ERRORLEVEL%==0 (call :REGERROR "change directory failed.")
 
 CALL :DropFolder ".vs"
 CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake\bin\Debug\net48"
+CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake\bin\Debug\net45"
 CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake\bin\Debug"
 CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake\bin"
 CALL :DropFolder "D:\GitHub\StoreLake\src\StoreLake\obj\Debug\net48"
@@ -38,10 +39,10 @@ REM EXIT /B
 IF NOT %ERRORLEVEL%==0 (call :REGERROR "version incrementing failed.")
 
 
-dotnet build --no-incremental
+dotnet build --no-incremental --configuration debug
 IF NOT %ERRORLEVEL%==0 (call :REGERROR "build failed.")
 
-dotnet pack --verbosity normal --force --include-symbols
+dotnet pack --verbosity normal --force --include-symbols --configuration debug
 IF NOT %ERRORLEVEL%==0 (call :REGERROR "pack failed.")
 
 
