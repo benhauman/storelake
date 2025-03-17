@@ -13,6 +13,7 @@ namespace StoreLake.Sdk.CodeGeneration
         public string DefaultExpressionScript { get; internal set; }
         public bool IsBuiltInFunctionExpression { get; internal set; } // use 'DefaultExpressionScript'
         public int? ValueInt32 { get; internal set; }
+        public long? ValueInt64 { get; internal set; }
         public string ValueString { get; internal set; }
         public DateTime? ValueDateTime { get; internal set; }
         public decimal? ValueDecimal { get; internal set; }

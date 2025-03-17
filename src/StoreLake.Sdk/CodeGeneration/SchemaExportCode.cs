@@ -32,6 +32,7 @@ namespace StoreLake.Sdk.CodeGeneration
             //AssemblyName an_Dibix = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.dll"));
             //AssemblyName an_DibixHttpServer = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.Http.Server.dll"));
             //AssemblyName an_DibixHttpClient = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.Http.Client.dll"));
+            assemblyResolver.CacheAssembly(Assembly.Load("netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51")); // load the assembly and cache its location for OnReflectionOnlyAssemblyResolve
             Assembly asm_Dibix = assemblyResolver.ResolveAssembyByName(an_Dibix);
             //assemblyResolver.ResolveAssembyByName(an_DibixHttpServer);
             //assemblyResolver.ResolveAssembyByName(an_DibixHttpClient);
@@ -1579,6 +1580,10 @@ namespace StoreLake.Sdk.CodeGeneration
                     else if (column.DefaultValue is bool)
                     {
                         defaultParameterValue = (bool)column.DefaultValue;
+                    }
+                    else if (column.DefaultValue is long)
+                    {
+                        defaultParameterValue = (long)column.DefaultValue;
                     }
                     else if (column.DefaultValue is int)
                     {

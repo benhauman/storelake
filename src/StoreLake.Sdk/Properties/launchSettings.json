@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "StoreLake.Sdk": {
+      "commandName": "Project",
+      "commandLineArgs": "ssssssssss"
+    }
+  }
+}

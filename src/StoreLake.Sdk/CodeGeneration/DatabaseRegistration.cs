@@ -205,6 +205,16 @@ namespace StoreLake.Sdk.CodeGeneration
                         short defaultValueInt16 = (short)defaultContraint.ValueInt32.Value;
                         column.DefaultValue = defaultValueInt16;
                     }
+                    else if (column.DataType == typeof(long) && defaultContraint.ValueInt32.HasValue)
+                    {
+                        long defaultValueInt64 = defaultContraint.ValueInt32.Value;
+                        column.DefaultValue = defaultValueInt64;
+                    }
+                    else if (column.DataType == typeof(long) && defaultContraint.ValueInt64.HasValue)
+                    {
+                        long defaultValueInt64 = (short)defaultContraint.ValueInt64.Value;
+                        column.DefaultValue = defaultValueInt64;
+                    }
                     else if (column.DataType == typeof(byte) && defaultContraint.ValueInt32.HasValue)
                     {
                         byte defaultValueInt8 = (byte)defaultContraint.ValueInt32.Value;

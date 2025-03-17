@@ -293,6 +293,11 @@ namespace StoreLake.Sdk.CodeGeneration
                     throw new StoreLakeSdkException("Access method parameter signature not correct. Parameter:" + acessMethodParameters[0].Name + ", Method:" + accessMethod.Name + ", Type:" + databaseAccessorType.FullName);
                 }
 
+                if (accessMethod.Name == "hlsysactionhostprocess_get")
+                {
+                    //throw new NotImplementedException();
+                }
+
                 CodeMemberMethod code_method = new CodeMemberMethod()
                 {
                     Name = accessMethod.Name,

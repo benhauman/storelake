@@ -482,7 +482,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     // hlsyssession_connectimplementation
                     s_tracer.TraceEvent(TraceEventType.Warning, 0, "Procedure  [" + procedure.ProcedureName + "] generation failed." + ex.Message);
                 }
-                
+
             }
 
 
@@ -620,6 +620,8 @@ namespace StoreLake.Sdk.CodeGeneration
                 invoke_facade_method.Parameters.Add(new CodeVariableReferenceExpression(var_output.Name));
             }
 
+            List<OutputValueHandling> outputParameters = new List<OutputValueHandling>();
+
             for (int ix = 0; ix < procedure.Parameters.Count; ix++)
             {
                 //prm_get_Int32_OrNull()
@@ -657,19 +659,47 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
                 else
                 {
+                    if (parameter.IsOutput) // see [hlsysactionhostprocess_get]
+                    {
+                        var outPrmHandling = new OutputValueHandling(parameter);
+                        outputParameters.Add(outPrmHandling);
+                        // invoke
+                        string put_param_value_method_name = BuildWriteCommandParameterMethodName(parameterType.TypeNotNull, parameter.AllowNull); // put_int32
 
-                    string get_param_value_method_name = BuildReadCommandParameterMethodName(false, parameterType.TypeNotNull, parameter.AllowNull);
+                        CodeVariableDeclarationStatement prm_variable_decl = new CodeVariableDeclarationStatement(parameter.AllowNull ? parameterType.TypeNull : parameterType.TypeNotNull, parameterType.ParameterCodeName);
+                        // prm_variable_decl.InitExpression = NO INITIALIZATION for out parameters;
+                        hm.handler_method_decl.Statements.Add(prm_variable_decl);
 
-                    var invoke_get_parameter_value = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(
-                        new CodeTypeReferenceExpression(hm.handler_type_name), get_param_value_method_name));
-                    invoke_get_parameter_value.Parameters.Add(new CodeVariableReferenceExpression("cmd"));
-                    invoke_get_parameter_value.Parameters.Add(new CodePrimitiveExpression(parameter.ParameterName));
+                        var invoke_put_parameter_value = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression( // put_int32
+                            new CodeTypeReferenceExpression(hm.handler_type_name), put_param_value_method_name)); // 'HelplineDataProceduresCommandExecuteHandler'.write_Int32(cmd, '@actionhostprocessid', actionhostprocessid)
+                        invoke_put_parameter_value.Parameters.Add(new CodeVariableReferenceExpression("cmd"));
+                        invoke_put_parameter_value.Parameters.Add(new CodePrimitiveExpression(parameter.ParameterName));
+                        invoke_put_parameter_value.Parameters.Add(new CodeVariableReferenceExpression(prm_variable_decl.Name));
+                        outPrmHandling.invoke_put_parameter_value = invoke_put_parameter_value;
 
-                    var prm_variable_decl = new CodeVariableDeclarationStatement(parameter.AllowNull ? parameterType.TypeNull : parameterType.TypeNotNull, parameterType.ParameterCodeName);
-                    prm_variable_decl.InitExpression = invoke_get_parameter_value;
-                    hm.handler_method_decl.Statements.Add(prm_variable_decl);
+                        // new CodeVariableReferenceExpression(prm_variable_decl.Name)
+                        //new CodeDirectionExpression(FieldDirection.Out, new CodeVariableReferenceExpression("ccc"))''
+                        //var prm_variable_decl = new CodeVariableDeclarationStatement(parameter.AllowNull ? parameterType.TypeNull : parameterType.TypeNotNull, parameterType.ParameterCodeName);
 
-                    invoke_facade_method.Parameters.Add(new CodeVariableReferenceExpression(prm_variable_decl.Name));
+                        invoke_facade_method.Parameters.Add(new CodeDirectionExpression(FieldDirection.Out, new CodeVariableReferenceExpression(prm_variable_decl.Name)));
+                        //throw new NotImplementedException(parameter.ParameterName);
+                    }
+                    else
+                    {
+
+                        string get_param_value_method_name = BuildReadCommandParameterMethodName(false, parameterType.TypeNotNull, parameter.AllowNull);
+
+                        var invoke_get_parameter_value = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(
+                            new CodeTypeReferenceExpression(hm.handler_type_name), get_param_value_method_name));
+                        invoke_get_parameter_value.Parameters.Add(new CodeVariableReferenceExpression("cmd"));
+                        invoke_get_parameter_value.Parameters.Add(new CodePrimitiveExpression(parameter.ParameterName));
+
+                        var prm_variable_decl = new CodeVariableDeclarationStatement(parameter.AllowNull ? parameterType.TypeNull : parameterType.TypeNotNull, parameterType.ParameterCodeName);
+                        prm_variable_decl.InitExpression = invoke_get_parameter_value;
+                        hm.handler_method_decl.Statements.Add(prm_variable_decl);
+
+                        invoke_facade_method.Parameters.Add(new CodeVariableReferenceExpression(prm_variable_decl.Name));
+                    }
                 }
             }
 
@@ -681,18 +711,70 @@ namespace StoreLake.Sdk.CodeGeneration
             }
             else
             {
-
-                if (fm.HasReturn)
+                if (outputParameters.Count > 0)
                 {
-                    hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(invoke_facade_method));
+                    // 1. invoke facade method and keep the result into a __invoke_result
+                    // 1a. Variable with INIT = invoke
+                    // 2. put the output values into the cmd.parameters
+                    // 3. return __invoke_result;
+
+                    if (fm.HasReturn)
+                    {
+                        // 1.
+                        CodeVariableDeclarationStatement result_variable_decl = new CodeVariableDeclarationStatement();
+                        result_variable_decl.InitExpression = invoke_facade_method;
+                        hm.handler_method_decl.Statements.Add(result_variable_decl);
+
+                        // 2.
+                        foreach (var outPrmHandling in outputParameters)
+                        {
+                            hm.handler_method_decl.Statements.Add(outPrmHandling.invoke_put_parameter_value);
+                        }
+
+                        // 3.
+                        hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(new CodeVariableReferenceExpression(result_variable_decl.Name)));
+                    }
+                    else
+                    {
+                        // 1.
+                        hm.handler_method_decl.Statements.Add(invoke_facade_method);
+
+                        // 2.
+                        foreach (var outPrmHandling in outputParameters)
+                        {
+                            hm.handler_method_decl.Statements.Add(outPrmHandling.invoke_put_parameter_value);
+                        }
+
+                        // 3.
+                        hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(new CodePrimitiveExpression(0)));
+                    }
                 }
                 else
                 {
-                    hm.handler_method_decl.Statements.Add(invoke_facade_method);
-                    hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(new CodePrimitiveExpression(0)));
+                    if (fm.HasReturn) // void or not?
+                    {
+                        hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(invoke_facade_method));
+                    }
+                    else
+                    {
+                        // void 
+                        hm.handler_method_decl.Statements.Add(invoke_facade_method);
+                        hm.handler_method_decl.Statements.Add(new CodeMethodReturnStatement(new CodePrimitiveExpression(0)));
+                    }
                 }
-
                 return true;
+            }
+        }
+
+        [DebuggerDisplay("{P:{_parameter.ParameterCodeName}}")]
+        private sealed class OutputValueHandling
+        {
+            private readonly StoreLakeParameterRegistration _parameter;
+            public CodeMethodInvokeExpression invoke_put_parameter_value;
+
+            public OutputValueHandling(StoreLakeParameterRegistration parameter)
+            {
+                _parameter = parameter ?? throw new ArgumentNullException(nameof(parameter));
             }
         }
 
@@ -705,6 +787,11 @@ namespace StoreLake.Sdk.CodeGeneration
             }
             string typeName = (typeNotNull == typeof(byte[])) ? "Bytes" : typeNotNull.Name;
             return "read_" + typeName + (allowNull ? "_OrNull" : "");
+        }
+        private static string BuildWriteCommandParameterMethodName(Type typeNotNull, bool allowNull)
+        {
+            string typeName = (typeNotNull == typeof(byte[])) ? "Bytes" : typeNotNull.Name;
+            return "write_" + typeName + (allowNull ? "_OrDbNull" : "_NotNull");
         }
         private static void BuildStoreProceduresProvider(RegistrationResult rr
                 , DacPacRegistration dacpac
@@ -864,6 +951,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     startRegion = false;
                 }
                 AddReadParameterFunctions_NullOrCast(type_decl, prm_type.TypeNotNull, prm_type.TypeNull);
+                AddWriteParameterFunctions_DbNullOrValue(type_decl, prm_type.TypeNotNull, prm_type.TypeNull);
             }
 
             AddReadParameterFunctions_UDT(type_decl);
@@ -929,6 +1017,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
                 else
                 {
+                    if (parameter.IsOutput) // [hlsysactionhostprocess_get]
+                    {
+                        code_param_decl.Direction = FieldDirection.Out;
+                    }
+
                     if (parameter.AllowNull)
                     {
                         code_param_decl.Type = new CodeTypeReference(parameterType.TypeNull);
@@ -1081,6 +1174,45 @@ namespace StoreLake.Sdk.CodeGeneration
             read_method_decl.Statements.Add(if_is_Null_or_DBNull);
         }
 
+        private static void AddWriteParameterFunctions_DbNullOrValue(CodeTypeDeclaration type_decl, Type typeNotNull, Type typeNull) // needed for [hlsysactionhostprocess_get]
+        {
+            var prm_value = new CodeVariableReferenceExpression("value");
+            var prm_cmd_Parameters = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("cmd"), "Parameters");
+            var prm_cmd_Parameter_item = new CodeIndexerExpression(prm_cmd_Parameters, new CodeExpression[] { new CodeVariableReferenceExpression("name") });
+            var prm_cmd_Parameter_item_Value = new CodePropertyReferenceExpression(prm_cmd_Parameter_item, "Value");
+
+            //System.Data.Common.DbCommand cmd = ...;
+
+            { // nullable -> 
+              //T? value = ...;
+              // if (value == null)
+              //  cmd.Parameters[...].Value = DBNull.Value
+              // else
+              //  cmd.Parameters[...].Value = value;
+
+                var DBNull_Value = new CodePropertyReferenceExpression(new CodeTypeReferenceExpression(typeof(DBNull)), "Value");
+
+                var is_Null = new CodeBinaryOperatorExpression(prm_value, CodeBinaryOperatorType.ValueEquality, new CodePrimitiveExpression(null));
+
+                var if_is_Null = new CodeConditionStatement();
+                if_is_Null.Condition = is_Null;
+                if_is_Null.TrueStatements.Add(new CodeAssignStatement(prm_cmd_Parameter_item_Value, DBNull_Value));
+                if_is_Null.FalseStatements.Add(new CodeAssignStatement(prm_cmd_Parameter_item_Value, prm_value));
+
+                var put_param_value_method_name = BuildWriteCommandParameterMethodName(typeNotNull, true); // => 'write_Boolean_OrDbNull'
+                CodeMemberMethod write_method_decl = BuildWriteCommandParameterMethodDeclaration(type_decl, put_param_value_method_name, typeNull); // 'HelplineDataProceduresCommandExecuteHandler'.write_Int32(cmd: cmd, parameterName: '@actionhostprocessid', value: actionhostprocessid)
+                write_method_decl.Statements.Add(if_is_Null);
+            }
+
+            { // not null
+                //T value = ...;
+                // cmd.Parameters[...].Value = value;
+                var put_param_value_method_name = BuildWriteCommandParameterMethodName(typeNotNull, false); // => 'write_Boolean_NotNull'
+                CodeMemberMethod write_method_decl = BuildWriteCommandParameterMethodDeclaration(type_decl, put_param_value_method_name, typeNull); // 'HelplineDataProceduresCommandExecuteHandler'.write_Int32(cmd: cmd, parameterName: '@actionhostprocessid', value: actionhostprocessid)
+                write_method_decl.Statements.Add(new CodeAssignStatement(prm_cmd_Parameter_item_Value, prm_value));
+            }
+        }
+
         private static CodeMemberMethod BuildReadCommandParameterMethodDeclaration(CodeTypeDeclaration type_decl, string name, Type typeReturn)
         {
             CodeMemberMethod read_method_decl = new CodeMemberMethod() { Name = name };
@@ -1091,6 +1223,19 @@ namespace StoreLake.Sdk.CodeGeneration
 
             type_decl.Members.Add(read_method_decl);
             return read_method_decl;
+        }
+
+        private static CodeMemberMethod BuildWriteCommandParameterMethodDeclaration(CodeTypeDeclaration type_decl, string name, Type typeValue)
+        {
+            CodeMemberMethod write_method_decl = new CodeMemberMethod() { Name = name };
+            write_method_decl.Attributes = MemberAttributes.Static | MemberAttributes.Private;
+            //void : write_method_decl.ReturnType = void new CodeTypeReference(typeReturn); : void
+            write_method_decl.Parameters.Add(new CodeParameterDeclarationExpression(typeof(System.Data.Common.DbCommand), "cmd"));
+            write_method_decl.Parameters.Add(new CodeParameterDeclarationExpression(typeof(string), "name"));
+            write_method_decl.Parameters.Add(new CodeParameterDeclarationExpression(typeValue, "value"));
+
+            type_decl.Members.Add(write_method_decl);
+            return write_method_decl;
         }
 
     } // builder

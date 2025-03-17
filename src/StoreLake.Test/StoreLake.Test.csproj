@@ -170,6 +170,7 @@
     <EmbeddedResource Include="SQL\Procedures\hlpcm_query_processinfo_v1b.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlpcm_query_processinfo_v1a.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlpcm_query_processinfo_v2.sql" />
+    <EmbeddedResource Include="SQL\Procedures\tc_002_output_prm.sql" />
     <EmbeddedResource Include="SQL\Procedures\tc_001_isnull_args1.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlnewseditorial_merge.sql" />
     <EmbeddedResource Include="SQL\Procedures\hlsyscase_insert_instance.sql" />

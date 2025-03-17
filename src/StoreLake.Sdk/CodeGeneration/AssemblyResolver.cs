@@ -59,6 +59,17 @@ namespace StoreLake.Sdk.CodeGeneration
                     return Assembly.ReflectionOnlyLoadFrom(fileName);
                 }
             }
+            if (string.Equals(asmName.Name, "netstandard", StringComparison.OrdinalIgnoreCase)) //	Assembly.Load("netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51")
+            {
+                if (name_location.TryGetValue(asmName.FullName, out string location))
+                {
+                    if (File.Exists(location))
+                    {
+                        s_tracer.TraceInformation("OnReflectionOnlyAssemblyResolve (load) : " + location);
+                        return Assembly.ReflectionOnlyLoadFrom(location);
+                    }
+                }
+            }
             return null;
         }
 
@@ -111,7 +122,7 @@ namespace StoreLake.Sdk.CodeGeneration
             CacheAssembly(type.Assembly);
             return type.Assembly;
         }
-        private Assembly CacheAssembly(Assembly asm)
+        internal Assembly CacheAssembly(Assembly asm) // 'netstandard'
         {
             AssemblyName asmName = asm.GetName();
             if (!name_asm.ContainsKey(asmName.FullName))

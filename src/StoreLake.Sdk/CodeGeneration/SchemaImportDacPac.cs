@@ -628,6 +628,23 @@ namespace StoreLake.Sdk.CodeGeneration
                             isReadOnly = null;
                         }
 
+                        //   <Property Name="IsOutput" Value="True" />
+                        var xProperty_IsOutput = xRelationship_Entry_Element.Elements().FirstOrDefault(e => e.Name.LocalName == "Property" && e.Attributes().Any(t => t.Name.LocalName == "Name" && t.Value == "IsOutput"));
+                        bool isOutput;
+                        if (xProperty_IsOutput != null)
+                        {
+                            var xProperty_IsReadOnly_Value = xProperty_IsOutput.Attributes().Single(a => a.Name.LocalName == "Value");
+                            isOutput = bool.Parse(xProperty_IsReadOnly_Value.Value);
+                        }
+                        else
+                        {
+                            isOutput = false;
+                        }
+                        if (isOutput)
+                        {
+                            //throw new NotImplementedException("");
+                        }
+
                         var Type_SqlTypeSpecifier = ReadParameterRelationshipTypeElement(xRelationship_Entry_Element, "Type");
                         SchemaObjectName vtName = ReadTypeSpecifierRelationshipReferencesName(Type_SqlTypeSpecifier, "Type");
 
@@ -670,6 +687,7 @@ namespace StoreLake.Sdk.CodeGeneration
                             StructureTypeName = structureTypeName,
 
                             StructureTypeClassName = structureTypeName,
+                            IsOutput = isOutput
                             //StructureTypeNamespaceName = null,
                         };
 
@@ -795,13 +813,25 @@ namespace StoreLake.Sdk.CodeGeneration
         }
         private static SchemaObjectName ReadSchemaObjectName(int min, XElement xObject)
         {
+            SchemaObjectName soName = TryReadSchemaObjectName(min, xObject);
+            if (soName == null)
+            {
+                XAttribute xObject_Name = xObject.Attributes().Where(x => x.Name == "Name").Single();
+                string fullName = xObject_Name.Value;
+
+                throw new StoreLakeSdkException("Too less parts specified. Expected:" + min + " :" + fullName);
+            }
+            return soName;
+        }
+        private static SchemaObjectName TryReadSchemaObjectName(int min, XElement xObject)
+        {
             XAttribute xObject_Name = xObject.Attributes().Where(x => x.Name == "Name").Single();
             string fullName = xObject_Name.Value;
 
             string[] name_tokens = fullName.Split('.');
             if (name_tokens.Length < min)
             {
-                throw new InvalidOperationException("Too less parts specified. Expected:" + min + " :" + fullName);
+                return null; //throw new StoreLakeSdkException("Too less parts specified. Expected:" + min + " :" + fullName);
             }
 
             SchemaObjectName soName = new SchemaObjectName() { FullName = fullName, PartsCount = name_tokens.Length };
@@ -1071,6 +1101,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 {
                     df_reg.IsScalarValue = true;
                     df_reg.ValueInt32 = scalarValueInt32;
+                }
+                else if (long.TryParse(defaultExpressionScript_Value_NoParentheses, out long scalarValueInt64))
+                {
+                    df_reg.IsScalarValue = true;
+                    df_reg.ValueInt64 = scalarValueInt64;
                 }
                 else if (decimal.TryParse(defaultExpressionScript_Value_NoParentheses, out scalarValueDecimal))
                 {
@@ -1656,10 +1691,32 @@ namespace StoreLake.Sdk.CodeGeneration
                                 var xExpressionDependencies_Entry_References = xExpressionDependencies_Entry.Elements().Single(x => x.Name.LocalName == "References");
                                 //var xDependencyColumnName = xExpressionDependencies_Entry_References.Attributes().Single(a => a.Name.LocalName == "Name");
                                 //name_tokens = xDependencyColumnName.Value.Split('.');
-                                string dependecy_column_name = ReadSchemaObjectName(3, xExpressionDependencies_Entry_References).ItemName;// name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
-                                ExpressionDependencies_ColumnNames.Add(dependecy_column_name);
+                                string dependency_column_name;
+                                SchemaObjectName soNameItem = TryReadSchemaObjectName(3, xExpressionDependencies_Entry_References);
+                                if (soNameItem == null)
+                                {
+                                    // computed? [hlsysobjectuowrequestvalues]([hasvalue] AS ....)
+                                    // <References ExternalSource="BuiltIns" Name="[bit]" />
+                                    XAttribute xExternalSource = xExpressionDependencies_Entry_References.Attributes().Where(x => x.Name == "ExternalSource").SingleOrDefault();
+                                    if (xExternalSource.Value == "BuiltIns")
+                                    {
+                                        XAttribute xObject_Name = xExpressionDependencies_Entry_References.Attributes().Where(x => x.Name == "Name").Single();
+                                        string fullName = xObject_Name.Value;
 
-                                creg.ColumnDbType = columns.Single(x => x.ColumnName == dependecy_column_name).ColumnDbType;
+                                        creg.ColumnDbType = ParseKnownDbTypeFullName(column_name, fullName);
+                                    }
+                                    else
+                                    {
+                                        throw new StoreLakeSdkException("Computed column unknown source. Table:" + xTable.Name.LocalName + ", Column:" + xRelationship_Columns_Entry);
+                                    }
+                                }
+                                else
+                                {
+                                    dependency_column_name = soNameItem.ItemName;// name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                                    ExpressionDependencies_ColumnNames.Add(dependency_column_name);
+
+                                    creg.ColumnDbType = columns.Single(x => x.ColumnName == dependency_column_name).ColumnDbType;
+                                }
                             }
                         }
                         //Console.WriteLine("Skip [" + treg.TableName + "] COMPUTED [" + creg.ColumnName + "] AS [" + string.Join(",", ExpressionDependencies_ColumnNames.ToArray()) + "]"); ;
@@ -1684,9 +1741,22 @@ namespace StoreLake.Sdk.CodeGeneration
 
         private static System.Data.SqlDbType ParseKnownDbType(SchemaObjectName sonObject, string itemName, SchemaObjectName sonType, out string structureTypeSchemaName, out string structureTypeName)
         {
-            string typeName = sonType.FullName;
-            structureTypeSchemaName = null;
-            structureTypeName = null;
+            var dbtype = ParseKnownDbTypeFullName(itemName, sonType.FullName);
+            if (dbtype == SqlDbType.Structured)
+            {
+                structureTypeSchemaName = sonType.SchemaName;
+                structureTypeName = sonType.ObjectName;
+            }
+            else
+            {
+                structureTypeSchemaName = null;
+                structureTypeName = null;
+            }
+            return dbtype;
+        }
+        private static System.Data.SqlDbType ParseKnownDbTypeFullName(string itemName, string sonTypeFullName)
+        {
+            string typeName = sonTypeFullName;
             if (string.Equals(typeName, "[int]", StringComparison.Ordinal))
             {
                 return System.Data.SqlDbType.Int;
@@ -1765,8 +1835,6 @@ namespace StoreLake.Sdk.CodeGeneration
             }
             else
             {
-                structureTypeSchemaName = sonType.SchemaName;
-                structureTypeName = sonType.ObjectName;
                 return SqlDbType.Structured;
             }
         }

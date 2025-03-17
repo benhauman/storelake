@@ -1383,6 +1383,15 @@ END";
         }
 
         [TestMethod]
+        public void tc_002_output_prm() // [hlwfinstanceaction_onmail]
+        {
+            TestProcedureOutput(0, 0, new
+            {
+               
+            });
+        }
+
+        [TestMethod]
         public void hlpcm_query_processinfo_v1a()
         {
             TestProcedureOutput(new
