@@ -32,4 +32,4 @@ steps:
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
 
-- task: NuGetCommandPack@2
+- task: NuGetCommand@2
