@@ -1,25 +1,20 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using StoreLake.Sdk.CodeGeneration;
-using StoreLake.Sdk.SqlDom;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-
-namespace StoreLake.Test
+﻿namespace StoreLake.Test
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Linq;
+    using System.Reflection;
+    using System.Xml.Linq;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using StoreLake.Sdk.CodeGeneration;
+    using StoreLake.Sdk.SqlDom;
 
     [TestClass]
     public class ProcedureGenerator_Tests
     {
         public TestContext TestContext { get; set; }
-
-
 
         private static TestSchema s_metadata_1 = new TestSchema()
                     .LoadTables()
@@ -149,7 +144,6 @@ namespace StoreLake.Test
         {
             // SEQ_hlsysactioncontext_id
             return s_metadata_1;
-
         }
 
         [TestMethod]
@@ -262,7 +256,6 @@ END
         //            Assert.AreEqual(1, res.Length);
         //        }
 
-
         [TestMethod]
         public void hlsyswatchlist_add()
         {
@@ -301,8 +294,6 @@ END
             Assert.AreEqual(1, res.Length);
         }
 
-
-
         [TestMethod]
         public void hlsp_approvalfulfilled()
         {
@@ -314,7 +305,6 @@ END
                 approved = default(int?),
             });
         }
-
 
         [TestMethod]
         public void hlcmgetrolemembers()
@@ -353,7 +343,6 @@ END";
                 Assert.IsNotNull(column.ColumnDbType, "(" + ix + ") ");
             }
         }
-
 
         [TestMethod]
         public void hlomobjectinfo_query()
@@ -648,7 +637,7 @@ END";
 
         private static Type IsNullable(Type tValue)
         {
-            return Nullable.GetUnderlyingType(tValue);// != null;
+            return Nullable.GetUnderlyingType(tValue); // != null;
         }
 
         private PropertyInfo TryGetPropertyInfoByName(PropertyInfo[] properties, string propertyName)
@@ -676,7 +665,6 @@ END";
             {
                 //throw new NotImplementedException();
             }
-
 
             Dictionary<string, ProcedureCodeParameter> procedureParameters = new Dictionary<string, ProcedureCodeParameter>();
 
@@ -708,10 +696,9 @@ END";
                 procedureParameters.Add(parameterName, parameterType);
             }
 
-
             ProcedureMetadata procedure_metadata = Sdk.SqlDom.ProcedureGenerator.ParseProcedureBody("dbo", TestContext.TestName, sql_body, procedureParameters);
 
-            CreateProcedureStatement stmt = (CreateProcedureStatement)((TSqlScript)(sqlF)).Batches[0].Statements[0];
+            CreateProcedureStatement stmt = (CreateProcedureStatement)((TSqlScript)sqlF).Batches[0].Statements[0];
             foreach (ProcedureParameter prm in stmt.Parameters)
             {
                 string parameterName = prm.VariableName.Dequote();
@@ -857,7 +844,6 @@ END";
                 approvals = default(int),
             });
         }
-
 
         [TestMethod]
         public void hlsys_query_templates()
@@ -1313,7 +1299,6 @@ END";
                 SessionId = default(Guid?), // 12
                 Result = default(byte?), // 13
                 DaysSinceSaasExpiration = default(int?), // 14
-
             });
         }
         // 
@@ -1387,7 +1372,6 @@ END";
         {
             TestProcedureOutput(0, 0, new
             {
-               
             });
         }
 
@@ -1413,8 +1397,6 @@ END";
                 allowdefaultserviceusage = default(bool?),
                 prioritymatrixkind = default(int),
                 prioritymatrixpathpriority = default(string)
-
-
             });
         }
 
@@ -1440,8 +1422,6 @@ END";
                 allowdefaultserviceusage = default(bool?),
                 prioritymatrixkind = default(int),
                 prioritymatrixpathpriority = default(string)
-
-
             });
         }
 
@@ -1467,14 +1447,10 @@ END";
                 allowdefaultserviceusage = default(bool?),
                 prioritymatrixkind = default(int),
                 prioritymatrixpathpriority = default(string)
-
-
             });
         }
         // hlseglobalsearch_query_groups
         // 
         // 
-
-
     }
 }

@@ -1,8 +1,8 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 [assembly: DebuggerDisplay(@"\{Bzz = {BaseIdentifier.Value}}", Target = typeof(SchemaObjectName))]
 [assembly: DebuggerDisplay(@"\{Bzz = {StoreLake.Sdk.SqlDom.SqlDomExtensions.WhatIsThis(SchemaObject)}}", Target = typeof(NamedTableReference))]
@@ -55,7 +55,6 @@ namespace StoreLake.Sdk.SqlDom
         internal abstract bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType);
     }
 
-
     [DebuggerDisplay("NT {DebuggerText}")]
     internal sealed class QueryColumnSourceNT : QueryColumnSourceBase
     {
@@ -82,7 +81,7 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        IColumnSourceMetadata resolved_table;
+        private IColumnSourceMetadata resolved_table;
 
         internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnDbType)
         {
@@ -96,7 +95,6 @@ namespace StoreLake.Sdk.SqlDom
                 {
                     // table not exists???
                     throw new NotImplementedException(Key + "." + sourceColumnName);
-
                 }
             }
 
@@ -109,7 +107,7 @@ namespace StoreLake.Sdk.SqlDom
             else
             {
                 //throw new NotImplementedException(Key + "." + sourceColumnName + "   Table: [" + SchemaName + "].[" + TableName + "]");
-                columnDbType = null;// DbType.Object; // column 'personid' without alias => source traversion
+                columnDbType = null; // DbType.Object; // column 'personid' without alias => source traversion
                 return false;
             }
         }
@@ -201,7 +199,6 @@ namespace StoreLake.Sdk.SqlDom
                 }
             }
 
-
             ColumnTypeMetadata columnDbType = resolved_source_metadata.TryGetColumnTypeByName(sourceColumnName);
             if (columnDbType != null)
             {
@@ -216,7 +213,6 @@ namespace StoreLake.Sdk.SqlDom
         //???{
         //???    throw new NotImplementedException();
         //???}
-
     }
 
     [DebuggerDisplay("VarT: {DebuggerText}")]
@@ -248,7 +244,7 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        IColumnSourceMetadata resolved_source_metadata;
+        private IColumnSourceMetadata resolved_source_metadata;
         //private QueryColumnBase override_TryResolveSelectedColumn(BatchOutputColumnTypeResolver batchResolver, string outputColumnName, string sourceColumnName)
         //{
         //    if (resolved_source_metadata == null)
@@ -282,7 +278,7 @@ namespace StoreLake.Sdk.SqlDom
                 return true;
             }
 
-            columnType = null;// DbType.Object;
+            columnType = null; // DbType.Object;
             return false;
         }
         //private bool override_TryResolveOutputColumn(BatchOutputColumnTypeResolver batchResolver, string sourceNameOrAlias, string sourceColumnName)
@@ -305,9 +301,7 @@ namespace StoreLake.Sdk.SqlDom
         //    return true;
 
         //}
-
     }
-
 
     [DebuggerDisplay("VALUES: {DebuggerText}")]
     internal sealed class QueryColumnSourceVALUES : QueryColumnSourceBase
@@ -350,7 +344,6 @@ namespace StoreLake.Sdk.SqlDom
         }
     }
 
-
     [DebuggerDisplay("NSQ: {DebuggerText}")] // NamedSubQueryOrCte
     internal sealed class QuerySourceOnDerivedTable : QueryColumnSourceBase
     {
@@ -387,11 +380,11 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
-                    columnType = new SourceColumnType(this, sourceColumnName);//  DbType.Object;
+                    columnType = new SourceColumnType(this, sourceColumnName); //  DbType.Object;
                     return true;
                 }
             }
-            columnType = null;// DbType.Object;
+            columnType = null; // DbType.Object;
             return false;
         }
 
@@ -455,7 +448,7 @@ namespace StoreLake.Sdk.SqlDom
                         }
                         else
                         {
-                            columnType = new SourceColumnType(this, sourceColumnName);//  DbType.Object;
+                            columnType = new SourceColumnType(this, sourceColumnName); //  DbType.Object;
                             return true;
                         }
                     }
@@ -476,11 +469,11 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
-                    columnType = new SourceColumnType(this, sourceColumnName);//  DbType.Object;
+                    columnType = new SourceColumnType(this, sourceColumnName); //  DbType.Object;
                     return true;
                 }
             }
-            columnType = null;// DbType.Object;
+            columnType = null; // DbType.Object;
             return false;
         }
 
@@ -521,7 +514,7 @@ namespace StoreLake.Sdk.SqlDom
 
         internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)
         {
-            columnType = null;// DbType.Object;
+            columnType = null; // DbType.Object;
             return false;
         }
     }
@@ -541,7 +534,6 @@ namespace StoreLake.Sdk.SqlDom
             return true;
         }
     }
-
 
     [DebuggerDisplay("Rcs: {DebuggerText}")] // NamedSubCueryOrCte
     internal sealed class QueryOnReqursiveCte : QueryColumnSourceBase
@@ -565,7 +557,6 @@ namespace StoreLake.Sdk.SqlDom
         public QuerySourceFullTextTable(int id, FullTextTableReference fttRef)
             : base(id, fttRef.Alias.Dequote())
         {
-
         }
 
         internal override bool TryResolveSourceColumnType(BatchOutputColumnTypeResolver batchResolver, string sourceColumnName, out SourceColumnType columnType)

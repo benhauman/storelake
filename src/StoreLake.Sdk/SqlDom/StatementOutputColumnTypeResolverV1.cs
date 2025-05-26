@@ -1,14 +1,14 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-using System.Data;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using System;
+    using System.Data;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+
     internal class StatementOutputColumnTypeResolverV1
     {
         internal readonly ISchemaMetadataProvider SchemaMetadata;
-        BatchOutputColumnTypeResolver batchResolver;
-        StatementWithCtesAndXmlNamespaces statement;
+        private BatchOutputColumnTypeResolver batchResolver;
+        private StatementWithCtesAndXmlNamespaces statement;
         public StatementOutputColumnTypeResolverV1(BatchOutputColumnTypeResolver batchResolver, StatementWithCtesAndXmlNamespaces statement)
         {
             SchemaMetadata = batchResolver.SchemaMetadata;
@@ -43,7 +43,6 @@ namespace StoreLake.Sdk.SqlDom
                 // 3 or 4
                 throw new NotImplementedException(node.AsText() + "   ## " + statement.WhatIsThis());
             }
-
 
             //return null;
         }
@@ -120,7 +119,7 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (string.Equals(columnName, col.Dequote(), StringComparison.OrdinalIgnoreCase))
                 {
-                    // ?? 
+                    // ?? hmmm
                     columnNameNew = columnName;
                 }
             }
@@ -150,7 +149,6 @@ namespace StoreLake.Sdk.SqlDom
                         {
                             // not in this table reference : resolve failed. may be CTE?
                         }
-
                     }
                     else
                     {
@@ -257,7 +255,7 @@ namespace StoreLake.Sdk.SqlDom
                 }
                 else
                 {
-                    // dont use it 
+                    // dont use it!
                     if (throwOnSourceNotFound)
                     {
                         throw new NotImplementedException(columnName + " ## " + tableRef.WhatIsThis());
@@ -281,7 +279,6 @@ namespace StoreLake.Sdk.SqlDom
                     {
                         throw new NotImplementedException(columnName + " ## " + tableRef.WhatIsThis());
                     }
-
                 }
 
                 Console.WriteLine("--- Entry (" + sourceNameOrAlias + ":" + columnName + ") not found in TV(" + varTable.Variable.Name + ")");
@@ -323,7 +320,7 @@ namespace StoreLake.Sdk.SqlDom
 
                 return false;
             }
-            else if (tableRef is QueryDerivedTable qdt) // 
+            else if (tableRef is QueryDerivedTable qdt) // now what 
             {
                 if (TryQueryExpression(qdt.QueryExpression, ctes, sourceNameOrAlias, columnName, out resultColumnType))
                 {
@@ -342,7 +339,6 @@ namespace StoreLake.Sdk.SqlDom
             {
                 throw new NotImplementedException(columnName + " ## " + tableRef.WhatIsThis());
             }
-
         }
 
         private bool TryNamedTable(bool throwOnColumnNotFound, NamedTableReference ntRef, string columnName, out OutputColumnDescriptor resultColumnType)
@@ -353,7 +349,6 @@ namespace StoreLake.Sdk.SqlDom
             }
 
             string schemaNameOrNull = (ntRef.SchemaObject.SchemaIdentifier != null) ? ntRef.SchemaObject.SchemaIdentifier.Dequote() : null;
-
 
             IColumnSourceMetadata sourceMetadata = SchemaMetadata.TryGetColumnSourceMetadata(schemaNameOrNull, ntRef.SchemaObject.BaseIdentifier.Dequote());
             if (sourceMetadata != null)
@@ -380,7 +375,7 @@ namespace StoreLake.Sdk.SqlDom
 
         private bool TryVariableTableReference(bool throwOnColumnNotFound, VariableTableReference ntRef, string columnName, out OutputColumnDescriptor resultColumnType)
         {
-            // if alias specified check it 
+            // if alias specified check it.
             IColumnSourceMetadata sourceMetadata = batchResolver.TryGetTableVariable(ntRef.Variable.Name);
             if (sourceMetadata != null)
             {

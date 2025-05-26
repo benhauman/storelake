@@ -1,9 +1,9 @@
-﻿using System;
-using System.Data;
-using System.Linq;
-
-namespace StoreLake.TestStore.Database
+﻿namespace StoreLake.TestStore.Database
 {
+    using System;
+    using System.Data;
+    using System.Linq;
+
     public static class DatabaseGetUtcDateExtension
     {
         public static DateTime GetUtcDate<TDataSet>(this TDataSet ds) where TDataSet : DataSet
@@ -38,7 +38,6 @@ namespace StoreLake.TestStore.Database
             }
             return table;
         }
-
 
         private static void InitDataSetClass<TDataSet>(TDataSet ds) where TDataSet : DataSet
         {

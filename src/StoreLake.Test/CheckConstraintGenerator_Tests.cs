@@ -1,9 +1,9 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using StoreLake.Sdk.SqlDom;
-using System.Data;
-
 namespace StoreLake.Test
 {
+    using System.Data;
+    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using StoreLake.Sdk.SqlDom;
+
     [TestClass]
     public class CheckConstraintGenerator_Tests
     {
@@ -17,7 +17,7 @@ namespace StoreLake.Test
 
         private void Do(DataTable table, string definition)
         {
-            
+
             BooleanExpressionGenerator.BuildFromCheckConstraintDefinition("dbo", table, TestContext.TestName, definition, out bool hasError, out string errorText);
             //LEN Assert.IsFalse(hasError, errorText);
         }

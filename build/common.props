@@ -2,13 +2,36 @@
 <Project>
   <PropertyGroup>
     <Product>StoreLake</Product>
+    <Authors>BenHauman</Authors>
     <Company></Company>
-    <Copyright>Copyright (c) 2021</Copyright>
-    <Description>AAddeesscc</Description>
+    <Copyright>© Copyright (c) $([System.DateTime]::Today.Year).</Copyright>
+    <Description>Typed Data Set generator based on .dacpac input generates composable DataSet extensions</Description>
+
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <LangVersion>latest</LangVersion>
+    <DebugType>embedded</DebugType>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ManagePackageVersionsCentrally>True</ManagePackageVersionsCentrally>
+    <CentralPackageVersionOverrideEnabled>True</CentralPackageVersionOverrideEnabled>
+    
+    <RootDirectory>$(MSBuildThisFileDirectory)</RootDirectory>
+    <GitVersionBaseDirectory>$(MSBuildThisFileDirectory)</GitVersionBaseDirectory>
+
+    <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
+    <DefineConstants Condition="'$(ContinuousIntegrationBuild)' == 'true'">$(DefineConstants);CI_BUILD</DefineConstants>
+
+    <PackageProjectUrl>https://github.com/benhauman/storelake</PackageProjectUrl>
+    <RepositoryType>Git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageTags>StoreLake</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <PropertyGroup>
-    <PackageVersion>1.0.81</PackageVersion>
-    <FileVersion>1.0.81</FileVersion>
+    <PackageVersion>1.0.82</PackageVersion>
+    <FileVersion>1.0.82</FileVersion>
   </PropertyGroup>
   <!--<PropertyGroup>
     <VersionMajor>66</VersionMajor>

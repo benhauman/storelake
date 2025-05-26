@@ -1,14 +1,11 @@
-﻿using StoreLake.TestStore;
-using StoreLake.TestStore.Database;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-using System.Linq;
-using System.Linq.Expressions;
-
-namespace StoreLake.TestStore.Server
+﻿namespace StoreLake.TestStore.Server
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Data.Common;
+    using System.Linq;
+
     public sealed class StoreLakeDbServer
     {
         private readonly IDictionary<string, DataSet> _dbs = new SortedDictionary<string, DataSet>(StringComparer.OrdinalIgnoreCase);
@@ -68,12 +65,11 @@ namespace StoreLake.TestStore.Server
             internal abstract Func<DataSet, DbCommand, DbDataReader> TryGetHandlerForCommandRead(DataSet db, string procedureFullName);
         }
 
-        class ProcedureHandlerProviders
+        private class ProcedureHandlerProviders
         {
             private readonly List<ProcedureHandlerProvider> _handlerProviders = new List<ProcedureHandlerProvider>();
             private readonly IDictionary<string, Func<DataSet, DbCommand, int>> cache_resolved_exec = new SortedDictionary<string, Func<DataSet, DbCommand, int>>();
             private readonly IDictionary<string, Func<DataSet, DbCommand, DbDataReader>> cache_resolved_read = new SortedDictionary<string, Func<DataSet, DbCommand, DbDataReader>>();
-
 
             internal void AddHandler(ProcedureHandlerProvider provider)
             {
@@ -168,7 +164,6 @@ namespace StoreLake.TestStore.Server
             }
             throw new NotImplementedException("SQL (" + cmd.Parameters.Count + "):" + cmd.CommandText);
         }
-
 
         private DataSet GetDatabaseForConnectionCore(DbConnection connection)
         {
@@ -280,7 +275,7 @@ namespace StoreLake.TestStore.Server
         }
 
         private sealed class ProcedureHandlers<T> : ProcedureHandlerProvider
-             //where T : class, new()
+        //where T : class, new()
         {
             private readonly Func<DataSet, T> handlers_provider;
             private readonly Func<T, string, Func<DataSet, DbCommand, int>> method_handlers_exec;
@@ -435,5 +430,4 @@ namespace StoreLake.TestStore.Server
             return null;
         }
     }
-
 }

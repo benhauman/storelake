@@ -1,10 +1,9 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-using System.Collections.Generic;
-using System.Data;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using System;
+    using System.Collections.Generic;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+
     public interface IBatchParameterMetadata
     {
         ColumnTypeMetadata TryGetParameterType(string parameterName);
@@ -81,7 +80,7 @@ namespace StoreLake.Sdk.SqlDom
 
         private readonly IDictionary<string, TableVariableMetadata> cache_table_variables = new SortedDictionary<string, TableVariableMetadata>(StringComparer.OrdinalIgnoreCase);
 
-        class TableVariableMetadata : IColumnSourceMetadata
+        private class TableVariableMetadata : IColumnSourceMetadata
         {
             private readonly TableDefinition variableDefinition;
 
@@ -106,10 +105,9 @@ namespace StoreLake.Sdk.SqlDom
 
                 return null;
             }
-
         }
 
-        class TableVariableDeclarionVisitor : DumpFragmentVisitor
+        private class TableVariableDeclarionVisitor : DumpFragmentVisitor
         {
             internal readonly string VariableName;
             internal TableDefinition variableDefinition;
@@ -143,6 +141,5 @@ namespace StoreLake.Sdk.SqlDom
                 base.ExplicitVisit(node);
             }
         }
-
     }
 }

@@ -1,7 +1,7 @@
-﻿using System.Data;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using System.Data;
+
     public interface ISchemaMetadataProvider
     {
         IColumnSourceMetadata TryGetColumnSourceMetadata(string schemaName, string objectName);
@@ -37,5 +37,4 @@ namespace StoreLake.Sdk.SqlDom
             IsUserDefinedTableType = true;
         }
     }
-
 }

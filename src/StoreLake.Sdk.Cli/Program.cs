@@ -1,16 +1,15 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Reflection;
-using StoreLake.Sdk.CodeGeneration;
-
-namespace StoreLake.Sdk.Cli
+﻿namespace StoreLake.Sdk.Cli
 {
-    class Program
+    using System;
+    using System.Diagnostics;
+    using System.Reflection;
+    using StoreLake.Sdk.CodeGeneration;
+
+    internal class Program
     {
         private static readonly TraceSource s_tracer = SchemaExportCode.CreateTraceSource();
 
-        static int Main(string[] args)
+        private static int Main(string[] args)
         {
             ConsoleTraceListener listener = new ColoredConsoleTraceListener(false);
             Trace.Listeners.Clear();
@@ -42,7 +41,6 @@ namespace StoreLake.Sdk.Cli
                 return -1;
             }
         }
-
 
         private static void DumpException(Exception ex)
         {

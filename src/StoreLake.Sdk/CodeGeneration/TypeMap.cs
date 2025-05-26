@@ -1,11 +1,11 @@
-﻿using StoreLake.Sdk.SqlDom;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Xml.Linq;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Xml.Linq;
+    using StoreLake.Sdk.SqlDom;
+
     public static class TypeMap
     {
         internal static IDictionary<string, string> _builtinTypeAlias = new SortedDictionary<string, string>() {
@@ -162,7 +162,6 @@ namespace StoreLake.Sdk.CodeGeneration
             return quotedName;
         }
 
-
         public static Type ResolveColumnClrType(DbType columnDbType)
         {
             if (columnDbType == DbType.Int32)
@@ -203,5 +202,4 @@ namespace StoreLake.Sdk.CodeGeneration
             TypeNull = typeNull;
         }
     }
-
 }

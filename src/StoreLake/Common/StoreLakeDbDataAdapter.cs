@@ -1,14 +1,12 @@
-﻿using System;
-using System.Data.Common;
-
-
-namespace StoreLake.TestStore
+﻿namespace StoreLake.TestStore
 {
+    using System;
+    using System.Data.Common;
+
     internal sealed class StoreLakeDbDataAdapter : DbDataAdapter
     {
         public StoreLakeDbDataAdapter()
         {
-
         }
         public Action<StoreLakeDbDataAdapter, System.Data.DataTable, StoreLakeDbCommand> FillTable_Setup { get; set; }
         protected override int Fill(System.Data.DataTable[] dataTables, int startRecord, int maxRecords, System.Data.IDbCommand command, System.Data.CommandBehavior behavior)

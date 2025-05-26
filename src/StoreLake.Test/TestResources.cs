@@ -1,10 +1,10 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using StoreLake.Sdk.SqlDom;
-using System;
-using System.Text;
-
-namespace StoreLake.Test
+﻿namespace StoreLake.Test
 {
+    using System;
+    using System.Text;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+    using StoreLake.Sdk.SqlDom;
+
     internal static class TestResources
     {
         private static TestTable LoadTableFromDDL(string ddl)
@@ -80,7 +80,6 @@ namespace StoreLake.Test
             return schema;
         }
 
-
         internal static TestSchema LoadFunctionsMetadata(this TestSchema schema)
         {
             var functionFileNames = ResourceHelper.CollectResourceNamesByPrefix(typeof(ResourceHelper), "SQL.Functions.");
@@ -120,7 +119,6 @@ namespace StoreLake.Test
             }
 
             return function;
-
         }
 
         private static TestFunction LoadMultiStatementTableValuedFunction(string schemaName, string functionName, CreateFunctionStatement stmt_CreateFunction)
@@ -158,9 +156,7 @@ namespace StoreLake.Test
             string functionName = stmt_CreateFunction.SchemaObjectName.BaseIdentifier.Dequote();
             var function = new TestView(schemaName, functionName, body, f => LoadViewOutputColumnsX(schema, f, stmt_CreateFunction));
 
-
             return function;
-
         }
 
         private static void LoadViewOutputColumnsX(TestSchema schema, TestView vw, CreateViewStatement stmt_CreateFunction)

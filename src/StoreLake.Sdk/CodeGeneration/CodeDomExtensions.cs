@@ -1,32 +1,31 @@
-﻿using System;
-using System.CodeDom;
-using System.Text;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System;
+    using System.CodeDom;
+    using System.Text;
+
     internal static class CodeDomExtensions
     {
 
         internal static bool IsStatic(this MemberAttributes attributes)
         {
-            return ((attributes & MemberAttributes.Static) == MemberAttributes.Static);
+            return (attributes & MemberAttributes.Static) == MemberAttributes.Static;
         }
 
         internal static bool IsPrivate(this MemberAttributes attributes)
         {
-            return ((attributes & MemberAttributes.Private) == MemberAttributes.Private);
+            return (attributes & MemberAttributes.Private) == MemberAttributes.Private;
         }
 
         internal static bool IsPublic(this MemberAttributes attributes)
         {
-            return ((attributes & MemberAttributes.Public) == MemberAttributes.Public);
+            return (attributes & MemberAttributes.Public) == MemberAttributes.Public;
         }
 
         internal static bool IsOverride(this MemberAttributes attributes)
         {
-            return ((attributes & MemberAttributes.Override) == MemberAttributes.Override);
+            return (attributes & MemberAttributes.Override) == MemberAttributes.Override;
         }
-
 
         private static string AsTraceText(MemberAttributes attributes)
         {

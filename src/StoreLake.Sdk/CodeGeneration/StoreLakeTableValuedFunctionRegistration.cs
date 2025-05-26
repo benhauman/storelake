@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System.Collections.Generic;
+
     internal class StoreLakeTableValuedFunctionRegistration
     {
         public bool IsInline { get; set; }
@@ -12,6 +12,5 @@ namespace StoreLake.Sdk.CodeGeneration
 
         public List<StoreLakeParameterRegistration> Parameters = new List<StoreLakeParameterRegistration>();
         public List<StoreLakeColumnRegistration> Columns { get; set; } = new List<StoreLakeColumnRegistration>();
-
     }
 }

@@ -1,12 +1,11 @@
-﻿using System;
-using System.CodeDom;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-
-namespace Helpline.Data.TestStore
+﻿namespace Helpline.Data.TestStore
 {
-    static class HelplineDatX
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Data.Common;
+
+    internal static class HelplineDatX
     {
         private static readonly IDictionary<string, Func<HelplineDataProceduresCommandExecuteHandler, Func<DataSet, DbCommand, int>>> s_e = InitializeE();
 
@@ -24,8 +23,7 @@ namespace Helpline.Data.TestStore
             return null;
         }
 
-
-        class HandlersTable
+        private class HandlersTable
         {
             private IDictionary<string, Func<DataSet, DbCommand, int>> cached_handlers_exec = new SortedDictionary<string, Func<DataSet, DbCommand, int>>(StringComparer.OrdinalIgnoreCase);
             internal Func<DataSet, DbCommand, int> TryGetHandlerForProcedureExecuteNonQuery(string schemaName, string procedureName)

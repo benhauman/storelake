@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Reflection;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.IO;
+    using System.Reflection;
+
     internal sealed class AssemblyResolver
     {
         private static readonly TraceSource s_tracer = SchemaExportCode.CreateTraceSource();
@@ -13,7 +13,7 @@ namespace StoreLake.Sdk.CodeGeneration
         private readonly string _outputdir;
         public AssemblyResolver(string[] libdirs, string outputdir)
         {
-            _libdirs = libdirs ?? new string[0] ;
+            _libdirs = libdirs ?? new string[0];
             _outputdir = outputdir ?? string.Empty;
         }
         internal System.Reflection.Assembly OnAssemblyResolve(object sender, ResolveEventArgs args)
@@ -59,7 +59,7 @@ namespace StoreLake.Sdk.CodeGeneration
                     return Assembly.ReflectionOnlyLoadFrom(fileName);
                 }
             }
-            if (string.Equals(asmName.Name, "netstandard", StringComparison.OrdinalIgnoreCase)) //	Assembly.Load("netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51")
+            if (string.Equals(asmName.Name, "netstandard", StringComparison.OrdinalIgnoreCase)) //  Assembly.Load("netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51")
             {
                 if (name_location.TryGetValue(asmName.FullName, out string location))
                 {
@@ -89,7 +89,7 @@ namespace StoreLake.Sdk.CodeGeneration
             Assembly asm = OnReflectionOnlyAssemblyResolveImpl(asmName.ToString());
             if (asm == null)
             {
-                asm = Assembly.ReflectionOnlyLoad(asmName.ToString());// Assembly.Load(asmName); // ReflectionOnly?
+                asm = Assembly.ReflectionOnlyLoad(asmName.ToString()); // Assembly.Load(asmName); // ReflectionOnly?
             }
 
             return CacheAssembly(asm);

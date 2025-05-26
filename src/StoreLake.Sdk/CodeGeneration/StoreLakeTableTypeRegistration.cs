@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System.Collections.Generic;
+    using System.Diagnostics;
+
     [DebuggerDisplay("{TableTypeSchema}.{TableTypeName}")]
     internal class StoreLakeTableTypeRegistration
     {
@@ -15,7 +15,6 @@ namespace StoreLake.Sdk.CodeGeneration
         public StoreLakeTableTypeKey PrimaryKey { get; set; } = new StoreLakeTableTypeKey();
 
         public string TableTypeDefinitionName { get; set; }
-
     }
 
     internal sealed class StoreLakeTableTypeKey

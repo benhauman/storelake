@@ -1,8 +1,8 @@
-﻿using System.Data;
-using System.Diagnostics;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System.Data;
+    using System.Diagnostics;
+
     [DebuggerDisplay("[{ParameterName}] {ParameterTypeName}")]
     public sealed class StoreLakeParameterRegistration
     {

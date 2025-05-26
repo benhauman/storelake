@@ -1,10 +1,10 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+
     public sealed class ProcedureOutputSet
     {
         private readonly TSqlFragment initiator;
@@ -80,6 +80,5 @@ namespace StoreLake.Sdk.SqlDom
 
             return outputColumnName;
         }
-
     }
 }

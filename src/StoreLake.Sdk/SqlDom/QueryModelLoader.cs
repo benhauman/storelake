@@ -1,8 +1,8 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 [assembly: DebuggerDisplay(@"\{Bzz = {BaseIdentifier.Value}}", Target = typeof(SchemaObjectName))]
 [assembly: DebuggerDisplay(@"\{Bzz = {StoreLake.Sdk.SqlDom.SqlDomExtensions.WhatIsThis(SchemaObject)}}", Target = typeof(NamedTableReference))]
@@ -67,8 +67,6 @@ namespace StoreLake.Sdk.SqlDom
                     ? cte
                     : null;
             }
-
-
         }
         private sealed class QueryOrUnion
         {
@@ -80,7 +78,6 @@ namespace StoreLake.Sdk.SqlDom
                 queries.Add(source);
             }
         }
-
 
         internal static IQueryModel LoadModificationOutputModel(BatchOutputColumnTypeResolver batchResolver, string queryName, DataModificationSpecification spec, WithCtesAndXmlNamespaces ctes)
         {
@@ -403,7 +400,6 @@ namespace StoreLake.Sdk.SqlDom
                     cte_QueryExpression = cte.QueryExpression;
                 }
 
-
                 string key = node.Alias != null ? node.Alias.Dequote() : node.SchemaObject.BaseIdentifier.Dequote();
 
                 //QuerySourceOnCte cte_source = null;// ctx.IsRecursiveCTE(cteName);
@@ -428,14 +424,11 @@ namespace StoreLake.Sdk.SqlDom
 
                     collector(cte_source);
                 }
-
-
             }
             else
             {
                 collector(sourceFactory.NewQueryColumnSourceNT(parent, node));
             }
-
         }
 
         private static bool IsRecursiveCTE(string cteName, WithCtesAndXmlNamespaces ctes, QueryExpression qryExpr)
@@ -523,7 +516,6 @@ namespace StoreLake.Sdk.SqlDom
                 // CROSS APPLY
                 return false;
             }
-
             else
             {
                 throw new NotImplementedException(tableRef.WhatIsThis());
@@ -594,7 +586,6 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-
         private static bool TryResolveUnionNullColumns(QueryLoadingContext ctx, QueryUnionModel unionModel, QuerySpecificationModel mqe)
         {
             QueryColumnBase[] cols = mqe.CollectResolvedOutputColumnWithoutType();
@@ -614,7 +605,6 @@ namespace StoreLake.Sdk.SqlDom
                             {
                                 col.SetColumnDbType(outputColumnX.ColumnDbType.Value);
                             }
-
                         }
                         if (col.ColumnDbType.HasValue)
                         {
@@ -632,8 +622,6 @@ namespace StoreLake.Sdk.SqlDom
                         //throw new NotSupportedException("Output column type not resolved:" + col.OutputColumnName);
                     }
                 }
-
-
             }
 
             if (mqe.QrySpec.SelectElements.Count != mqe.ResolvedOutputColumnsCount)
@@ -987,8 +975,8 @@ namespace StoreLake.Sdk.SqlDom
 
             if (result_column != null)
             {
-                bool columnAllowNull = (result_column.AllowNull.GetValueOrDefault(true)
-                    || allowNull.GetValueOrDefault(true));
+                bool columnAllowNull = result_column.AllowNull.GetValueOrDefault(true)
+                    || allowNull.GetValueOrDefault(true);
 
                 if (result_column.AllowNull.HasValue && result_column.AllowNull.Value != columnAllowNull)
                 {
@@ -1024,7 +1012,6 @@ namespace StoreLake.Sdk.SqlDom
                 column = null;
                 return false;
             }
-
         }
 
         private static bool TryResolveColumnReferenceExpression(QueryLoadingContext ctx, QuerySpecificationModel mqe, string outputColumnName, ColumnReferenceExpression colRef, out SourceColumn column)
@@ -1184,7 +1171,6 @@ namespace StoreLake.Sdk.SqlDom
                 throw new NotImplementedException(fCall.WhatIsThis());
             }
 
-
             if (string.Equals(functionName, "CONCAT", StringComparison.OrdinalIgnoreCase)
                 )
             {
@@ -1281,7 +1267,7 @@ namespace StoreLake.Sdk.SqlDom
                     if (outputColumn.ColumnDbType.HasValue)
                     {
                         // float, real => float 
-                        // bit, char, nchar, varchar, nvarchar =>	float
+                        // bit, char, nchar, varchar, nvarchar =>   float
                         if (outputColumn.ColumnDbType.Value == DbType.Boolean
                             || outputColumn.ColumnDbType.Value == DbType.String
                             || outputColumn.ColumnDbType.Value == DbType.StringFixedLength)
@@ -1325,7 +1311,6 @@ namespace StoreLake.Sdk.SqlDom
                     throw new NotImplementedException(fCall.WhatIsThis());
                 }
             }
-
 
             if (string.Equals(functionName, "DATEDIFF", StringComparison.OrdinalIgnoreCase))
             {
@@ -1372,7 +1357,6 @@ namespace StoreLake.Sdk.SqlDom
                 var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.Int64, true);
                 outputColumn = new SourceColumn(source, outputColumnNameSafe, DbType.Int64, false);
                 return true;
-
             }
             if (string.Equals(functionName, "PATHNAME", StringComparison.OrdinalIgnoreCase))
             {
@@ -1496,5 +1480,4 @@ namespace StoreLake.Sdk.SqlDom
             throw new NotImplementedException(fCall.WhatIsThis());
         }
     }
-
 }

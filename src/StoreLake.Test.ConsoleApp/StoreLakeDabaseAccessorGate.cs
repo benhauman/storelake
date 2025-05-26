@@ -1,13 +1,12 @@
-﻿using Dibix;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.Linq.Expressions;
-using System.Reflection;
-
-namespace StoreLake.Test.ConsoleApp
+﻿namespace StoreLake.Test.ConsoleApp
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Diagnostics;
+    using System.Reflection;
+    using Dibix;
+
     /*
     class StoreLakeDao2
     {
@@ -45,7 +44,7 @@ namespace StoreLake.Test.ConsoleApp
 */
     public sealed class StoreLakeDabaseAccessorGate
     {
-        class MyHandlerRead
+        private class MyHandlerRead
         {
             private readonly Type _instanceType;
             private readonly MethodInfo _mi;
@@ -59,7 +58,7 @@ namespace StoreLake.Test.ConsoleApp
             }
 
             [DebuggerDisplay("{name} ({type}) : {value}")]
-            class InvokeParameter
+            private class InvokeParameter
             {
                 public string name;
                 public DbType type;
@@ -75,7 +74,7 @@ namespace StoreLake.Test.ConsoleApp
                 });
                 var method_parameters = _mi.GetParameters();
                 List<object> invoke_parameter_values = new List<object>();
-                for(int ix = 0; ix< method_parameters.Length;ix++)
+                for (int ix = 0; ix < method_parameters.Length; ix++)
                 {
                     var method_parameter = method_parameters[ix];
                     if (method_parameter.ParameterType == typeof(DataSet))
@@ -104,7 +103,6 @@ namespace StoreLake.Test.ConsoleApp
                 {
                     object handler_instance = Activator.CreateInstance(_instanceType);
                     invoke_result = _mi.Invoke(handler_instance, invoke_parameter_values.ToArray());
-
                 }
 
                 parameters.VisitOutputParameters((string parameterName) =>
@@ -114,7 +112,6 @@ namespace StoreLake.Test.ConsoleApp
 
                 return invoke_result;
             }
-
         }
         private readonly Dictionary<IComparable, MyHandlerRead> handlers_read = new Dictionary<IComparable, MyHandlerRead>();
         /*
@@ -208,5 +205,4 @@ namespace StoreLake.Test.ConsoleApp
         }
     }
     */
-
 }

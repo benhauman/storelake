@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-
-namespace StoreLake.TestStore.Database
+﻿namespace StoreLake.TestStore.Database
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+
     public sealed class StoreLakeDatabaseBuilder<TDataSet>
         where TDataSet : DataSet, new()
     {

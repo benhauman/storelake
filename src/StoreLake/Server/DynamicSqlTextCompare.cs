@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.Common;
-
-namespace StoreLake.TestStore.Server
+﻿namespace StoreLake.TestStore.Server
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data.Common;
+
     public sealed class DynamicSqlTextCompare : IComparable
     {
         private readonly List<Func<DbCommand, bool>> impl = new List<Func<DbCommand, bool>>();

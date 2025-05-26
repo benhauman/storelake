@@ -1,7 +1,7 @@
-﻿using System;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System;
+
     internal sealed class StoreLakeDefaultContraintRegistration
     {
         public string ConstraintName { get; set; }

@@ -1,15 +1,15 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Xml.Linq;
-
-namespace StoreLake.Versioning
+﻿namespace StoreLake.Versioning
 {
-    class Program
+    using System;
+    using System.Diagnostics;
+    using System.IO;
+    using System.Linq;
+    using System.Reflection;
+    using System.Xml.Linq;
+
+    internal class Program
     {
-        static int Main(string[] args)
+        private static int Main(string[] args)
         {
             try
             {
@@ -82,13 +82,14 @@ namespace StoreLake.Versioning
             foreach (var fi in di.GetFiles("common.props", SearchOption.AllDirectories))
             {
                 Console.WriteLine(fi.FullName);
+
                 //XDocument xDoc = XDocument.Parse(File.ReadAllText(fi.FullName));
                 XDocument xDoc = XDocument.Load(fi.FullName);
                 XElement xProject = xDoc.Root;
                 bool fileChanged = false;
                 foreach (var xPropertyGroup in xProject.Elements().Where(e => e.Name.LocalName == "PropertyGroup"))
                 {
-                    foreach (var xPackageVersion in xPropertyGroup.Elements().Where(e => e.Name.LocalName == "PackageVersion" 
+                    foreach (var xPackageVersion in xPropertyGroup.Elements().Where(e => e.Name.LocalName == "PackageVersion"
                     || e.Name.LocalName == "FileVersion")
                         )
                     {

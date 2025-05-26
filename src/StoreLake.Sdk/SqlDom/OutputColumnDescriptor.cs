@@ -1,8 +1,8 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System.Data;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using System.Data;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+
     public sealed class OutputColumnDescriptor
     {
         public string OutputColumnName { get; private set; }

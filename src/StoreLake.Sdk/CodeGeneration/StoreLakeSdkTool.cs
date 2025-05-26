@@ -1,12 +1,11 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.IO;
+    using System.Linq;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
 
     public sealed class ToolArguments
     {
@@ -33,7 +32,6 @@ namespace StoreLake.Sdk.CodeGeneration
 
             return Path.GetFullPath(dir);
         }
-
 
         public static ToolArguments ParseArguments(string[] args)
         {
@@ -132,12 +130,10 @@ namespace StoreLake.Sdk.CodeGeneration
                         }
                     }
                 }
-
             }
 
             return targs;
         }
-
 
         public static void Run(ToolArguments targs)
         {
@@ -221,8 +217,10 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 TSqlFragment fragment = parser.Parse(reader, out IList<ParseError> errors);
                 if (errors.Any())
+                {
                     throw new InvalidOperationException($@"Error parsing SQL statement
 {String.Join(Environment.NewLine, errors.Select(x => $"{x.Message} at {x.Line},{x.Column}"))}");
+                }
 
                 //Console.WriteLine("SQL Fragment generated!");
                 SqlScriptGenerator generator = new Sql140ScriptGenerator();
@@ -233,4 +231,3 @@ namespace StoreLake.Sdk.CodeGeneration
         }
     }
 }
-

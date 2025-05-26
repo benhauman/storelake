@@ -1,18 +1,18 @@
-﻿using Microsoft.SqlServer.Server;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-using System.Diagnostics;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Text;
-
-namespace StoreLake.TestStore.Server
+﻿namespace StoreLake.TestStore.Server
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Data.Common;
+    using System.Diagnostics;
+    using System.Linq.Expressions;
+    using System.Reflection;
+    using System.Text;
+    using Microsoft.SqlServer.Server;
+
     internal static class StoreLakeDao
     {
-        class HandlerReadDesc
+        private class HandlerReadDesc
         {
             internal readonly string MethodName;
             internal readonly Func<DataSet, DbCommand, DbDataReader> HandlerMethod;
@@ -23,7 +23,7 @@ namespace StoreLake.TestStore.Server
             }
         }
         private static SortedDictionary<string, HandlerReadDesc> s_map_CommandText_Read_Method = new SortedDictionary<string, HandlerReadDesc>();
-        class HandlerExecDesc
+        private class HandlerExecDesc
         {
             internal readonly string MethodName;
             internal readonly Func<DataSet, DbCommand, int> HandlerMethod;
@@ -35,14 +35,13 @@ namespace StoreLake.TestStore.Server
         }
         private static SortedDictionary<string, HandlerExecDesc> s_map_CommandText_Exec_Method = new SortedDictionary<string, HandlerExecDesc>();
 
-
         internal static Func<DataSet, DbCommand, DbDataReader> TryRead(CommandExecutionHandler handlerRegistry, DbCommand cmd)
         {
             HandlerReadDesc handler;
             if (!s_map_CommandText_Read_Method.TryGetValue(cmd.CommandText, out handler))
             {
                 // not yet cached
-                IComparable handlerCommandText = handlerRegistry.RetrieveCommandText();// GetCommandTextImpl(tAccessor, handlerMethodName);
+                IComparable handlerCommandText = handlerRegistry.RetrieveCommandText(); // GetCommandTextImpl(tAccessor, handlerMethodName);
 
                 string handlerCommandTextX = handlerCommandText as string;
 
@@ -55,7 +54,6 @@ namespace StoreLake.TestStore.Server
                 {
                     isOk = string.Equals(cmd.CommandText, handlerCommandTextX, StringComparison.Ordinal);
                 }
-
 
                 if (isOk)
                 {
@@ -80,7 +78,6 @@ namespace StoreLake.TestStore.Server
                 return handler.HandlerMethod;
             }
 
-
             return null;
         }
 
@@ -90,7 +87,7 @@ namespace StoreLake.TestStore.Server
             if (!s_map_CommandText_Exec_Method.TryGetValue(cmd.CommandText, out handler))
             {
                 // not yet cached
-                IComparable handlerCommandText = handlerRegistry.RetrieveCommandText();// GetCommandTextImpl(tAccessor, handlerMethodName);
+                IComparable handlerCommandText = handlerRegistry.RetrieveCommandText(); // GetCommandTextImpl(tAccessor, handlerMethodName);
 
                 string handlerCommandTextX = handlerCommandText as string;
 
@@ -103,7 +100,6 @@ namespace StoreLake.TestStore.Server
                 {
                     isOk = string.Equals(cmd.CommandText, handlerCommandTextX, StringComparison.Ordinal);
                 }
-
 
                 if (isOk)
                 {
@@ -126,7 +122,6 @@ namespace StoreLake.TestStore.Server
 
                 return handler.HandlerMethod;
             }
-
 
             return null;
         }
@@ -159,7 +154,7 @@ namespace StoreLake.TestStore.Server
                 {
                     var parameter_db = Expression.Parameter(typeof(DataSet), "db");
                     var parameter_cmd = Expression.Parameter(typeof(DbCommand), "cmd");
-                    MethodCallExpression call = Expression.Call(methodCallExpr.Method, parameter_db, parameter_cmd);// methodCallExpr.Arguments
+                    MethodCallExpression call = Expression.Call(methodCallExpr.Method, parameter_db, parameter_cmd); // methodCallExpr.Arguments
                     Expression<Func<DataSet, DbCommand, int>> lambda = Expression.Lambda<Func<DataSet, DbCommand, int>>(call, parameter_db, parameter_cmd); // visitor.ExtractedParameters
 
                     Func<DataSet, DbCommand, int> handlerMethod = lambda.Compile();
@@ -187,7 +182,6 @@ namespace StoreLake.TestStore.Server
         }
 
         private static SortedDictionary<string, IComparable> s_cache = new SortedDictionary<string, IComparable>();
-
 
         internal static IComparable GetCommandTextImpl(Type methodOwner, string methodName)
         {
@@ -230,7 +224,6 @@ namespace StoreLake.TestStore.Server
         }
     }
 
-
     internal abstract class CommandExecutionHandler
     {
         internal abstract bool IsProcedureHandler(); // CommandType.StoredProcedure
@@ -257,11 +250,11 @@ namespace StoreLake.TestStore.Server
         private readonly IComparable _commandText;
         private readonly bool _isProcedureHandler;
 
-        Func<DataSet, DbCommand, DbDataReader> wrapped_compiledMethod_Read;
-        Func<DataSet, DbCommand, int> wrapped_compiledMethod_Exec;
+        private Func<DataSet, DbCommand, DbDataReader> wrapped_compiledMethod_Read;
+        private Func<DataSet, DbCommand, int> wrapped_compiledMethod_Exec;
 
-        Func<DataSet, DbCommand, DbDataReader> _cached_compiledMethod_Read;
-        Func<DataSet, DbCommand, int> _cached_compiledMethod_Exec;
+        private Func<DataSet, DbCommand, DbDataReader> _cached_compiledMethod_Read;
+        private Func<DataSet, DbCommand, int> _cached_compiledMethod_Exec;
 
         public TypedMethodHandler(MethodInfo mi, bool isProcedureHandler, IComparable commandText)
         {
@@ -270,7 +263,6 @@ namespace StoreLake.TestStore.Server
             _mi = mi;
             _commandText = commandText;
         }
-
 
         internal string DebuggerText
         {
@@ -345,7 +337,6 @@ namespace StoreLake.TestStore.Server
             text.AppendLine("Access:" + BuildMethodDeclarationAsText(a_method));
             text.AppendLine("Handle:" + BuildMethodDeclarationAsText(h_method));
             return text.ToString();
-
         }
 
         internal bool ValidateReadMethodX(System.Reflection.MethodInfo a_method)
@@ -373,7 +364,6 @@ namespace StoreLake.TestStore.Server
                     throw new InvalidOperationException(BuildMismatchMethodExpectionText(a_method, h_method, "Handle method does not expected raw parameters (DataSet, DbCommand)."));
                 }
             }
-
             else
             {
 
@@ -381,7 +371,6 @@ namespace StoreLake.TestStore.Server
                 {
                     throw new InvalidOperationException(BuildMismatchMethodExpectionText(a_method, h_method, "Wrong return type."));
                 }
-
 
                 var a_prms = a_method.GetParameters();
                 if (a_prms.Length != h_prms.Length)
@@ -439,14 +428,12 @@ namespace StoreLake.TestStore.Server
                 if (_mi.IsStatic)
                 {
 
-
                     return wrapped_compiledMethod_Exec(db, cmd);
                 }
                 else
                 {
                     return wrapped_compiledMethod_Exec(db, cmd);
                     //throw new NotImplementedException("public DbDataReader " + _mi.Name + "(DataSet db, DbCommand cmd) of '" + _instanceType.Name + "'");
-
                 }
             }
             else
@@ -507,7 +494,6 @@ namespace StoreLake.TestStore.Server
                 {
                     return wrapped_compiledMethod_Read(db, cmd);
                     //throw new NotImplementedException("public DbDataReader " + _mi.Name + "(DataSet db, DbCommand cmd) of '" + _instanceType.Name + "'");
-
                 }
             }
             else
@@ -545,9 +531,6 @@ namespace StoreLake.TestStore.Server
                     //throw new NotImplementedException("public " + debug_ret + " " + _mi.Name + "(DataSet db" + debug_params.ToString() + ") of '" + _instanceType.Name + "'");
                 }
             }
-
-
-
         }
 
         private static string TypeNameAsText(Type t)
@@ -646,7 +629,6 @@ namespace StoreLake.TestStore.Server
                 // IDatabaseAccessor.QueryMultiple
                 return ConvertToMultipleTables(returnType, returnValues);
             }
-
         }
 
         private static DataTable ConvertComplexTypeValuesToTable(object returnValues, Type elementType)
@@ -716,7 +698,7 @@ namespace StoreLake.TestStore.Server
                     }
                     else
                     {
-                        var fi = ((FieldInfo)mi_col.Key);
+                        var fi = (FieldInfo)mi_col.Key;
                         col_value = fi.GetValue(item);
                         if (col_value.GetType() != fi.FieldType)
                         {
@@ -727,10 +709,8 @@ namespace StoreLake.TestStore.Server
                             throw new InvalidOperationException(fi.Name);
                         }
 
-
                         row[mi_col.Value] = col_value;
                     }
-
                 }
                 tb_table.Rows.Add(row);
             }
@@ -804,9 +784,7 @@ namespace StoreLake.TestStore.Server
                     throw new InvalidOperationException("Parameter value is null:" + parameterName);
                 }
 
-
                 IEnumerable<Microsoft.SqlServer.Server.SqlDataRecord> records = (IEnumerable<Microsoft.SqlServer.Server.SqlDataRecord>)prm.Value;
-
 
                 Type tupleType = parameterType.GetGenericArguments()[0];
                 Type listType = typeof(List<>).MakeGenericType(tupleType);
@@ -936,12 +914,12 @@ namespace StoreLake.TestStore.Server
             MethodCallExpression call;
             if (mi.IsStatic)
             {
-                call = Expression.Call(mi, parameter_db, parameter_cmd);// methodCallExpr.Arguments
+                call = Expression.Call(mi, parameter_db, parameter_cmd); // methodCallExpr.Arguments
             }
             else
             {
                 Expression instance = Expression.New(methodOwner);
-                call = Expression.Call(instance, mi, parameter_db, parameter_cmd);// methodCallExpr.Arguments
+                call = Expression.Call(instance, mi, parameter_db, parameter_cmd); // methodCallExpr.Arguments
             }
             Expression<Func<DataSet, DbCommand, DbDataReader>> lambda = Expression.Lambda<Func<DataSet, DbCommand, DbDataReader>>(call, parameter_db, parameter_cmd); // visitor.ExtractedParameters
             Func<DataSet, DbCommand, DbDataReader> handlerMethod = lambda.Compile();
@@ -956,12 +934,12 @@ namespace StoreLake.TestStore.Server
             MethodCallExpression call;
             if (mi.IsStatic)
             {
-                call = Expression.Call(mi, parameter_db, parameter_cmd);// methodCallExpr.Arguments
+                call = Expression.Call(mi, parameter_db, parameter_cmd); // methodCallExpr.Arguments
             }
             else
             {
                 Expression instance = Expression.New(methodOwner);
-                call = Expression.Call(instance, mi, parameter_db, parameter_cmd);// methodCallExpr.Arguments
+                call = Expression.Call(instance, mi, parameter_db, parameter_cmd); // methodCallExpr.Arguments
             }
             Expression<Func<DataSet, DbCommand, int>> lambda = Expression.Lambda<Func<DataSet, DbCommand, int>>(call, parameter_db, parameter_cmd); // visitor.ExtractedParameters
             Func<DataSet, DbCommand, int> handlerMethod = lambda.Compile();
@@ -988,7 +966,6 @@ namespace StoreLake.TestStore.Server
         {
             _cache_handlerMethodRead = handlerMethod;
         }
-
 
         private Func<DataSet, DbCommand, int> _cache_handlerMethodExec;
         internal override void SetCompiledExecMethod(Func<DataSet, DbCommand, int> handlerMethod)

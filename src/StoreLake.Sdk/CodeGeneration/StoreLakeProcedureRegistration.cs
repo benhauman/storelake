@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System.Collections.Generic;
+    using System.Diagnostics;
+
     [DebuggerDisplay("[{ProcedureName}]")]
     internal class StoreLakeProcedureRegistration
     {
@@ -13,6 +13,5 @@ namespace StoreLake.Sdk.CodeGeneration
 
         public List<StoreLakeParameterRegistration> Parameters = new List<StoreLakeParameterRegistration>();
         public List<StoreLakeAnnotationRegistration> Annotations = new List<StoreLakeAnnotationRegistration>();
-
     }
 }

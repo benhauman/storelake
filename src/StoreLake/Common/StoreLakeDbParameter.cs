@@ -1,10 +1,9 @@
-﻿using System;
-using System.Data.Common;
-using System.Diagnostics;
-
-
-namespace StoreLake.TestStore
+﻿namespace StoreLake.TestStore
 {
+    using System;
+    using System.Data.Common;
+    using System.Diagnostics;
+
     [DebuggerDisplay("{ParameterName}:{DbType}")]
     internal sealed class StoreLakeDbParameter : DbParameter
     {

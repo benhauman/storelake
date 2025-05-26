@@ -1,7 +1,7 @@
-﻿using System.Data;
-
-namespace StoreLake.TestStore.Database
+﻿namespace StoreLake.TestStore.Database
 {
+    using System.Data;
+
     public static class StoreLakeDatabaseServer
     {
         public static StoreLakeDatabaseBuilder<DataSet> CreateDatabase(string databaseName)

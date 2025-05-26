@@ -1,19 +1,18 @@
-﻿using Helpline.Data.TestStore; // generated assembly
-using Helpline.SLM.Database.Data.TestStore; // generated assembly
-using StoreLake.TestStore.Server;
-using StoreLake.TestStore;
-using StoreLake.TestStore.Database;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-using System.Linq;
-
-namespace StoreLake.Test.ConsoleApp
+﻿namespace StoreLake.Test.ConsoleApp
 {
-    class Program
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Data.Common;
+    using System.Linq;
+    using Helpline.Data.TestStore; // generated assembly
+    using Helpline.SLM.Database.Data.TestStore; // generated assembly
+    using StoreLake.TestStore.Database;
+    using StoreLake.TestStore.Server;
+
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             try
             {
@@ -117,7 +116,7 @@ namespace StoreLake.Test.ConsoleApp
             var case_def_B = db.hlsyscasedef().AddRowWithValues(object_def_B.objectdefid);
             var case_def_C = db.hlsyscasedef().AddRowWithValues(object_def_C.objectdefid);
 
-            var test10_udt = new Helpline.Data.IntThreeSet();//.From(new int[] { 3, 2, 1 }, (udt, item) => udt.Add(item, (100 * item) + item, (100 * item)));
+            var test10_udt = new Helpline.Data.IntThreeSet(); //.From(new int[] { 3, 2, 1 }, (udt, item) => udt.Add(item, (100 * item) + item, (100 * item)));
             test10_udt.Add(1, object_def_A.objectdefid, 3000); // seq, def, objectid
             test10_udt.Add(2, object_def_B.objectdefid, 2000);
             test10_udt.Add(3, object_def_C.objectdefid, 1000);
@@ -154,7 +153,6 @@ namespace StoreLake.Test.ConsoleApp
         }
     }
 
-
     public sealed class AgentInfo
     {
         public int Id;
@@ -175,12 +173,10 @@ namespace StoreLake.Test.ConsoleApp
                     {
                         while (reader.Read())
                         {
-
                         }
                     }
                 }
             }
-
         }
     }
     public static class TestDML
@@ -212,7 +208,6 @@ namespace StoreLake.Test.ConsoleApp
                     }
                 }
             }
-
         }
 
         private const string GetAgentInfoByIdCommandText = "SELECT name, fullname, description, active FROM hlsysagent WHERE agentid=@id";
@@ -243,7 +238,6 @@ namespace StoreLake.Test.ConsoleApp
                     }
                 }
             }
-
         }
         private const string GetAgentDescriptionByIdCommandText = "SELECT description FROM hlsysagent WHERE agentid=@id";
         public static IEnumerable<string> GetAgentDescriptionById(xDatabaseAccessorFactory databaseAccessorFactory, int id)
@@ -273,7 +267,6 @@ namespace StoreLake.Test.ConsoleApp
                     }
                 }
             }
-
         }
 
         private const string GetAgentsDescriptionByIdCommandText = "SELECT description FROM dbo.hlsysagent WHERE agentid=@id";
@@ -303,7 +296,6 @@ namespace StoreLake.Test.ConsoleApp
                     }
                 }
             }
-
         }
 
         private const string GetAllAgentNamesCommandText = "SELECT name FROM dbo.hlsysagent";
@@ -327,7 +319,6 @@ namespace StoreLake.Test.ConsoleApp
                     }
                 }
             }
-
         }
 
         private const string GetAllAgentInfosCommandText = "SELECT id = agentid, name, isactive = CAST(ISNULL(active,0) AS BIT) FROM dbo.hlsysagent";
@@ -361,7 +352,6 @@ namespace StoreLake.Test.ConsoleApp
                     }
                 }
             }
-
         }
 
         private const string GetAllAgentIdsCommandText = "SELECT id FROM dbo.hlsysagent";
@@ -401,5 +391,4 @@ namespace StoreLake.Test.ConsoleApp
             }
         }
     }
-
 }

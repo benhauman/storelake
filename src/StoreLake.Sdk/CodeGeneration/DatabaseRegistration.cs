@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+
     internal static class DatabaseRegistration
     {
 
@@ -98,7 +98,6 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 if (creg.IsIdentity)
                     column.AutoIncrementSeed = 1;
-
             }
         }
 
@@ -141,10 +140,9 @@ namespace StoreLake.Sdk.CodeGeneration
                 foreign_columns.Add(foreign_column);
             }
 
-
             ForeignKeyConstraint fk = new ForeignKeyConstraint(foreignKey.ForeignKeyName, foreign_columns.ToArray(), defining_columns.ToArray());
             ForeignKeyConstraint found = FindForeignKeyConstraint(definining_table.Constraints, fk);
-            
+
             if (found == null)
             {
                 //Console.WriteLine("[" + foreignKey.ForeignKeyName + "] ON [" + foreignKey.DefiningTableName + "]" + " REFERENCES [" + foreignKey.ForeignTableName + "]");
@@ -154,7 +152,7 @@ namespace StoreLake.Sdk.CodeGeneration
             //definining_table.ParentRelations.Add(new DataRelation() { });
         }
         // System.Data.ConstraintCollection
-        internal static ForeignKeyConstraint FindForeignKeyConstraint(ConstraintCollection lst, ForeignKeyConstraint fk)
+        private static ForeignKeyConstraint FindForeignKeyConstraint(ConstraintCollection lst, ForeignKeyConstraint fk)
         {
             int count = lst.Count;
             for (int i = 0; i < count; i++)
@@ -308,5 +306,4 @@ namespace StoreLake.Sdk.CodeGeneration
             table.Constraints.Add(new UniqueConstraint(uqKey.KeyName, pkColumns.ToArray(), false));
         }
     }
-
 }

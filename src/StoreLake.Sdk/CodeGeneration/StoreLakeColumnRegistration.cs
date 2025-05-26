@@ -1,8 +1,8 @@
-﻿using System.Data;
-using System.Diagnostics;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System.Data;
+    using System.Diagnostics;
+
     [DebuggerDisplay("{ColumnName} {ColumnDbType} Null:{IsNullable} Identity:{IsIdentity}")]
     internal sealed class StoreLakeColumnRegistration
     {
@@ -11,5 +11,4 @@ namespace StoreLake.Sdk.CodeGeneration
         public bool IsIdentity { get; set; }
         public SqlDbType ColumnDbType { get; set; }
     }
-
 }

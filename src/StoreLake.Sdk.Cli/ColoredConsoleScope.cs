@@ -1,17 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace StoreLake.Sdk.Cli
+﻿namespace StoreLake.Sdk.Cli
 {
-    sealed class ColoredConsoleScope : IDisposable
+    using System;
+    using System.Diagnostics;
+    using System.Globalization;
+
+    internal sealed class ColoredConsoleScope : IDisposable
     {
-        ConsoleColor oldBackgroundColor = Console.BackgroundColor;
-        ConsoleColor oldForegroundColor = Console.ForegroundColor;
+        private ConsoleColor oldBackgroundColor = Console.BackgroundColor;
+        private ConsoleColor oldForegroundColor = Console.ForegroundColor;
 
         internal ColoredConsoleScope(ConsoleColor background, ConsoleColor foreground)
         {
@@ -27,11 +23,10 @@ namespace StoreLake.Sdk.Cli
         }
     }
 
-    sealed class ColoredConsoleTraceListener : ConsoleTraceListener
+    internal sealed class ColoredConsoleTraceListener : ConsoleTraceListener
     {
         public ColoredConsoleTraceListener(bool useErrorStream) : base(useErrorStream)
         {
-
         }
 
         public override void Write(string message)
@@ -87,7 +82,7 @@ namespace StoreLake.Sdk.Cli
                 {
                     base.WriteLine(message);
                 });
-                    //base.TraceEvent(eventCache, source, eventType, id, message);
+                //base.TraceEvent(eventCache, source, eventType, id, message);
             });
         }
 
@@ -97,7 +92,6 @@ namespace StoreLake.Sdk.Cli
             {
                 base.TraceData(eventCache, source, eventType, id, data);
             });
-
         }
 
         public override void TraceData(TraceEventCache eventCache, string source, TraceEventType eventType, int id, params object[] data)
@@ -106,8 +100,6 @@ namespace StoreLake.Sdk.Cli
             {
                 base.TraceData(eventCache, source, eventType, id, data);
             });
-
-
         }
 
         private static Func<ColoredConsoleScope> Nop = () => null;
@@ -170,6 +162,5 @@ namespace StoreLake.Sdk.Cli
         {
             base.Fail(message, detailMessage);
         }
-
     }
 }

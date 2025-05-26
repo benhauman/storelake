@@ -1,10 +1,10 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-using System.Collections.Generic;
-using System.Data;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+
     public sealed class ProcedureMetadata : IBatchParameterMetadata
     {
         public ProcedureMetadata(string procedureFullName, string procedureName, TSqlFragment bodyFragment, Dictionary<string, ProcedureCodeParameter> procedureParameters)
@@ -12,7 +12,7 @@ namespace StoreLake.Sdk.SqlDom
             ProcedureFullName = procedureFullName;
             ProcedureName = procedureName;
             BodyFragment = bodyFragment;
-            foreach(var prm in procedureParameters)
+            foreach (var prm in procedureParameters)
             {
                 parameters.Add(prm.Key, prm.Value);
             }
@@ -44,7 +44,7 @@ namespace StoreLake.Sdk.SqlDom
         }
 
         private DbType? TryGetParameterTypeX(string parameterName, out ProcedureCodeParameter prm)
-        { 
+        {
             if (parameters.TryGetValue(parameterName, out prm))
             {
                 if (prm.TypeNotNull == null && prm.ParameterDbType == DbType.Object) // ?udt
@@ -118,7 +118,7 @@ namespace StoreLake.Sdk.SqlDom
             UserDefinedTableTypeSqlName = name;
         }
 
-        internal string ParameterCodeName { get;  set; }
+        internal string ParameterCodeName { get; set; }
 
         internal static ProcedureCodeParameter Create<TNotNull, TNull>(DbType parameterDbType)
         {
@@ -128,7 +128,5 @@ namespace StoreLake.Sdk.SqlDom
         {
             return new ProcedureCodeParameter(userDefinedTybleTypeFullName, DbType.Object, schema, name);
         }
-
     }
-
 }

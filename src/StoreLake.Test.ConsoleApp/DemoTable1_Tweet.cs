@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Runtime.CompilerServices;
-using Helpline.Data.TestStore;
-using StoreLake.TestStore.Database;
-
-namespace StoreLake.Test.ConsoleApp
+﻿namespace StoreLake.Test.ConsoleApp
 {
+    using System;
+    using System.Data;
+    using System.Runtime.CompilerServices;
+
     public static class TweetExtension
     {
         #region Registration
@@ -33,13 +30,11 @@ namespace StoreLake.Test.ConsoleApp
             return table;
         }
 
-
         private static void InitDataSetClass<TDataSet>(TDataSet ds) where TDataSet : DataSet
         {
             var table = new TweetDataTable();
             ds.Tables.Add(table);
         }
-
 
         #endregion
     }
@@ -71,13 +66,13 @@ namespace StoreLake.Test.ConsoleApp
 
         internal TweetRow FindRowByKey(string id)
         {
-            return ((TweetRow)(this.Rows.Find(new object[] {
-                        id})));
+            return (TweetRow)this.Rows.Find(new object[] {
+                        id});
         }
 
         public TweetRow AddRowWithValues(string id)
         {
-            TweetRow dbrow = ((TweetRow)(this.NewRow()));
+            TweetRow dbrow = (TweetRow)this.NewRow();
             dbrow.ItemArray = new object[] {
                     id};
             this.Rows.Add(dbrow);
@@ -88,7 +83,6 @@ namespace StoreLake.Test.ConsoleApp
         {
             ((TweetRow)e.Row).ValidateRow();
         }
-
     }
 
     public sealed class TweetRow : DataRow

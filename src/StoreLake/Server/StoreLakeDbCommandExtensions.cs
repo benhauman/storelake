@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace StoreLake.TestStore.Server
+﻿namespace StoreLake.TestStore.Server
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Data.Common;
+
     internal static class DbCommandExtensions
     {
         public static TUdt Assert_DbParameter_GetValue_Udt_record<TUdt>(this DbCommand command, string parameterName, Action<TUdt, Microsoft.SqlServer.Server.SqlDataRecord> collector)
@@ -73,7 +70,6 @@ namespace StoreLake.TestStore.Server
                     {
                         return true;
                     }
-
                 }
             }
 
@@ -91,7 +87,6 @@ namespace StoreLake.TestStore.Server
                     {
                         return true;
                     }
-
                 }
             }
 
@@ -109,7 +104,6 @@ namespace StoreLake.TestStore.Server
                     {
                         return true;
                     }
-
                 }
             }
 
@@ -174,10 +168,9 @@ namespace StoreLake.TestStore.Server
                         if (string.Equals(p.ParameterName, parameterName, StringComparison.OrdinalIgnoreCase))
                             return p; // ok
                     }
-
                 }
-                if ((string.Equals(p.ParameterName, parameterName, StringComparison.OrdinalIgnoreCase))
-                 || (string.Equals(p.ParameterName, "@" + parameterName, StringComparison.OrdinalIgnoreCase)))
+                if (string.Equals(p.ParameterName, parameterName, StringComparison.OrdinalIgnoreCase)
+                 || string.Equals(p.ParameterName, "@" + parameterName, StringComparison.OrdinalIgnoreCase))
                 {
                     return p;
                 }
@@ -185,11 +178,5 @@ namespace StoreLake.TestStore.Server
 
             return null;
         }
-
-
-
-
-
-
     }
 }

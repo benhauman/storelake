@@ -6,10 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Data.DataSetExtensions" Version="4.6.0-preview3.19128.7" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\StoreLake\StoreLake.csproj" />
   </ItemGroup>
 

@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Linq;
-
-namespace StoreLake.TestStore
+﻿namespace StoreLake.TestStore
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data.Common;
+    using System.Linq;
+
     internal sealed class StoreLakeDbParameterCollection : DbParameterCollection
     {
         public List<StoreLakeDbParameter> items = new List<StoreLakeDbParameter>();
@@ -18,7 +18,7 @@ namespace StoreLake.TestStore
         public override void AddRange(Array values)
         {
             foreach (var value in values)
-                items.Add(((StoreLakeDbParameter)value));
+                items.Add((StoreLakeDbParameter)value);
         }
 
         public override void Clear()

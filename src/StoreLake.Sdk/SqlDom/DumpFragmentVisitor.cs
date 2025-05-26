@@ -1,12 +1,12 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using System;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+
     public class DumpFragmentVisitor : TSqlFragmentVisitor
     {
-        int fragmentIndex = 0;
-        string prefix = "";
+        private int fragmentIndex = 0;
+        private string prefix = "";
         public DumpFragmentVisitor(bool dumpEnabled)
         {
             DumpEnabled = dumpEnabled;
@@ -57,7 +57,7 @@ namespace StoreLake.Sdk.SqlDom
             || (node is ScalarSubquery) // (SELECT * FROM @table WHERE cmdbflowid IS NULL OR cmdbflowatt
             || (node is WhereClause) // WHERE cmdbflowid IS NULL OR cmdbflowattri
             || (node is BooleanBinaryExpression) // cmdbflowid IS NULL OR cmdbflowattributeid IS N
-            || (node is BooleanIsNullExpression)  // cmdbflowid IS NULL O
+            || (node is BooleanIsNullExpression) // cmdbflowid IS NULL O
 
             || (node is SelectStatement) // SELECT TOP 1 @cmdb
             || (node is TopRowFilter) // TOP 1
@@ -186,7 +186,6 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (node is SelectInsertSource)
                 {
-
                 }
                 // ok
             }

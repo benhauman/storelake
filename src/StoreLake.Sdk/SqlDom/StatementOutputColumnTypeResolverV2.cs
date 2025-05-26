@@ -1,7 +1,7 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
+﻿using System;
 using System.Data;
 using System.Diagnostics;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 [assembly: DebuggerDisplay(@"\{Bzz = {BaseIdentifier.Value}}", Target = typeof(SchemaObjectName))]
 [assembly: DebuggerDisplay(@"\{Bzz = {StoreLake.Sdk.SqlDom.SqlDomExtensions.WhatIsThis(SchemaObject)}}", Target = typeof(NamedTableReference))]
@@ -12,8 +12,8 @@ namespace StoreLake.Sdk.SqlDom
     public sealed class StatementOutputColumnTypeResolverV2
     {
         internal readonly ISchemaMetadataProvider SchemaMetadata;
-        BatchOutputColumnTypeResolver batchResolver;
-        StatementWithCtesAndXmlNamespaces statement;
+        private BatchOutputColumnTypeResolver batchResolver;
+        private StatementWithCtesAndXmlNamespaces statement;
         private IQueryModel _model;
         public StatementOutputColumnTypeResolverV2(BatchOutputColumnTypeResolver batchResolver, StatementWithCtesAndXmlNamespaces statement)
         {
@@ -24,7 +24,7 @@ namespace StoreLake.Sdk.SqlDom
 
         private static OutputColumnDescriptor ColumnModelToDescriptor(QueryColumnBase column)
         {
-            return (column.ColumnDbType.HasValue)
+            return column.ColumnDbType.HasValue
                 ? new OutputColumnDescriptor(column.OutputColumnName, new ColumnTypeMetadata(column.ColumnDbType.Value, column.AllowNull.GetValueOrDefault(true)))
                 : new OutputColumnDescriptor(column.OutputColumnName);
         }
@@ -43,7 +43,6 @@ namespace StoreLake.Sdk.SqlDom
 
             throw new NotImplementedException(node.WhatIsThis());
         }
-
 
         public OutputColumnDescriptor ResolveSelectScalarExpression(SelectScalarExpression node)
         {
@@ -191,7 +190,6 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-
         private IQueryModel EnsureModel()
         {
             if (_model == null)
@@ -223,12 +221,8 @@ namespace StoreLake.Sdk.SqlDom
 
                     _model = QueryModelLoader.LoadModificationOutputModel(batchResolver, "roooot", source_specification, stmt_mod.WithCtesAndXmlNamespaces);
                 }
-
             }
             return _model;
         }
-
-
     }
-
 }

@@ -1,10 +1,10 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-using System.CodeDom;
-using System.Data;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using System;
+    using System.CodeDom;
+    using System.Data;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+
     public static class BooleanExpressionGenerator
     {
         public static CodeExpression BuildFromCheckConstraintDefinition(string schemaName, DataTable table, string check_name, string check_definition, out bool hasError, out string errorText)
@@ -45,7 +45,7 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        class DatabaseMetadataOnTable : IDatabaseMetadataProvider
+        private class DatabaseMetadataOnTable : IDatabaseMetadataProvider
         {
             private readonly DataTable table;
             public DatabaseMetadataOnTable(DataTable table)

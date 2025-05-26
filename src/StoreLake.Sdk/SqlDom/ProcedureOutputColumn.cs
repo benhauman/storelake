@@ -1,10 +1,9 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-using System.Data;
-using System.Diagnostics;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using System.Data;
+    using System.Diagnostics;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+
     [DebuggerDisplay("{DebuggerText}")]
     public sealed class ProcedureOutputColumn
     {
@@ -41,7 +40,6 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-
         private bool? _allowNull;
         public bool? AllowNull
         {
@@ -55,7 +53,7 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-        internal  string OutputColumnName// see 'PrepareOutputColumnName'
+        internal string OutputColumnName// see 'PrepareOutputColumnName'
         {
             get
             {

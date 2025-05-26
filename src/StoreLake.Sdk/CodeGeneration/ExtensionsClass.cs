@@ -1,7 +1,7 @@
-﻿using System.CodeDom;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System.CodeDom;
+
     internal sealed class ExtensionsClass
     {
         internal CodeTypeDeclaration extensions_type_decl;

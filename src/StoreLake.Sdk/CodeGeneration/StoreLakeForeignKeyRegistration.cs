@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System.Collections.Generic;
+
     internal sealed class StoreLakeForeignKeyRegistration
     {
         public string DefiningTableName { get; internal set; }

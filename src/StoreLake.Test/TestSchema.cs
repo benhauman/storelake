@@ -1,11 +1,11 @@
-﻿using StoreLake.Sdk.SqlDom;
-using System;
-using System.Collections.Generic;
-using System.Data;
-
-namespace StoreLake.Test
+﻿namespace StoreLake.Test
 {
-    class TestSchema : ISchemaMetadataProvider
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using StoreLake.Sdk.SqlDom;
+
+    internal class TestSchema : ISchemaMetadataProvider
     {
         internal readonly IDictionary<string, IColumnSourceMetadata> tables = new SortedDictionary<string, IColumnSourceMetadata>(StringComparer.OrdinalIgnoreCase);
         internal readonly IDictionary<string, IColumnSourceMetadata> views = new SortedDictionary<string, IColumnSourceMetadata>(StringComparer.OrdinalIgnoreCase);
@@ -32,7 +32,6 @@ namespace StoreLake.Test
 
             throw new NotImplementedException(key);
             //return null;
-
         }
 
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetFunctionTableMetadata(string schemaName, string objectName)
@@ -43,7 +42,6 @@ namespace StoreLake.Test
                 return source;
 
             throw new NotImplementedException(key);
-
         }
         IColumnSourceMetadata ISchemaMetadataProvider.TryGetUserDefinedTableTypeMetadata(string schemaName, string objectName)
         {
@@ -64,40 +62,37 @@ namespace StoreLake.Test
 
             throw new NotImplementedException(key);
             //return null;
-
         }
 
         internal TestSchema AddTable(TestTable source)
         {
-            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]");
+            string key = "[" + source.SchemaName + "].[" + source.ObjectName + "]";
             tables.Add(key, source);
             return this;
         }
         internal TestSchema AddUDT(TestTable source)
         {
-            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]");
+            string key = "[" + source.SchemaName + "].[" + source.ObjectName + "]";
             udts.Add(key, source);
             return this;
         }
 
         internal TestSchema AddView(TestView source)
         {
-            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]");
+            string key = "[" + source.SchemaName + "].[" + source.ObjectName + "]";
             views.Add(key, source);
             return this;
         }
 
         internal TestSchema AddFunction(TestFunction source)
         {
-            string key = ("[" + source.SchemaName + "].[" + source.ObjectName + "]");
+            string key = "[" + source.SchemaName + "].[" + source.ObjectName + "]";
             functions.Add(key, source);
             return this;
         }
-
     }
 
-
-    abstract class TestSourceBase : IColumnSourceMetadata
+    internal abstract class TestSourceBase : IColumnSourceMetadata
     {
         internal readonly string Key;
         internal readonly string SchemaName;
@@ -118,11 +113,10 @@ namespace StoreLake.Test
 
         internal static string CreateKey(string schemaName, string objectName)
         {
-            return ("[" + schemaName + "].[" + objectName + "]");
+            return "[" + schemaName + "].[" + objectName + "]";
         }
 
         internal readonly IDictionary<string, TestColumn> columns = new SortedDictionary<string, TestColumn>(StringComparer.OrdinalIgnoreCase);
-
 
         ColumnTypeMetadata IColumnSourceMetadata.TryGetColumnTypeByName(string columnName)
         {
@@ -143,16 +137,14 @@ namespace StoreLake.Test
         {
             columns.Add(name, new TestColumn(name, columnDbType, allowNull));
         }
-
     }
 
-    sealed class TestTable : TestSourceBase
+    internal sealed class TestTable : TestSourceBase
     {
         public TestTable(string schemaName, string objectName)
             : base(schemaName, objectName)
         {
         }
-
 
         internal TestTable AddColumn(string name, DbType columnDbType, bool allowNull)
         {
@@ -161,7 +153,7 @@ namespace StoreLake.Test
         }
     }
 
-    sealed class TestFunction : TestSourceBase, IBatchParameterMetadata
+    internal sealed class TestFunction : TestSourceBase, IBatchParameterMetadata
     {
         private readonly Action<TestFunction> loader;
         internal readonly string FunctionBodyScript;
@@ -174,7 +166,6 @@ namespace StoreLake.Test
 
         private bool _loaded;
 
-
         protected override ColumnTypeMetadata OnTryGetColumnTypeByName(string columnName)
         {
             if (!_loaded)
@@ -185,7 +176,7 @@ namespace StoreLake.Test
             return base.OnTryGetColumnTypeByName(columnName);
         }
 
-        Dictionary<string, ColumnTypeMetadata> parameters = new Dictionary<string, ColumnTypeMetadata>(StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, ColumnTypeMetadata> parameters = new Dictionary<string, ColumnTypeMetadata>(StringComparer.OrdinalIgnoreCase);
         internal void AddParameter(string parameterName, DbType parameterDbType, bool allowNull)
         {
             parameters.Add(parameterName, new ColumnTypeMetadata(parameterDbType, allowNull));
@@ -210,7 +201,7 @@ namespace StoreLake.Test
         }
     }
 
-    sealed class TestView : TestSourceBase, IBatchParameterMetadata
+    internal sealed class TestView : TestSourceBase, IBatchParameterMetadata
     {
         private readonly Action<TestView> loader;
         internal readonly string Body;
@@ -222,7 +213,6 @@ namespace StoreLake.Test
         }
 
         private bool _loaded;
-
 
         protected override ColumnTypeMetadata OnTryGetColumnTypeByName(string columnName)
         {
@@ -259,7 +249,7 @@ namespace StoreLake.Test
         }
     }
 
-    class TestColumn
+    internal class TestColumn
     {
         internal readonly string ColumnName;
         internal readonly DbType ColumnDbType;

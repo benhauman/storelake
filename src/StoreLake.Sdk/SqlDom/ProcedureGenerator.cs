@@ -1,12 +1,12 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.IO;
-using System.Text;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.IO;
+    using System.Text;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+
     public static class ProcedureGenerator
     {
         public static ProcedureMetadata ParseProcedureBody(string procedure_schema, string procedure_name, string procedure_body, Dictionary<string, ProcedureCodeParameter> procedureParameters)
@@ -22,7 +22,6 @@ namespace StoreLake.Sdk.SqlDom
             procedure_metadata.BodyFragment.Accept(vstor);
             return vstor.resultHasOutputResultSet.ToArray();
         }
-
 
         public static DbType ResolveToDbDataType(DataTypeReference dataType)
         {
@@ -109,7 +108,7 @@ namespace StoreLake.Sdk.SqlDom
                 throw new NotImplementedException("Name.Count:" + dataType.Name.Count);
             }
         }
-        class StatementVisitor : DumpFragmentVisitor
+        private class StatementVisitor : DumpFragmentVisitor
         {
             private readonly TSqlFragment _toAnalyze;
             private readonly BatchOutputColumnTypeResolver columnTypeResolver;
@@ -184,7 +183,6 @@ namespace StoreLake.Sdk.SqlDom
                             //    // still not possible! if this is a nested IF the it is ok!
                             //}
                         }
-
                     }
                 }
             }
@@ -299,7 +297,6 @@ namespace StoreLake.Sdk.SqlDom
 
                         resultHasOutputResultSet.Add(vstorF.ResultOutput);
                     }
-
                 }
                 else
                 {
@@ -314,10 +311,7 @@ namespace StoreLake.Sdk.SqlDom
                         resultHasOutputResultSet.Add(vstor.ResultOutput);
                     }
                 }
-
-
             }
-
 
             public override void ExplicitVisit(UpdateStatement node)
             {
@@ -461,14 +455,13 @@ namespace StoreLake.Sdk.SqlDom
             return TopQuerySpecification(bqExpr.FirstQueryExpression);
         }
 
-        sealed class BatchWithoutParameters : IBatchParameterMetadata
+        private sealed class BatchWithoutParameters : IBatchParameterMetadata
         {
             ColumnTypeMetadata IBatchParameterMetadata.TryGetParameterType(string parameterName)
             {
                 return null;
             }
         }
-
 
         public static void LoadViewOutputColumns(ISchemaMetadataProvider schemaMetadata, string ddl, Action<OutputColumnDescriptor> collector)
         {
@@ -494,7 +487,7 @@ namespace StoreLake.Sdk.SqlDom
                 }
             }
         }
-        class SelectElementVisitor : DumpFragmentVisitor
+        private class SelectElementVisitor : DumpFragmentVisitor
         {
             private bool hasSetVariable;
             private readonly ProcedureOutputSet outputSet;
@@ -544,7 +537,6 @@ namespace StoreLake.Sdk.SqlDom
 
             public override void ExplicitVisit(QualifiedJoin node)
             {
-
             }
 
             public override void ExplicitVisit(ColumnReferenceExpression node)
@@ -610,7 +602,7 @@ namespace StoreLake.Sdk.SqlDom
             return vstor.result;
         }
 
-        class ReturnStatementVisitor : TSqlFragmentVisitor
+        private class ReturnStatementVisitor : TSqlFragmentVisitor
         {
             internal bool result;
             public override void ExplicitVisit(ReturnStatement node)

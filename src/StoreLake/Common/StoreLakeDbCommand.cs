@@ -1,9 +1,8 @@
-﻿using System;
-using System.Data.Common;
-
-
-namespace StoreLake.TestStore
+﻿namespace StoreLake.TestStore
 {
+    using System;
+    using System.Data.Common;
+
     internal sealed class StoreLakeDbCommand : DbCommand
     {
         private StoreLakeDbConnection _dbConnectionProperty;

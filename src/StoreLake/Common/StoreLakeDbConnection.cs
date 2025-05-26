@@ -1,16 +1,14 @@
-﻿using System;
-using System.Data.Common;
-
-
-namespace StoreLake.TestStore
+﻿namespace StoreLake.TestStore
 {
+    using System;
+    using System.Data.Common;
+
     internal sealed class StoreLakeDbConnection : DbConnection
     {
         public StoreLakeDbConnection(StoreLakeDbProviderFactory dbClient)
         {
             this.dbClient = dbClient;
             //this.CreateCommand_Override = connection => new StoreLakeDbCommand(connection);
-
         }
         public StoreLakeDbProviderFactory dbClient;
         protected override DbProviderFactory DbProviderFactory
@@ -53,7 +51,7 @@ namespace StoreLake.TestStore
             //throw new NotImplementedException();
         }
 
-        public Func<DbConnection, DbCommand> CreateCommand_Override;// = () => new DeCommand();
+        public Func<DbConnection, DbCommand> CreateCommand_Override; // = () => new DeCommand();
 
         protected override DbCommand CreateDbCommand()
         {

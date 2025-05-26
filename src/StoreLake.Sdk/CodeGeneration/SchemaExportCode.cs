@@ -1,22 +1,20 @@
-﻿using Microsoft.CSharp;
-using StoreLake.Sdk.SqlDom;
-using System;
-using System.CodeDom;
-using System.CodeDom.Compiler;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Xml.Linq;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System;
+    using System.CodeDom;
+    using System.CodeDom.Compiler;
+    using System.Collections.Generic;
+    using System.ComponentModel;
+    using System.Data;
+    using System.Diagnostics;
+    using System.Globalization;
+    using System.IO;
+    using System.Linq;
+    using System.Reflection;
+    using System.Runtime.InteropServices;
+    using System.Text;
+    using Microsoft.CSharp;
+
     public static class SchemaExportCode
     {
 
@@ -86,7 +84,6 @@ namespace StoreLake.Sdk.CodeGeneration
                             ImportSchemasAsDataSets(dbx, assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName, storeSuffix, tempdir, libdirs);
                         }
                     }
-
                 }
             }
 
@@ -94,9 +91,7 @@ namespace StoreLake.Sdk.CodeGeneration
             {
                 return;
             }
-
         }
-
 
         private static void ImportSchemasAsDataSets(KnownDibixTypes dbx, AssemblyResolver assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir, string[] libdirs)
         {
@@ -128,10 +123,9 @@ namespace StoreLake.Sdk.CodeGeneration
                     tempDirInfo.Delete(true);
                 }
                 tempDirInfo.Create();
-
             }
 
-            Microsoft.CSharp.CSharpCodeProvider codeProvider = new Microsoft.CSharp.CSharpCodeProvider();// //CodeDomProvider.CreateProvider(language);
+            Microsoft.CSharp.CSharpCodeProvider codeProvider = new Microsoft.CSharp.CSharpCodeProvider(); // //CodeDomProvider.CreateProvider(language);
 
             CodeCompileUnit ccu_main = new CodeCompileUnit();
             CodeCompileUnit ccu_tables = new CodeCompileUnit();
@@ -162,7 +156,6 @@ namespace StoreLake.Sdk.CodeGeneration
                 //    codeProvider.GenerateCodeFromCompileUnit(ccu, textWriter, null);
                 //}
                 //=================================================================================
-
 
                 CodeNamespace ns_tabletypes = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
                 ccu_tabletypes.Namespaces.Add(ns_tabletypes);
@@ -287,7 +280,6 @@ namespace StoreLake.Sdk.CodeGeneration
             GenerateVersionComment(codeNamespace);
 
             System.Data.Design.TypedDataSetGenerator.Generate(schemaContent, ccu, codeNamespace, codeProvider, System.Data.Design.TypedDataSetGenerator.GenerateOption.LinqOverTypedDatasets, "zzzzzzz");
-
         }
 
         private static CodeTypeDeclaration CreateStaticClass(string name)
@@ -300,7 +292,7 @@ namespace StoreLake.Sdk.CodeGeneration
             return type;
         }
 
-        class NestedTypeDeclaration
+        private class NestedTypeDeclaration
         {
             internal CodeTypeDeclaration Owner;
             internal CodeTypeDeclaration Member;
@@ -317,13 +309,11 @@ namespace StoreLake.Sdk.CodeGeneration
                 throw new StoreLakeSdkException("Multiple namespaces");
             }
 
-
             ExtensionsClass exttype = new ExtensionsClass();
             CodeNamespace ns_old = ccu_tables.Namespaces[0];
             ccu_tables.Namespaces.Clear();
             CodeNamespace ns_tables = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
             ccu_tables.Namespaces.Add(ns_tables);
-
             {
                 exttype.extensions_type_decl = CreateStaticClass(dacpac.TestStoreExtensionSetName + "Extensions");
 
@@ -380,7 +370,6 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         throw new StoreLakeSdkException("NotImplemented:" + type_decl.Name);
                     }
-
 
                     if (!isOwnedByDacPac)
                     {
@@ -523,7 +512,6 @@ namespace StoreLake.Sdk.CodeGeneration
                     member_property.GetStatements.Add(ifNull);
                 }
 
-
                 member_property.GetStatements.Add(new CodeMethodReturnStatement(new CodeCastExpression(member_property.Type, var_value_ref)));
             }
         }
@@ -535,8 +523,6 @@ namespace StoreLake.Sdk.CodeGeneration
                 : udt_reg.TableTypeDefinitionName;
             return tableTypeDefinitionName + "Row";
         }
-
-
 
         private static void InitializeStoreNamespaceName(DacPacRegistration dacpac, string storeSuffix)
         {
@@ -615,7 +601,6 @@ namespace StoreLake.Sdk.CodeGeneration
 
             CodeTypeReference typeref_ForeignTable = new CodeTypeReference(foreignTable_Namespace + fk.RelatedTable.TableName + "DataTable");
 
-
             var method_GetTable_defining = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(exttype.extensions_type_decl.Name),
                              exttype.extensions_method_GetTable.Name, new CodeTypeReference[] { new CodeTypeReference(fk.Table.TableName + "DataTable") });
             var method_GetTable_foreign = new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(exttype.extensions_type_decl.Name),
@@ -679,11 +664,9 @@ namespace StoreLake.Sdk.CodeGeneration
 
             if_not_Exists_Add.TrueStatements.Add(decl_fk);
 
-
             var prop_Constraints = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression(decl_table_child.Name), "Constraints");
 
             var invoke_Add = new CodeMethodInvokeExpression(prop_Constraints, "Add", new CodeExpression[] { new CodeVariableReferenceExpression(decl_fk.Name) });
-
 
             if_not_Exists_Add.TrueStatements.Add(invoke_Add);
 
@@ -893,7 +876,6 @@ namespace StoreLake.Sdk.CodeGeneration
                         {
                             member_method.Attributes = MemberAttributes.Final | MemberAttributes.Private;
                         }
-
                     }
 
                     if (member_method.Name.EndsWith("RowChanged")
@@ -965,7 +947,6 @@ namespace StoreLake.Sdk.CodeGeneration
                         {
                             Adjust_Table_InitClass(rr, dacpac, type_decl_table, member_method);
                         }
-
                     }
 
                     if (isSetClassDeclaration && member_method.Name.StartsWith("ShouldSerialize") && member_method.Parameters.Count == 0 && member_method.ReturnType != null && member_method.ReturnType.BaseType == typeof(bool).FullName)
@@ -1062,8 +1043,6 @@ namespace StoreLake.Sdk.CodeGeneration
                         }
                     }
                 }
-
-
             }
 
             if (isRowClassDeclaration)
@@ -1151,12 +1130,10 @@ namespace StoreLake.Sdk.CodeGeneration
 
             string row_type_decl_Name = type_decl_table.TableName + "Row";
 
-
             var e_RowBase = new CodePropertyReferenceExpression(new CodeVariableReferenceExpression("e"), "Row");
             CodeCastExpression e_RowT = new CodeCastExpression(new CodeTypeReference(row_type_decl_Name), e_RowBase);
             var invoke_row_validate = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(e_RowT, row_type_method_ValidateRow_Name));
             method_decl_OnRowChanging.Statements.Add(invoke_row_validate);
-
 
             var cks = dacpac.registered_CheckConstraints.Values.Where(x => x.DefiningTableName == type_decl_table.TableName).ToArray();
             if (cks.Length == 0)
@@ -1200,7 +1177,6 @@ namespace StoreLake.Sdk.CodeGeneration
                 Console.WriteLine("DEFINITION: " + ck.CheckExpressionScript);
                 codeExpr = new CodePrimitiveExpression(true);
             }
-
 
             //codeExpr = new CodePrimitiveExpression(true);
 
@@ -1256,9 +1232,6 @@ namespace StoreLake.Sdk.CodeGeneration
             }
             else
             {
-
-
-
 
                 CodeMemberMethod member_DeleteRowByPrimaryKey = new CodeMemberMethod();
                 member_DeleteRowByPrimaryKey.Name = "DeleteRowByPrimaryKey";
@@ -1560,7 +1533,6 @@ namespace StoreLake.Sdk.CodeGeneration
                     }
                 }
 
-
                 bool defaultParameterValue_HasValue = false;
                 object defaultParameterValue = null; // null means dont specified anything for this parameter (DBNull.Value)
                 if (column.DefaultValue != null)
@@ -1731,7 +1703,6 @@ namespace StoreLake.Sdk.CodeGeneration
                 {
                     parameters_nval.Add(prm_decl);
                 }
-
             }
 
             member_method.Parameters.Clear();
@@ -1843,7 +1814,6 @@ namespace StoreLake.Sdk.CodeGeneration
                                     // if (ds.Tables.IndexOf("tableName") < 0)
                                     // { AddTable(new ...) }
 
-
                                     CodeMethodInvokeExpression invoke_IndexOf = new CodeMethodInvokeExpression(prop_Table, "IndexOf", new CodeExpression[] {
                                         new_CodePrimitiveExpression(tableName)
                                     });
@@ -1912,8 +1882,6 @@ namespace StoreLake.Sdk.CodeGeneration
             ctp.Constraints.Add(new CodeTypeReference(typeof(DataSet)));
             member_method.TypeParameters.Add(ctp);
 
-
-
             var param_decl = new CodeParameterDeclarationExpression("TDataSet", "ds"); // "this TDataSet"
             member_method.Parameters.Add(param_decl);
             member_method.ReturnType = new CodeTypeReference("TDataSet");
@@ -1947,7 +1915,6 @@ namespace StoreLake.Sdk.CodeGeneration
 
                         member_method.Statements.Add(stmt);
                     }
-
                 }
             }
 
@@ -2007,7 +1974,6 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
             }
 
-
             foreach (var memberToRemove in toRemoveSet)
             {
                 member_decl.CustomAttributes.Remove(memberToRemove);
@@ -2020,7 +1986,7 @@ namespace StoreLake.Sdk.CodeGeneration
             //string[] names = asm.GetManifestResourceNames();
             string resourceName = "StoreLake.Sdk.CodeGeneration.GeneratedModel.snk";
             //System.Reflection.ManifestResourceInfo rrr = asm.GetManifestResourceInfo(resourceName);
-            Stream streamSnk = asm.GetManifestResourceStream(resourceName);//"model.snk");
+            Stream streamSnk = asm.GetManifestResourceStream(resourceName); //"model.snk");
 
             if (streamSnk == null)
             {
@@ -2034,7 +2000,6 @@ namespace StoreLake.Sdk.CodeGeneration
 
             return snkPath;
         }
-
 
         internal static void AddAssemblyAttributes(CodeCompileUnit ccu)
         {
@@ -2085,7 +2050,6 @@ namespace StoreLake.Sdk.CodeGeneration
             CodeAttributeDeclaration attributeAssemblyCulture = new CodeAttributeDeclaration(typeof(AssemblyCultureAttribute).FullName);
             attributeAssemblyCulture.Arguments.Add(new CodeAttributeArgument(new_CodePrimitiveExpression("")));
             ccu.AssemblyCustomAttributes.Add(attributeAssemblyCulture);
-
         }
 
         private static void CompileCode(DacPacRegistration dacpac, CompilerParameters comparam, string[] libdirs, string outputFolder, string fileName, string outputAssemblyFullFileName, DirectoryInfo tempDirInfo, string[] codeFileNames, int count_of_types)
@@ -2163,6 +2127,5 @@ namespace StoreLake.Sdk.CodeGeneration
             codeNamespace.Comments.Add(new CodeCommentStatement(""));
             codeNamespace.Comments.Add(new CodeCommentStatement(""));
         }
-
     }
 }

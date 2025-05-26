@@ -1,14 +1,13 @@
-﻿using System;
-using System.CodeDom;
-using System.CodeDom.Compiler;
-using System.Collections.Generic;
-using System.Data;
-using System.IO;
-using System.Reflection;
-using System.Text;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System;
+    using System.CodeDom;
+    using System.CodeDom.Compiler;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.IO;
+    using System.Reflection;
+    using System.Text;
 
     internal static class StoreAccessorCodeGenerator
     {
@@ -41,7 +40,6 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
 
                         // ignore
-
                     }
                     else
                     {
@@ -49,13 +47,11 @@ namespace StoreLake.Sdk.CodeGeneration
                         Console.WriteLine(ref_asm_name.FullName);
                         if (dacpac.referenced_assemblies.TryGetValue(ref_asm_name.FullName, out string ref_asm_location))
                         {
-
                         }
                         else
                         {
                             Assembly ref_asm = assemblyResolver.ResolveAssembyByName(ref_asm_name);
                             ref_asm_location = ref_asm.Location;
-
 
                             dacpac.referenced_assemblies.Add(ref_asm.GetName().FullName, ref_asm.Location);
                         }
@@ -131,7 +127,6 @@ namespace StoreLake.Sdk.CodeGeneration
             CodeNamespace ns = EnsureNamespace(ccu, udtType);
             CodeTypeDeclaration typedecl = BuildeStructureTypeRowType(udtType);
             ns.Types.Add(typedecl);
-
         }
 
         private static void AddReferencedAssemblies(AssemblyResolver assemblyResolver, CompilerParameters comparam, string asm_location)
@@ -163,7 +158,6 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 CollectIndirectAssemblies(assemblyResolver, ref_pac, collector);
             }
-
         }
 
         private static void GenerateDatabaseAccessHandlerFacade(KnownDibixTypes dbx, CodeCompileUnit ccu, Type databaseAccessorType)
@@ -173,7 +167,6 @@ namespace StoreLake.Sdk.CodeGeneration
             CodeTypeDeclaration typedecl = BuildDatabaseAccessHandlerFacadeType(dbx, databaseAccessorType);
             ns.Types.Add(typedecl);
         }
-
 
         private static CodeNamespace EnsureNamespace(CodeCompileUnit ccu, Type databaseAccessorType)
         {
@@ -249,7 +242,6 @@ namespace StoreLake.Sdk.CodeGeneration
                     member_property.GetStatements.Add(ifNull);
                 }
 
-
                 member_property.GetStatements.Add(new CodeMethodReturnStatement(new CodeCastExpression(member_property.Type, var_value_ref)));
             }
 
@@ -274,7 +266,6 @@ namespace StoreLake.Sdk.CodeGeneration
                 //Attributes = MemberAttributes.Final | MemberAttributes.Assembly,// dont use it for now! MemberAttributes.Public
             };
             typedecl.TypeAttributes = (typedecl.TypeAttributes & ~TypeAttributes.VisibilityMask) | TypeAttributes.NestedAssembly;
-
 
             //typedecl.Comments.Add(new CodeCommentStatement("Generated (at:" + DateTime.UtcNow + ")", true));
             typedecl.CustomAttributes.Add(new CodeAttributeDeclaration(new CodeTypeReference(typeof(System.ComponentModel.DescriptionAttribute)), new CodeAttributeArgument(new_CodePrimitiveExpression("Generated (at:" + DateTime.UtcNow + ")"))));
@@ -333,7 +324,7 @@ namespace StoreLake.Sdk.CodeGeneration
                         code_method.Parameters.Add(prm_decl);
                         prm_decl.Direction = accessMethodParameter.IsOut
                                                     ? FieldDirection.Out
-                                                    : (accessMethodParameter.ParameterType.IsByRef) ? FieldDirection.Ref : FieldDirection.In;
+                                                    : accessMethodParameter.ParameterType.IsByRef ? FieldDirection.Ref : FieldDirection.In;
 
                         if (accessMethodParameter.IsOut)
                         {
@@ -368,7 +359,6 @@ namespace StoreLake.Sdk.CodeGeneration
                 }
                 else
                 {
-
                 }
                 {
 
@@ -387,7 +377,6 @@ namespace StoreLake.Sdk.CodeGeneration
                     }
                     buffer.Append(">");
                     return buffer.ToString();
-
                 }
             }
             return t.FullName;
@@ -441,13 +430,10 @@ namespace StoreLake.Sdk.CodeGeneration
                 itemType = tupleDefinitionType.MakeGenericType(arg_types.ToArray());
             }
 
-
             Type resultType = typeof(IEnumerable<>).MakeGenericType(itemType);
 
             var xxx = TypeNameAsText(resultType);
             return resultType;
         }
-
-
     }
 }

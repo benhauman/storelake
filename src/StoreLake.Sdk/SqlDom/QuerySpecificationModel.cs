@@ -1,9 +1,8 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.Linq;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 [assembly: DebuggerDisplay(@"\{Bzz = {BaseIdentifier.Value}}", Target = typeof(SchemaObjectName))]
 [assembly: DebuggerDisplay(@"\{Bzz = {StoreLake.Sdk.SqlDom.SqlDomExtensions.WhatIsThis(SchemaObject)}}", Target = typeof(NamedTableReference))]
@@ -40,7 +39,6 @@ namespace StoreLake.Sdk.SqlDom
 
         protected abstract bool IQueryModel_TryGetQuerySingleOutputColumn(BatchOutputColumnTypeResolver batchResolver, out QueryColumnBase outputColumn);
     }
-
 
     [DebuggerDisplay("K:{Key}")]
     internal sealed class QuerySpecificationModel : QueryModelBase
@@ -98,7 +96,6 @@ namespace StoreLake.Sdk.SqlDom
             }
         }
 
-
         internal bool TryFindSource(string sourceNameOrAlias, out QueryColumnSourceBase source)
         {
             if (this.sources.TryGetValue(sourceNameOrAlias, out source))
@@ -127,7 +124,6 @@ namespace StoreLake.Sdk.SqlDom
             resolved_OutputColumnIndexes.Add(index, resolved_column.OutputColumnName);
             return resolved_column;
         }
-
 
         internal QueryColumnBase AddOutputColumn(QueryColumnBase outputColumn)
         {
@@ -160,7 +156,6 @@ namespace StoreLake.Sdk.SqlDom
                     }
                 }
             }
-
 
             if (!col.ColumnDbType.HasValue)
             {
@@ -228,7 +223,6 @@ namespace StoreLake.Sdk.SqlDom
             outputColumn = resolved_OutputColumns.Values.Single();
             return true;
         }
-
     }
 
     [DebuggerDisplay("UNION Id:{Id}, Key:{Key}")]
@@ -242,7 +236,6 @@ namespace StoreLake.Sdk.SqlDom
         {
             QSpecs = qspecs;
         }
-
 
         internal void AddUnionQuery(QuerySpecificationModel query)
         {
@@ -276,7 +269,6 @@ namespace StoreLake.Sdk.SqlDom
             outputColumn = union_queries[0].resolved_OutputColumns.Values.Single();
             return true;
         }
-
 
         private bool _isRecirsive;
         internal void SetAsRecursive()
@@ -320,7 +312,6 @@ namespace StoreLake.Sdk.SqlDom
             {
                 return false;
             }
-
         }
 
         protected override bool IQueryModel_TryGetQuerySingleOutputColumn(BatchOutputColumnTypeResolver batchResolver, out QueryColumnBase outputColumn)
@@ -328,7 +319,6 @@ namespace StoreLake.Sdk.SqlDom
             outputColumn = _outputColumns.Values.Single();
             return true;
         }
-
 
         private QueryColumnSourceBase _source;
         internal void SetTargetAsSource(QueryColumnSourceBase source)

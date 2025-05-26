@@ -1,5 +1,5 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System.Diagnostics;
+﻿using System.Diagnostics;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 [assembly: DebuggerDisplay(@"\{Bzz = {BaseIdentifier.Value}}", Target = typeof(SchemaObjectName))]
 [assembly: DebuggerDisplay(@"\{Bzz = {StoreLake.Sdk.SqlDom.SqlDomExtensions.WhatIsThis(SchemaObject)}}", Target = typeof(NamedTableReference))]

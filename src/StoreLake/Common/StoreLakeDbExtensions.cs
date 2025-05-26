@@ -1,8 +1,7 @@
-﻿using System.Data.Common;
-
-
-namespace StoreLake.TestStore
+﻿namespace StoreLake.TestStore
 {
+    using System.Data.Common;
+
     internal static class StoreLakeDbExtensions
     {
         public static DbParameter TryGetParameter(this DbCommand command, string parameterName)
@@ -15,6 +14,5 @@ namespace StoreLake.TestStore
             }
             return null;
         }
-
     }
 }

@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System.Collections.Generic;
+
     internal sealed class StoreLakeTableRegistration
     {
         public string TableSchema { get; set; }
@@ -10,5 +10,4 @@ namespace StoreLake.Sdk.CodeGeneration
         public List<StoreLakeColumnRegistration> Columns { get; set; } = new List<StoreLakeColumnRegistration>();
         //public StoreLakeKeyRegistration PrimaryKey { get; set; }
     }
-
 }

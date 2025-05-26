@@ -1,14 +1,14 @@
-﻿using Dibix;
-using StoreLake.TestStore.Server;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace StoreLake.Test.ConsoleApp
+﻿namespace StoreLake.Test.ConsoleApp
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Data.Common;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Dibix;
+    using StoreLake.TestStore.Server;
+
     public class xDatabaseAccessorFactory : Dibix.IDatabaseAccessorFactory
     {
         private readonly StoreLakeDabaseAccessorGate accessorGate;
@@ -26,7 +26,7 @@ namespace StoreLake.Test.ConsoleApp
         public Dibix.IDatabaseAccessor Create()
         {
             var connection = CreateConnection();
-            DataSet db =  dbServer.GetDatabaseForConnection(connection);
+            DataSet db = dbServer.GetDatabaseForConnection(connection);
             return new StoreLakeDabaseAccessor(db, accessorGate, new Dibix.Dapper.DapperDatabaseAccessor(connection));
         }
 
@@ -62,7 +62,6 @@ namespace StoreLake.Test.ConsoleApp
                     tmp.Dispose();
                 }
             }
-
         }
 
         void IDisposable.Dispose()
@@ -179,5 +178,4 @@ namespace StoreLake.Test.ConsoleApp
             throw new NotImplementedException();
         }
     }
-
 }

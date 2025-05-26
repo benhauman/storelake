@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-
-namespace StoreLake.Test
+﻿namespace StoreLake.Test
 {
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+    using System.Reflection;
+
     internal static class ResourceHelper
     {
         private const string path = "StoreLake.Test.";
@@ -28,7 +28,7 @@ namespace StoreLake.Test
             }
         }
 
-        static TextReader LoadResourceString(Type typeFromResourceAssembly, string resourceName)
+        private static TextReader LoadResourceString(Type typeFromResourceAssembly, string resourceName)
         {
             Stream resourceStream = GetResourceStream(typeFromResourceAssembly, resourceName);
             TextReader textReader = new StreamReader(resourceStream);
@@ -51,7 +51,7 @@ namespace StoreLake.Test
 
                 if (names != null) { }
 
-                throw new InvalidOperationException("Resource could not be found:[" + resourceName + "].");// Available resources:" + string.Join(",", names));
+                throw new InvalidOperationException("Resource could not be found:[" + resourceName + "]."); // Available resources:" + string.Join(",", names));
             }
             else
                 return resourceStream;

@@ -1,14 +1,9 @@
-﻿using Helpline.Data.TestStore;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace StoreLake.Test.ConsoleApp
+﻿namespace StoreLake.Test.ConsoleApp
 {
+    using System.Collections.Generic;
+    using System.Data;
+    using Helpline.Data.TestStore;
+
     /*class DemoHandler4_CommandHandler : HelplineDataProceduresCommandExecuteHandler
     {
         public override DbDataReader hlsyssec_canexecuteglobal(DataSet db, DbCommand cmd)
@@ -22,7 +17,7 @@ namespace StoreLake.Test.ConsoleApp
         }
     }*/
 
-    class DemoHandler4_FacadeHandler : HelplineDataProceduresHandlerFacade
+    internal class DemoHandler4_FacadeHandler : HelplineDataProceduresHandlerFacade
     {
         public override CanExecuteResultSets CanExecute(DataSet db, CanExecuteResultSets output, int agentid, int globalid)
         {
@@ -81,5 +76,4 @@ namespace StoreLake.Test.ConsoleApp
         }
     }
     */
-
 }

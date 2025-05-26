@@ -1,17 +1,17 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using StoreLake.Sdk.SqlDom;
-using System;
-using System.CodeDom;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Xml.Linq;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System;
+    using System.CodeDom;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Diagnostics;
+    using System.IO;
+    using System.IO.Compression;
+    using System.Linq;
+    using System.Xml.Linq;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+    using StoreLake.Sdk.SqlDom;
+
     [DebuggerDisplay("{DacPacAssemblyAssemblyName} : {DacPacAssemblyLogicalName}")]
     internal sealed class DacPacRegistration
     {
@@ -41,7 +41,6 @@ namespace StoreLake.Sdk.CodeGeneration
         internal readonly IDictionary<string, StoreLakeViewRegistration> registered_views = new SortedDictionary<string, StoreLakeViewRegistration>();
         internal readonly IDictionary<string, StoreLakeTableValuedFunctionRegistration> registered_TableValuedFunctions = new SortedDictionary<string, StoreLakeTableValuedFunctionRegistration>();
     }
-
 
     public sealed class RegistrationResult : SqlDom.ISchemaMetadataProvider
     {
@@ -235,7 +234,7 @@ namespace StoreLake.Sdk.CodeGeneration
     }
 
     [DebuggerDisplay("{table.TableName}")]
-    class SourceMetadataUDT : IColumnSourceMetadata
+    internal class SourceMetadataUDT : IColumnSourceMetadata
     {
         private readonly StoreLakeTableTypeRegistration udt_reg;
         public SourceMetadataUDT(StoreLakeTableTypeRegistration udt_reg)
@@ -262,7 +261,7 @@ namespace StoreLake.Sdk.CodeGeneration
     }
 
     [DebuggerDisplay("{FunctionName}")]
-    class SourceMetadataFunction : IColumnSourceMetadata
+    internal class SourceMetadataFunction : IColumnSourceMetadata
     {
         private readonly StoreLakeTableValuedFunctionRegistration function_reg;
         private readonly string FunctionName;
@@ -274,7 +273,7 @@ namespace StoreLake.Sdk.CodeGeneration
             FunctionName = fn.FunctionName;
         }
 
-        class FunctionParameters : IBatchParameterMetadata
+        private class FunctionParameters : IBatchParameterMetadata
         {
             private StoreLakeTableValuedFunctionRegistration function_reg;
 
@@ -344,7 +343,7 @@ namespace StoreLake.Sdk.CodeGeneration
     }
 
     [DebuggerDisplay("{ViewName}")]
-    class SourceMetadataView : IColumnSourceMetadata
+    internal class SourceMetadataView : IColumnSourceMetadata
     {
         private readonly StoreLakeViewRegistration view_reg;
         private readonly string ViewName;
@@ -376,7 +375,7 @@ namespace StoreLake.Sdk.CodeGeneration
     }
 
     [DebuggerDisplay("{table.TableName}")]
-    class SourceMetadataTable : IColumnSourceMetadata
+    internal class SourceMetadataTable : IColumnSourceMetadata
     {
         private readonly DataTable table;
         public SourceMetadataTable(DataTable table)
@@ -425,7 +424,6 @@ namespace StoreLake.Sdk.CodeGeneration
         internal string ClrFullTypeName;
     }
 
-
     public static class SchemaImportDacPac // 'Dedicated Administrator Connection (for Data Tier Application) Package'
     {
         public static RegistrationResult ImportDacPac(string inputdir, string dacpacFullFileName, bool forceReferencePackageRegeneration, bool generateMissingReferences)
@@ -436,7 +434,6 @@ namespace StoreLake.Sdk.CodeGeneration
             RegisterDacpac(" ", ctx, inputdir, dacpacFullFileName, false);
             return ctx;
         }
-
 
         private static DacPacRegistration RegisterDacpac(string outputprefix, RegistrationResult ctx, string inputdir, string filePath, bool isReferencedPackage)
         {
@@ -478,7 +475,6 @@ namespace StoreLake.Sdk.CodeGeneration
                             dacpac.UniqueKey = dacpac.DacPacAssemblyAssemblyName;
                             dacpac.DacPacAssemblyFileName = xReference_Assembly_FileName.Attributes().Single(a => a.Name.LocalName == "Value").Value.Replace(@"\\", @"\");
 
-
                             string dacpacDllFileName = Path.GetFileName(dacpac.DacPacAssemblyFileName);
                             string dacpacDllFullFileName = Path.Combine(inputdir, dacpacDllFileName);
                             Console.WriteLine("Load '" + dacpacDllFullFileName + "'...");
@@ -492,7 +488,6 @@ namespace StoreLake.Sdk.CodeGeneration
                                    && e.Attributes().Any(a => a.Name.LocalName == "Value")
                                    );
                             dacpac.DacPacAssemblyLogicalName = xReference_Assembly_LogicalName.Attributes().Single(a => a.Name.LocalName == "Value").Value;
-
 
                             // <CustomData Category="Reference" Type="SqlSchema">
                             foreach (XElement xReferenceSchema in xHeader.Elements().Where(e => e.Name.LocalName == "CustomData"
@@ -518,7 +513,6 @@ namespace StoreLake.Sdk.CodeGeneration
                                     );
                                 if (xExternalParts != null)
                                 {
-
                                 }
                                 else
                                 {
@@ -534,9 +528,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                     else
                                     {
                                         external_dacpac = RegisterDacpac(outputprefix + "   ", ctx, inputdir, dacpacFileName, true);
-
                                     }
-
 
                                     dacpac.referenced_dacpacs.Add(logicalname, external_dacpac);
                                 }
@@ -552,11 +544,8 @@ namespace StoreLake.Sdk.CodeGeneration
 
                                 Console.WriteLine(outputprefix + "   ===( " + dacpac.DacPacDependencyLevel + " )===> " + dacpac.DacPacAssemblyLogicalName);
 
-
-
                                 XElement xModel = xDataSchemaModel.Element(XName.Get("Model", "http://schemas.microsoft.com/sqlserver/dac/Serialization/2012/02"));
                                 //Console.WriteLine(xModel.Elements().Count());
-
 
                                 AddTables(ctx, dacpac, xModel);
                                 AddPrimaryKeys(ctx.ds, xModel);
@@ -675,7 +664,6 @@ namespace StoreLake.Sdk.CodeGeneration
                             allowNull = true;
                         }
 
-
                         //collector(parameter_name, vtName, ColumnDbType, false, structureTypeSchemaName, structureTypeName);
                         StoreLakeParameterRegistration parameter = new StoreLakeParameterRegistration()
                         {
@@ -768,7 +756,6 @@ namespace StoreLake.Sdk.CodeGeneration
                 ctx.registered_tabletypes.Add(sonTableType.FullName, dacpac);
                 dacpac.registered_tabletypes.Add(sonTableType.FullName, treg);
             }
-
         }
 
         private static void CollectTableTypePrimaryKeyColumns(XElement xTableType, Action<string> collector)
@@ -894,7 +881,6 @@ namespace StoreLake.Sdk.CodeGeneration
                         CollectProcedureAnnotations(comments, (string key, string value) =>
                         {
                             procedure_reg.Annotations.Add(new StoreLakeAnnotationRegistration() { AnnotationKey = key, AnnotationValue = value });
-
                         });
 
                         //HeaderContentTokens = comments.Split(';');
@@ -908,7 +894,6 @@ namespace StoreLake.Sdk.CodeGeneration
                         proc_params = stmt.Parameters;
                     }
                 }
-
 
                 // <Relationship Name="Parameters">
                 CollectRelationParameters(sonProcedure, xProcedure, (StoreLakeParameterRegistration parameter) =>
@@ -983,8 +968,8 @@ namespace StoreLake.Sdk.CodeGeneration
                 StoreLakeCheckConstraintRegistration ck_reg = new StoreLakeCheckConstraintRegistration();
 
                 //string[] name_tokens = xCheckConstraintName.Value.Split('.');
-                ck_reg.CheckConstraintName = sonCK.ObjectName;// name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
-                ck_reg.CheckConstraintSchema = sonCK.SchemaName;// (name_tokens.Length == 3) ? name_tokens[0] : "dbo";
+                ck_reg.CheckConstraintName = sonCK.ObjectName; // name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                ck_reg.CheckConstraintSchema = sonCK.SchemaName; // (name_tokens.Length == 3) ? name_tokens[0] : "dbo";
 
                 SchemaObjectName defining_table = CollectElementRelationshipTable(xCheckConstraint, "DefiningTable");
                 ck_reg.DefiningTableName = defining_table.ObjectName;
@@ -1013,8 +998,8 @@ namespace StoreLake.Sdk.CodeGeneration
                 StoreLakeForeignKeyRegistration fk_reg = new StoreLakeForeignKeyRegistration();
 
                 //string[] name_tokens = xForeignKeyName.Value.Split('.');
-                fk_reg.ForeignKeyName = sonFK.ObjectName;// name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
-                fk_reg.ForeignKeySchema = sonFK.SchemaName;// (name_tokens.Length == 3) ? name_tokens[0] : "dbo";
+                fk_reg.ForeignKeyName = sonFK.ObjectName; // name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                fk_reg.ForeignKeySchema = sonFK.SchemaName; // (name_tokens.Length == 3) ? name_tokens[0] : "dbo";
 
                 SchemaObjectName foreign_table = CollectElementRelationshipTable(xForeignKey, "ForeignTable");
                 fk_reg.ForeignTableName = foreign_table.ObjectName;
@@ -1074,7 +1059,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 var xForColumn_Entry_References = xForColumn_Entry.Elements().Single(e => e.Name.LocalName == "References");
                 //var xForColumn_Entry_References_Name = xForColumn_Entry_References.Attributes().Single(a => a.Name.LocalName == "Name");
                 //name_tokens = xForColumn_Entry_References_Name.Value.Split('.');
-                df_reg.ColumnName = ReadSchemaObjectName(3, xForColumn_Entry_References).ItemName;// name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                df_reg.ColumnName = ReadSchemaObjectName(3, xForColumn_Entry_References).ItemName; // name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
 
                 SchemaObjectName defining_table = CollectElementRelationshipTable(xDefaultConstraint, "DefiningTable");
                 df_reg.TableName = defining_table.ObjectName;
@@ -1162,7 +1147,6 @@ namespace StoreLake.Sdk.CodeGeneration
 
                 if (skip_df)
                 {
-
                 }
                 else
                 {
@@ -1192,7 +1176,6 @@ namespace StoreLake.Sdk.CodeGeneration
             int hou = int.Parse(tokens[3].Trim());
             int min = int.Parse(tokens[4].Trim());
             int sec = int.Parse(tokens[5].Trim());
-
 
             DateTime dt = new DateTime(yea, mon, day, hou, min, sec, 0);
 
@@ -1238,8 +1221,8 @@ namespace StoreLake.Sdk.CodeGeneration
 
                         //var xIndex_Name = xIndex.Attributes().Single(a => a.Name.LocalName == "Name");
                         //string[] name_tokens = xIndex_Name.Value.Replace("[", "").Replace("]", "").Split('.');
-                        uqreg.KeyName = sonUQ.ItemName;// name_tokens[name_tokens.Length - 1];
-                        uqreg.KeySchema = sonUQ.SchemaName;// (name_tokens.Length == 3) ? name_tokens[0] : "dbo";
+                        uqreg.KeyName = sonUQ.ItemName; // name_tokens[name_tokens.Length - 1];
+                        uqreg.KeySchema = sonUQ.SchemaName; // (name_tokens.Length == 3) ? name_tokens[0] : "dbo";
 
                         // HasFilter => skip
                         // <Property Name="FilterPredicate">
@@ -1257,8 +1240,8 @@ namespace StoreLake.Sdk.CodeGeneration
                             SchemaObjectName sonTable = ReadSchemaObjectName(2, xIndexedObject_Entry_References);
                             //var xIndexedObject_Entry_References_Name = xIndexedObject_Entry_References.Attributes().Single(a => a.Name.LocalName == "Name");
                             //name_tokens = xIndexedObject_Entry_References_Name.Value.Split('.');
-                            uqreg.TableName = sonTable.ObjectName;// name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
-                            uqreg.TableSchema = sonTable.SchemaName;// (name_tokens.Length == 2) ? name_tokens[0] : "dbo";
+                            uqreg.TableName = sonTable.ObjectName; // name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                            uqreg.TableSchema = sonTable.SchemaName; // (name_tokens.Length == 2) ? name_tokens[0] : "dbo";
 
                             var xColumnSpecifications = xIndex.Elements().Single(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "ColumnSpecifications"));
                             foreach (var xColumnSpecifications_Entry in xColumnSpecifications.Elements().Where(e => e.Name.LocalName == "Entry"))
@@ -1372,7 +1355,6 @@ namespace StoreLake.Sdk.CodeGeneration
                 SchemaObjectName sonPk = ReadSchemaObjectName(2, xPrimaryKey);
                 pkreg.KeyName = sonPk.ObjectName;
                 pkreg.KeySchema = sonPk.SchemaName;
-
 
                 var xDefiningTable = xPrimaryKey.Elements().Single(e => e.Name.LocalName == "Relationship" && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "DefiningTable"));
                 var xDefiningTable_Entry = xDefiningTable.Elements().Single(e => e.Name.LocalName == "Entry");
@@ -1584,7 +1566,6 @@ namespace StoreLake.Sdk.CodeGeneration
                     {
                         if (use_ExternalSource)
                         {
-
                         }
                         //else
                         {
@@ -1624,7 +1605,7 @@ namespace StoreLake.Sdk.CodeGeneration
                 {
                     //var xColumnName = xElement_Column.Attributes().Single(a => a.Name.LocalName == "Name");
                     //string[] name_tokens = xColumnName.Value.Split('.');
-                    string column_name = ReadSchemaObjectName(3, xElement_Column).ItemName;// name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                    string column_name = ReadSchemaObjectName(3, xElement_Column).ItemName; // name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
 
                     StoreLakeColumnRegistration creg = new StoreLakeColumnRegistration()
                     {
@@ -1712,7 +1693,7 @@ namespace StoreLake.Sdk.CodeGeneration
                                 }
                                 else
                                 {
-                                    dependency_column_name = soNameItem.ItemName;// name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
+                                    dependency_column_name = soNameItem.ItemName; // name_tokens[name_tokens.Length - 1].Replace("[", "").Replace("]", "");
                                     ExpressionDependencies_ColumnNames.Add(dependency_column_name);
 
                                     creg.ColumnDbType = columns.Single(x => x.ColumnName == dependency_column_name).ColumnDbType;
@@ -1845,8 +1826,6 @@ namespace StoreLake.Sdk.CodeGeneration
     {
         public StoreLakeSdkException(string message) : base(message)
         {
-
         }
     }
 }
-

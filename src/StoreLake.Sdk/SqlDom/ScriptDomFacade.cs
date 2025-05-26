@@ -1,11 +1,11 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+
     public static class ScriptDomFacade
     {
         public static TSqlFragment Parse(string script)
@@ -19,8 +19,10 @@ namespace StoreLake.Sdk.SqlDom
             {
                 TSqlFragment fragment = parser.Parse(reader, out IList<ParseError> errors);
                 if (errors.Count > 0)
+                {
                     throw new InvalidOperationException($@"Error parsing SQL statement
 {String.Join(Environment.NewLine, errors.Select(x => $"{x.Message} at {x.Line},{x.Column}"))}");
+                }
 
                 return fragment;
             }

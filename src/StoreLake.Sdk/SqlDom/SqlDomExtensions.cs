@@ -1,7 +1,7 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+
     public static class SqlDomExtensions
     {
         public static string AsText(this StatementList fragment)

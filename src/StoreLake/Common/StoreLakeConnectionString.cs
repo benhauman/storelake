@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace StoreLake.TestStore
+﻿namespace StoreLake.TestStore
 {
+    using System;
+    using System.Collections;
+
     internal sealed class StoreLakeConnectionString
     {
         private readonly string _usersConnectionString;
@@ -16,10 +12,9 @@ namespace StoreLake.TestStore
         public StoreLakeConnectionString(string connectionString)
         {
             _parsetable = new Hashtable();
-            _usersConnectionString = ((connectionString != null) ? connectionString : "");
+            _usersConnectionString = (connectionString != null) ? connectionString : "";
             if (0 < _usersConnectionString.Length)
                 ParseInternal(_parsetable, connectionString);
-
 
             _initialCatalog = ConvertValueToString("initial catalog", "");
         }
@@ -56,7 +51,7 @@ namespace StoreLake.TestStore
             }
         }
 
-        public string InitialCatalog { get { return _initialCatalog; } }
+        public string InitialCatalog => _initialCatalog;
 
         public string UsersConnectionString(bool hidePassword)
         {
@@ -81,7 +76,6 @@ namespace StoreLake.TestStore
             }
             return constr;
         }
-
 
         public string ConvertValueToString(string keyName, string defaultValue)
         {

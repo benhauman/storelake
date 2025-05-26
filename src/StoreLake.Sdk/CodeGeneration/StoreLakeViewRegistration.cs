@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
-
-namespace StoreLake.Sdk.CodeGeneration
+﻿namespace StoreLake.Sdk.CodeGeneration
 {
+    using System.Collections.Generic;
+
     internal class StoreLakeViewRegistration
     {
         public string ViewSchema { get; set; }

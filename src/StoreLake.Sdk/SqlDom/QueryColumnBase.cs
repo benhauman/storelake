@@ -1,7 +1,7 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
+﻿using System;
 using System.Data;
 using System.Diagnostics;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 [assembly: DebuggerDisplay(@"\{Bzz = {BaseIdentifier.Value}}", Target = typeof(SchemaObjectName))]
 [assembly: DebuggerDisplay(@"\{Bzz = {StoreLake.Sdk.SqlDom.SqlDomExtensions.WhatIsThis(SchemaObject)}}", Target = typeof(NamedTableReference))]
@@ -81,7 +81,6 @@ namespace StoreLake.Sdk.SqlDom
             ColumnDbType = null;
             AllowNull = null;
         }
-
     }
     internal abstract class QueryColumnBase
     {

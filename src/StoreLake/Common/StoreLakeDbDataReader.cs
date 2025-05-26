@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Linq;
-
-namespace StoreLake.TestStore
+﻿namespace StoreLake.TestStore
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data.Common;
+    using System.Linq;
+
     internal sealed class StoreLakeDbDataReader : DbDataReader
     {
         public int currentRowIndex = -1;
@@ -166,7 +166,7 @@ namespace StoreLake.TestStore
 
         public override bool HasRows
         {
-            get { return (Data_Rows != null && Data_Rows.Any()); }
+            get { return Data_Rows != null && Data_Rows.Any(); }
         }
 
         public override bool IsClosed

@@ -1,27 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net45</TargetFramework>
+    <TargetFramework>net48</TargetFramework>
     <AssemblyName>StoreLake.Sdk</AssemblyName>
     <RootNamespace>StoreLake.Sdk</RootNamespace>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>    
-    <Authors>BenHauman</Authors>
+    <!--<Authors>BenHauman</Authors>
     <Company>BenHauman</Company>
-	  <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	  <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>-->
 	  <!--<PackageReadmeFile>..\..\readme.md</PackageReadmeFile>-->
   </PropertyGroup>
 
-  <PropertyGroup>
+  <!--<PropertyGroup>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-  </PropertyGroup>
+  </PropertyGroup>-->
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+  <!--<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-  </PropertyGroup>
+  </PropertyGroup>-->
 
   <Import Project="$(BuildDir)\GenerateAssemblyInfo.targets" Condition="Exists('$(BuildDir)\GenerateAssemblyInfo.targets')" />
 
@@ -30,14 +30,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.IO.Compression" Version="4.3.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Reference Include="Microsoft.SqlServer.TransactSql.ScriptDom">
       <HintPath>..\ThirdParty\Microsoft.SqlServer.TransactSql.ScriptDom.dll</HintPath>
     </Reference>
-    <Reference Include="System.Data.DataSetExtensions" />
+    <PackageReference Include="System.Data.DataSetExtensions" />
+    <PackageReference Include="System.IO.Compression" />
     <Reference Include="System.Design" />
   </ItemGroup>
 

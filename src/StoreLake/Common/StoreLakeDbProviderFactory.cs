@@ -1,15 +1,9 @@
-﻿using StoreLake.TestStore.Server;
-using System;
-using System.Data.Common;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-
-namespace StoreLake.TestStore
+﻿namespace StoreLake.TestStore
 {
+    using System;
+    using System.Data.Common;
 
-    internal sealed class StoreLakeDbProviderFactory : DbProviderFactory  // used+linked in Server.YouNeedTest / SLM.Administration
+    internal sealed class StoreLakeDbProviderFactory : DbProviderFactory // used+linked in Server.YouNeedTest / SLM.Administration
     {
         internal static StoreLakeDbProviderFactory CreateInstance(Action<StoreLakeDbProviderFactory> setup)
         {

@@ -1,13 +1,13 @@
-﻿using Helpline.Data.TestStore;
-using StoreLake.TestStore.Server;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-using System.Linq;
-
-namespace StoreLake.Test.ConsoleApp
+﻿namespace StoreLake.Test.ConsoleApp
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Data.Common;
+    using System.Linq;
+    using Helpline.Data.TestStore;
+    using StoreLake.TestStore.Server;
+
     internal class DemoHandler1
     {
 
@@ -28,7 +28,6 @@ namespace StoreLake.Test.ConsoleApp
         {
             int id = (int)cmd.Parameters["id"].Value;
             //throw new NotImplementedException("cnt:" + db.hlsysagent().Count);
-
 
             var tb_table = new DataTable();
             var column_name = new DataColumn("name", typeof(string));
@@ -52,7 +51,6 @@ namespace StoreLake.Test.ConsoleApp
         {
             int id = (int)cmd.Parameters["id"].Value;
             //throw new NotImplementedException("cnt:" + db.hlsysagent().Count);
-
 
             var tb_table = new DataTable();
             var column_name = new DataColumn("name", typeof(string));
@@ -80,8 +78,6 @@ namespace StoreLake.Test.ConsoleApp
             }
             return new DataTableReader(tb_table);
         }
-
-
 
         public static string GetAgentsDescriptionById(DataSet db, int id)
         {

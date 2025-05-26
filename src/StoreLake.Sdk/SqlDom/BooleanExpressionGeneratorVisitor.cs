@@ -1,9 +1,9 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-using cs = System.CodeDom;
-
-namespace StoreLake.Sdk.SqlDom
+﻿namespace StoreLake.Sdk.SqlDom
 {
+    using System;
+    using Microsoft.SqlServer.TransactSql.ScriptDom;
+    using cs = System.CodeDom;
+
     internal sealed class BooleanExpressionGeneratorVisitor : TSqlFragmentVisitor
     {
         private readonly IDatabaseMetadataProvider databaseMetadata;
@@ -79,7 +79,6 @@ namespace StoreLake.Sdk.SqlDom
             throw new NotImplementedException("" + comparisonType);
         }
 
-
         public override void ExplicitVisit(BooleanBinaryExpression node)
         {
             // BinaryExpressionType + First + Second
@@ -90,7 +89,6 @@ namespace StoreLake.Sdk.SqlDom
 
             if (lastHasError)
             {
-
             }
             else
             {
@@ -138,7 +136,6 @@ namespace StoreLake.Sdk.SqlDom
         {
 
             node.Expression.Accept(this);
-
         }
 
         public override void ExplicitVisit(ParenthesisExpression node)
@@ -581,7 +578,6 @@ namespace StoreLake.Sdk.SqlDom
 
                 lastExpression = invoke_ISNULL;
             }
-
         }
 
         private void ExplicitVisit_FunctionCall_COL_NAME(FunctionCall node)
@@ -656,7 +652,6 @@ namespace StoreLake.Sdk.SqlDom
                 lastExpression = invoke_ISNULL;
             }
         }
-
 
         private void ExplicitVisit_FunctionCall_DATEFROMPARTS(FunctionCall node)
         {
