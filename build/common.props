@@ -29,10 +29,10 @@
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
-  <PropertyGroup>
+  <!-- see 'version.json' <PropertyGroup>
     <PackageVersion>1.0.82</PackageVersion>
     <FileVersion>1.0.82</FileVersion>
-  </PropertyGroup>
+  </PropertyGroup>-->
   <!--<PropertyGroup>
     <VersionMajor>66</VersionMajor>
     <VersionMinor>77</VersionMinor>

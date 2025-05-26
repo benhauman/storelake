@@ -1,0 +1,15 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <None Remove="*.dotsettings" />
+    <None Remove=".DS_Store" />
+    <Compile Update="**/*.Base.cs" DependentUpon="$([System.String]::Copy('%(FileName)').Replace('.Base', ''))%(Extension)" />
+  </ItemGroup>
+
+  <Target Name="PrepareNuspec" BeforeTargets="GenerateNuspec" DependsOnTargets="GetBuildVersion">
+    <PropertyGroup>
+      <PackageVersion Condition="'$(PackageVersionOverride)' != ''">$(PackageVersionOverride)</PackageVersion>
+      <PackageReleaseNotes>$(PackageProjectUrl)/releases/tag/v$(PackageVersion)</PackageReleaseNotes>
+    </PropertyGroup>
+  </Target>
+  
+</Project>
