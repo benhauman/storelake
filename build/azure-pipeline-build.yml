@@ -75,24 +75,15 @@ stages:
       displayName: 'Nuget : empty'
       condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, false))
 
-    - task: NuGetCommand@2
-      displayName: 'Nuget : pack'
-      inputs:
-        command: 'pack'
-        packagesToPack: '**/StoreLake.Sdk.csproj'
-        versioningScheme: 'off'
-        verbosityPack: 'Detailed'
+    # - task: NuGetCommand@2
+    #   displayName: 'Nuget : pack'
+    #   inputs:
+    #     command: 'pack'
+    #     packagesToPack: '**/StoreLake.Sdk.csproj'
+    #     versioningScheme: 'off'
+    #     verbosityPack: 'Detailed'
         
     
-    - task: NuGetCommand@2
-      displayName: 'Nuget : push'
-      inputs:
-        command: 'push'
-        packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
-        nuGetFeedType: 'internal'  
-        publishFeedCredentials: 'nuget.org'
-        verbosityPush: 'Detailed'
-
   - job: Windows
     pool:
       vmImage: windows-latest
@@ -104,3 +95,11 @@ stages:
         configuration: ${{ variables.buildConfiguration }}
         codeCoverageEngine: ${{ variables.codeCoverageEngine }}
 
+    - task: NuGetCommand@2
+      displayName: 'Nuget : push'
+      inputs:
+        command: 'push'
+        packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
+        nuGetFeedType: 'internal'  
+        publishFeedCredentials: 'nuget.org'
+        verbosityPush: 'Detailed'
