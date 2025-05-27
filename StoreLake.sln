@@ -37,9 +37,12 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "azure-pipeline-templates", "azure-pipeline-templates", "{DA0596DB-4761-4D1F-B2BA-14FECA51BEBD}"
 	ProjectSection(SolutionItems) = preProject
 		build\azure-pipelines-template\initialize.yml = build\azure-pipelines-template\initialize.yml
-		build\azure-pipelines-template\install-dotnet-sdk.yml = build\azure-pipelines-template\install-dotnet-sdk.yml
-		build\azure-pipelines-template\nbgv.yml = build\azure-pipelines-template\nbgv.yml
+		build\azure-pipelines-template\initialize-install-dotnet-sdk.yml = build\azure-pipelines-template\initialize-install-dotnet-sdk.yml
+		build\azure-pipelines-template\initialize-nbgv.yml = build\azure-pipelines-template\initialize-nbgv.yml
 		build\azure-pipelines-template\run.yml = build\azure-pipelines-template\run.yml
+		build\azure-pipelines-template\run-pack.yml = build\azure-pipelines-template\run-pack.yml
+		build\azure-pipelines-template\run-pack-publish-artifact.yml = build\azure-pipelines-template\run-pack-publish-artifact.yml
+		build\azure-pipelines-template\run-pack-dotnet.yml = build\azure-pipelines-template\run-pack-dotnet.yml
 	EndProjectSection
 EndProject
 Global
