@@ -1,0 +1,10 @@
+{
+  "sdk": {
+    "version": "8.0.400",
+    "rollForward": "latestMinor",
+    "allowPrerelease": false
+  },
+  "msbuild-sdks": {
+    "Microsoft.Build.Sql": "0.2.0-preview"
+  }
+}
