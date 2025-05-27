@@ -23,17 +23,17 @@ variables:
 
   
 stages:
-- stage: Initialize
-  displayName: "Stage 'Initialize'"
-  jobs:
-  - job: JobInit1
-    displayName: "Job Init (1) this"
-    steps:
-    - script: echo "Initializing the application in Job Init1. publishNuGetPackages:${{ parameters.publishNuGetPackages }}, buildPlatform:$(buildPlatform), buildConfiguration:$(buildConfiguration)"
-      displayName: "Initializing 'this' in step1"
-  - job: JobInit2
-    displayName: "Job Init (2) that"
-    steps:
+# - stage: Initialize
+#   displayName: "Stage 'Initialize'"
+#   jobs:
+#   - job: JobInit1
+#     displayName: "Job Init (1) this"
+#     steps:
+#     - script: echo "Initializing the application in Job Init1. publishNuGetPackages:${{ parameters.publishNuGetPackages }}, buildPlatform:$(buildPlatform), buildConfiguration:$(buildConfiguration)"
+#       displayName: "Initializing 'this' in step1"
+#   - job: JobInit2
+#     displayName: "Job Init (2) that"
+#     steps:
     - script: echo "Running init in Job Init2"
       displayName: "Init 'that'"
     - template: azure-pipelines-template/initialize.yml
@@ -42,12 +42,12 @@ stages:
         echo See buildPlatform:$(buildPlatform), buildConfiguration:$(buildConfiguration)...
       displayName: 'Run a multiline script'
 
-- stage: Run
-  displayName: "Stage 'Run'"
-  jobs:
-  - job: DefaultSingeJob
-    displayName: "JobRun - brumm brumm..."
-    steps:
+# - stage: Run
+#   displayName: "Stage 'Run'"
+#   jobs:
+#   - job: DefaultSingeJob
+#     displayName: "JobRun - brumm brumm..."
+#     steps:
     
     - task: NuGetToolInstaller@1
     
@@ -84,10 +84,10 @@ stages:
     #     verbosityPack: 'Detailed'
         
     
-  - job: Windows
-    pool:
-      vmImage: windows-latest
-    steps:
+  # - job: Windows
+  #   pool:
+  #     vmImage: windows-latest
+  #   steps:
     - template: azure-pipelines-template/run.yml
       parameters:
         operatingSystem: Windows
