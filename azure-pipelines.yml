@@ -8,6 +8,12 @@ trigger:
 
 pool:
   vmImage: 'windows-latest'
+  
+parameters:
+- name: publishNuGetPackages
+  displayName: Publish NuGet packages
+  type: boolean
+  default: false
 
 variables:
   solution: '**/*.sln'
