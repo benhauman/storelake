@@ -23,6 +23,7 @@ steps:
 - task: NuGetToolInstaller@1
 
 - task: NuGetCommand@2
+  displayName: 'Nuget : restore solution'
   inputs:
     restoreSolution: '$(solution)'
 
@@ -38,8 +39,17 @@ steps:
     configuration: '$(buildConfiguration)'
 
 - task: NuGetCommand@2
+  displayName: 'Nuget : do nothing'
 - task: NuGetCommand@2
+  displayName: 'Nuget : pack'
   inputs:
     command: 'pack'
     packagesToPack: './StoreLake.Sdk.csproj'
     versioningScheme: 'off'
+
+- task: NuGetCommand@2
+  displayName: 'Nuget : push'
+  inputs:
+    command: 'push'
+    packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
+    nuGetFeedType: 'internal'  
