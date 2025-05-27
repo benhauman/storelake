@@ -28,7 +28,7 @@ stages:
   - job: JobInit1
     displayName: "Job Init (1) this"
     steps:
-    - script: echo "Initializing the application in Job Init1. publishNuGetPackages:$(publishNuGetPackages), buildPlatform:$(buildPlatform), buildConfiguration:$(buildConfiguration)"
+    - script: echo "Initializing the application in Job Init1. publishNuGetPackages:$(parameters.publishNuGetPackages), buildPlatform:$(buildPlatform), buildConfiguration:$(buildConfiguration)"
       displayName: "Initializing 'this' in step1"
   - job: JobInit2
     displayName: "Job Init (2) that"
@@ -37,7 +37,7 @@ stages:
       displayName: "Init 'that'"
     - template: azure-pipelines-template/initialize.yml
     - script: |
-        echo Add publishNuGetPackages:$(publishNuGetPackages)...
+        echo Add publishNuGetPackages:$(parameters.publishNuGetPackages)...
         echo See buildPlatform:$(buildPlatform), buildConfiguration:$(buildConfiguration)...
       displayName: 'Run a multiline script'
 
