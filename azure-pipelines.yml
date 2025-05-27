@@ -15,6 +15,14 @@ variables:
   buildConfiguration: 'Release'
 
 steps:
+- script: Hello from Azure-Pipeline.yml
+  displayName: 'Just show the greeting'
+
+- script: |
+    echo Add...
+    echo See...
+  displayName: 'Run a multiline script'
+
 - task: NuGetToolInstaller@1
 
 - task: NuGetCommand@2
