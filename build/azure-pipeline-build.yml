@@ -16,36 +16,31 @@ variables:
 
   
 stages:
-- stage: A
-  displayName: "Stage A - Build and Test"
+- stage: Initialize
+  displayName: "Stage 'Initialize'"
   jobs:
-  - job: A1
-    displayName: "Job A1 - build"
+  - job: JobInit1
+    displayName: "Job Init (1) this"
     steps:
-    - script: echo "Building the application in Job A1"
-      displayName: "Build step"
-  - job: A2
-    displayName: "Job A2 - Test"
+    - script: echo "Initializing the application in Job Init1"
+      displayName: "Initializing 'this' in step1"
+  - job: JobInit2
+    displayName: "Job Init (2) that"
     steps:
-    - script: echo "Running tests in Job A2"
-      displayName: "Test step"
-
-- stage: B
-  displayName: "Stage B - Deploy"
-  jobs:
-  - job: B1
-    displayName: "Job B1 - Deploy to Staging"
-    steps:
-    - script: echo "Deploying to staging in Job B1"
-      displayName: "Staging deployment step"
-  - job: B2
-    displayName: "Job B2 - Deploy to Production"
-    steps:
+    - script: echo "Running init in Job Init2"
+      displayName: "Init 'that'"
     - template: azure-pipelines-template/initialize.yml
     - script: |
         echo Add...
         echo See...
       displayName: 'Run a multiline script'
+
+- stage: Run
+  displayName: "Stage 'Run'"
+  jobs:
+  - job: DefaultSingeJob
+    displayName: "JobRun - brumm brumm..."
+    steps:
     
     - task: NuGetToolInstaller@1
     
