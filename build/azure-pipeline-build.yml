@@ -8,12 +8,6 @@ trigger:
 
 pool:
   vmImage: 'windows-latest'
-  
-parameters:
-- name: publishNuGetPackages
-  displayName: Publish NuGet packages
-  type: boolean
-  default: false
 
 variables:
   solution: '**/*.sln'
@@ -21,6 +15,7 @@ variables:
   buildConfiguration: 'Release'
 
 steps:
+- template: azure-pipelines-template/initialize.yml
 - script: |
     echo Add...
     echo See...

@@ -15,6 +15,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StoreLake.Versioning", "src
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{276B473F-86E1-439B-9195-30B370AB08FF}"
 	ProjectSection(SolutionItems) = preProject
+		build\azure-pipeline-build.yml = build\azure-pipeline-build.yml
 		build\common.props = build\common.props
 	EndProjectSection
 EndProject
@@ -23,7 +24,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{68ECDE3B-58F5-48C8-81E9-D45EAFF92232}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
-		azure-pipelines.yml = azure-pipelines.yml
 		Directory.build.props = Directory.build.props
 		Directory.Build.targets = Directory.Build.targets
 		Directory.Packages.props = Directory.Packages.props
@@ -31,6 +31,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		nuget.config = nuget.config
 		README.md = README.md
 		version.json = version.json
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "azure-pipeline-templates", "azure-pipeline-templates", "{DA0596DB-4761-4D1F-B2BA-14FECA51BEBD}"
+	ProjectSection(SolutionItems) = preProject
+		..\Dibix\build\azure-pipelines-template\initialize.yml = ..\Dibix\build\azure-pipelines-template\initialize.yml
+		..\Dibix\build\azure-pipelines-template\install-dotnet-sdk.yml = ..\Dibix\build\azure-pipelines-template\install-dotnet-sdk.yml
+		..\Dibix\build\azure-pipelines-template\nbgv.yml = ..\Dibix\build\azure-pipelines-template\nbgv.yml
 	EndProjectSection
 EndProject
 Global
@@ -66,6 +73,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{DA0596DB-4761-4D1F-B2BA-14FECA51BEBD} = {276B473F-86E1-439B-9195-30B370AB08FF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E28828B6-A66B-45C2-87E3-E5A1197389EA}
