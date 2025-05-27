@@ -27,7 +27,7 @@
     default: true
 
 steps:
-- ${{ if eq(parameters.operatingSystem, 'Windows') }}:
+#  - ${{ if eq(parameters.operatingSystem, 'Windows') }}:
   - template: run-pack.yml
     parameters:
       configuration: ${{ parameters.configuration }}
