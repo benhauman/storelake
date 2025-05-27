@@ -19,6 +19,7 @@ variables:
   solution: '**/*.sln'
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
+  codeCoverageEngine: Cobertura     # Compile-time
 
   
 stages:
@@ -67,7 +68,7 @@ stages:
         configuration: '$(buildConfiguration)'
     
     - task: NuGetCommand@2
-      displayName: 'Nuget : do nothing'
+      displayName: 'Nuget : do nothing (default restore)'
       condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, true))
 #  condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, true))
     - task: NuGetCommand@2
@@ -78,8 +79,10 @@ stages:
       displayName: 'Nuget : pack'
       inputs:
         command: 'pack'
-        packagesToPack: './StoreLake.Sdk.csproj'
+        packagesToPack: '**/StoreLake.Sdk.csproj'
         versioningScheme: 'off'
+        verbosityPack: 'Detailed'
+    
     
     - task: NuGetCommand@2
       displayName: 'Nuget : push'
@@ -87,4 +90,16 @@ stages:
         command: 'push'
         packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
         nuGetFeedType: 'internal'  
+        verbosityPush: 'Detailed'
+
+  - job: Windows
+    pool:
+      vmImage: windows-latest
+    steps:
+    - template: azure-pipelines-template/run.yml
+      parameters:
+        operatingSystem: Windows
+        runtimeIdentifier: win-x64
+        configuration: ${{ variables.buildConfiguration }}
+        codeCoverageEngine: ${{ variables.codeCoverageEngine }}
 
