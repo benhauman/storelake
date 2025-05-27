@@ -14,43 +14,69 @@ variables:
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
-steps:
-- template: azure-pipelines-template/initialize.yml
-- script: |
-    echo Add...
-    echo See...
-  displayName: 'Run a multiline script'
+  
+stages:
+- stage: A
+  displayName: "Stage A - Build and Test"
+  jobs:
+  - job: A1
+    displayName: "Job A1 - build"
+    steps:
+    - script: echo "Building the application in Job A1"
+      displayName: "Build step"
+  - job: A2
+    displayName: "Job A2 - Test"
+    steps:
+    - script: echo "Running tests in Job A2"
+      displayName: "Test step"
 
-- task: NuGetToolInstaller@1
-
-- task: NuGetCommand@2
-  displayName: 'Nuget : restore solution'
-  inputs:
-    restoreSolution: '$(solution)'
-
-- task: VSBuild@1
-  inputs:
-    solution: '$(solution)'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
-
-- task: VSTest@2
-  inputs:
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
-
-- task: NuGetCommand@2
-  displayName: 'Nuget : do nothing'
-- task: NuGetCommand@2
-  displayName: 'Nuget : pack'
-  inputs:
-    command: 'pack'
-    packagesToPack: './StoreLake.Sdk.csproj'
-    versioningScheme: 'off'
-
-- task: NuGetCommand@2
-  displayName: 'Nuget : push'
-  inputs:
-    command: 'push'
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
-    nuGetFeedType: 'internal'  
+- stage: B
+  displayName: "Stage B - Deploy"
+  jobs:
+  - job: B1
+    displayName: "Job B1 - Deploy to Staging"
+    steps:
+    - script: echo "Deploying to staging in Job B1"
+      displayName: "Staging deployment step"
+  - job: B2
+    displayName: "Job B2 - Deploy to Production"
+    steps:
+    - template: azure-pipelines-template/initialize.yml
+    - script: |
+        echo Add...
+        echo See...
+      displayName: 'Run a multiline script'
+    
+    - task: NuGetToolInstaller@1
+    
+    - task: NuGetCommand@2
+      displayName: 'Nuget : restore solution'
+      inputs:
+        restoreSolution: '$(solution)'
+    
+    - task: VSBuild@1
+      inputs:
+        solution: '$(solution)'
+        platform: '$(buildPlatform)'
+        configuration: '$(buildConfiguration)'
+    
+    - task: VSTest@2
+      inputs:
+        platform: '$(buildPlatform)'
+        configuration: '$(buildConfiguration)'
+    
+    - task: NuGetCommand@2
+      displayName: 'Nuget : do nothing'
+    - task: NuGetCommand@2
+      displayName: 'Nuget : pack'
+      inputs:
+        command: 'pack'
+        packagesToPack: './StoreLake.Sdk.csproj'
+        versioningScheme: 'off'
+    
+    - task: NuGetCommand@2
+      displayName: 'Nuget : push'
+      inputs:
+        command: 'push'
+        packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
+        nuGetFeedType: 'internal'  
