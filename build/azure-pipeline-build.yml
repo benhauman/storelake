@@ -6,6 +6,12 @@
 trigger:
 - main
 
+parameters:
+- name: publishNuGetPackages
+  displayName: Publish NuGet packages
+  type: boolean
+  default: false
+
 pool:
   vmImage: 'windows-latest'
 
@@ -22,7 +28,7 @@ stages:
   - job: JobInit1
     displayName: "Job Init (1) this"
     steps:
-    - script: echo "Initializing the application in Job Init1"
+    - script: echo "Initializing the application in Job Init1. publishNuGetPackages:$(publishNuGetPackages)"
       displayName: "Initializing 'this' in step1"
   - job: JobInit2
     displayName: "Job Init (2) that"
@@ -31,7 +37,7 @@ stages:
       displayName: "Init 'that'"
     - template: azure-pipelines-template/initialize.yml
     - script: |
-        echo Add...
+        echo Add publishNuGetPackages:$(publishNuGetPackages)...
         echo See...
       displayName: 'Run a multiline script'
 
@@ -62,6 +68,12 @@ stages:
     
     - task: NuGetCommand@2
       displayName: 'Nuget : do nothing'
+      condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, true))
+#  condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, true))
+    - task: NuGetCommand@2
+      displayName: 'Nuget : empty'
+      condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, false))
+
     - task: NuGetCommand@2
       displayName: 'Nuget : pack'
       inputs:
@@ -75,3 +87,4 @@ stages:
         command: 'push'
         packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
         nuGetFeedType: 'internal'  
+
