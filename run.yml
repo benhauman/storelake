@@ -1,0 +1,4 @@
+- ${{ if eq(parameters.operatingSystem, 'Linux') }}:
+  - template: pack.yml
+    parameters:
+      configuration: ${{ parameters.configuration }}

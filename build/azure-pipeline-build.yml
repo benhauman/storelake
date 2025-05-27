@@ -82,7 +82,7 @@ stages:
         packagesToPack: '**/StoreLake.Sdk.csproj'
         versioningScheme: 'off'
         verbosityPack: 'Detailed'
-    
+        
     
     - task: NuGetCommand@2
       displayName: 'Nuget : push'
