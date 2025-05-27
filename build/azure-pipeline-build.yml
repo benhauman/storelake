@@ -23,12 +23,12 @@ variables:
 
   
 stages:
-# - stage: Initialize
-#   displayName: "Stage 'Initialize'"
-#   jobs:
-#   - job: JobInit1
-#     displayName: "Job Init (1) this"
-#     steps:
+- stage: Initialize
+  displayName: "Stage 'Initialize'"
+  jobs:
+  - job: JobInit1
+    displayName: "Job Init (1) this"
+    steps:
 #     - script: echo "Initializing the application in Job Init1. publishNuGetPackages:${{ parameters.publishNuGetPackages }}, buildPlatform:$(buildPlatform), buildConfiguration:$(buildConfiguration)"
 #       displayName: "Initializing 'this' in step1"
 #   - job: JobInit2
