@@ -38,3 +38,8 @@ steps:
     configuration: '$(buildConfiguration)'
 
 - task: NuGetCommand@2
+- task: NuGetCommand@2
+  inputs:
+    command: 'pack'
+    packagesToPack: './StoreLake.Sdk.csproj'
+    versioningScheme: 'off'
