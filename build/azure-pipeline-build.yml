@@ -90,6 +90,7 @@ stages:
         command: 'push'
         packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
         nuGetFeedType: 'internal'  
+        publishFeedCredentials: 'nuget.org'
         verbosityPush: 'Detailed'
 
   - job: Windows
