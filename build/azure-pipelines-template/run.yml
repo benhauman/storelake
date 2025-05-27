@@ -1,4 +1,3 @@
-﻿#ddddd
 ﻿parameters:
   - name: operatingSystem
     type: string
