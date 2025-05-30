@@ -71,9 +71,9 @@ stages:
       displayName: 'Nuget : do nothing (default restore)'
       condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, true))
 #  condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, true))
-    - task: NuGetCommand@2
-      displayName: 'Nuget : empty'
-      condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, false))
+    # - task: NuGetCommand@2
+    #   displayName: 'Nuget : empty'
+    #   condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, false))
 
     # - task: NuGetCommand@2
     #   displayName: 'Nuget : pack'
@@ -94,6 +94,10 @@ stages:
         runtimeIdentifier: win-x64
         configuration: ${{ variables.buildConfiguration }}
         codeCoverageEngine: ${{ variables.codeCoverageEngine }}
+    
+    - script: echo "skip nuget push due to parameter value"
+      displayName: "Nuget : push-skipped"
+      condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, false))
 
     - task: NuGetCommand@2
       displayName: 'Nuget : push'
@@ -103,3 +107,4 @@ stages:
         nuGetFeedType: 'external'  
         publishFeedCredentials: 'nuget.org'
         verbosityPush: 'Detailed'
+      condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, true))
