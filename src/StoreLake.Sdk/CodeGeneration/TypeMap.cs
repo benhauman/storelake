@@ -98,6 +98,8 @@
                 return ProcedureCodeParameter.Create<string, string>(DbType.StringFixedLength); // taskmanagement
             if (parameter_ParameterDbType == SqlDbType.Date)
                 return ProcedureCodeParameter.Create<DateTime, DateTime?>(DbType.DateTime);
+            if (parameter_ParameterDbType == SqlDbType.Time)
+                return ProcedureCodeParameter.Create<DateTime, DateTime?>(DbType.Time);
 
             throw new NotImplementedException("" + parameter_ParameterDbType);
         }
