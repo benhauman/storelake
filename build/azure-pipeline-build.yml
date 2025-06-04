@@ -116,7 +116,7 @@ stages:
     - task: GitHubRelease@1
       displayName: ?? Create GitHub release
       inputs:
-        gitHubConnection: github.com_C0nquistadore
+        gitHubConnection: 'benhauman'
         repositoryName: $(Build.Repository.Name)
         target: $(resources.pipeline.CI.sourceCommit)
         tagSource: userSpecifiedTag
