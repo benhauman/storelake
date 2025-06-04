@@ -9,6 +9,7 @@ steps:
 - template: run-pack-dotnet.yml
   parameters:
     projects:
+    - StoreLake
     - StoreLake.Sdk
     configuration: ${{ parameters.configuration }}
 
