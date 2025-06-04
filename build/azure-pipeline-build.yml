@@ -11,6 +11,10 @@ parameters:
   displayName: Publish NuGet packages
   type: boolean
   default: false
+- name: createGitHubRelease
+  displayName: Create GitHub release
+  type: boolean
+  default: false
 
 pool:
   vmImage: 'windows-latest'
@@ -108,3 +112,22 @@ stages:
         publishFeedCredentials: 'nuget.org'
         verbosityPush: 'Detailed'
       condition: and(succeeded(), eq(${{ parameters.publishNuGetPackages }}, true))
+
+  - task: GitHubRelease@1
+    displayName: ?? Create GitHub release
+    inputs:
+      gitHubConnection: github.com_C0nquistadore
+      repositoryName: $(Build.Repository.Name)
+      target: $(resources.pipeline.CI.sourceCommit)
+      tagSource: userSpecifiedTag
+      tag: v$(resources.pipeline.CI.runName)
+      title: v$(resources.pipeline.CI.runName)
+      isPreRelease: $(IsPreRelease)
+      isDraft: $(IsPreview)
+      assets: |
+        $(Pipeline.Workspace)/CI/NuGet packages/*.nupkg
+        $(Pipeline.Workspace)/CI/Publish output*/*.zip
+      changeLogCompareToRelease: lastFullRelease
+      changeLogCompareToReleaseTag: v$(NBGV_MAJORMINORVERSION)\.\d+$
+      changeLogType: commitBased
+    condition: and(succeeded(), eq(${{ parameters.createGitHubRelease }}, true))
