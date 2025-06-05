@@ -19,7 +19,7 @@ steps:
       arguments: >
         --configuration ${{ parameters.configuration }}
         --output $(Build.ArtifactStagingDirectory)/packages
-        --include-symbols
         --force
+#        --include-symbols
 #        --no-restore
 #        --no-build
