@@ -11,6 +11,7 @@ steps:
     projects:
     - StoreLake
     - StoreLake.Sdk
+    - StoreLake.Sdk.Cli
     configuration: ${{ parameters.configuration }}
 
 - template: run-pack-publish-artifact.yml

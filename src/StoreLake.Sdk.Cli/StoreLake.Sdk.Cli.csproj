@@ -33,6 +33,13 @@
 	  </None>
 	</ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
   <!--Error NU5049: The `pack` command for SDK-style projects is not supported, use `dotnet pack` or `msbuild -t:pack` to pack this project instead. You can override this behavior by setting the 'NUGET_ENABLE_LEGACY_CSPROJ_PACK' environment variable to 'true'.-->
 	<!--<ItemGroup>
     <Content Include="build/**/*.*" copyToOutput="true">
