@@ -5,11 +5,12 @@
     <AssemblyName>StoreLake.Sdk</AssemblyName>
     <RootNamespace>StoreLake.Sdk</RootNamespace>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <PackageReadmeFile>README.md</PackageReadmeFile>    
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <LangVersion>latest</LangVersion>
     <!--<Authors>BenHauman</Authors>
     <Company>BenHauman</Company>
 	  <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>-->
-	  <!--<PackageReadmeFile>..\..\readme.md</PackageReadmeFile>-->
+    <!--<PackageReadmeFile>..\..\readme.md</PackageReadmeFile>-->
   </PropertyGroup>
 
   <Import Project="$(BuildDir)\GenerateAssemblyInfo.targets" Condition="Exists('$(BuildDir)\GenerateAssemblyInfo.targets')" />
@@ -38,6 +39,6 @@
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
-  </ItemGroup> 
+  </ItemGroup>
 
 </Project>

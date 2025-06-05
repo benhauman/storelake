@@ -936,7 +936,7 @@
                             Adjust_Table_AddRowWithValues(rr, dacpac, type_decl_table, member_method);
                         }
 
-                        if (member_method.Name.StartsWith("FindBy") && member_method.ReturnType.BaseType.EndsWith("Row"))
+                        if (member_method.Name.StartsWith("FindBy") && member_method.ReturnType.BaseType.EndsWith("Row")) // rename 'FindByid', 'FindByimagedataid' etc => 
                         {
                             // private hlcmdatamodelassociationsearchRow FindByassociationid(int associationid) => FindRowByPrimaryKey
                             member_method.Name = "FindRowByPrimaryKey";
@@ -1054,6 +1054,11 @@
             {
                 AddTableMethod_DeleteRowByPrimaryKey(rr, dacpac, type_decl_table, type_decl);
                 AddTableMethod_ValidateCheckConstraints(rr, dacpac, type_decl_table, type_decl);
+                var method_GetRowByPrimaryKey = AddTableMethod_GetRowByPrimaryKey(type_decl_table, type_decl);
+                if (method_GetRowByPrimaryKey != null)
+                {
+                    membersToInsert.Add(method_GetRowByPrimaryKey);
+                }
             }
 
             foreach (var memberToRemove in membersToRemove)
@@ -1222,6 +1227,76 @@
             }
         }*/
 
+        private static CodeMemberMethod GenerateMethodGetRowByPrimaryKey(DataTable typeDeclTable, CodeMemberMethod methodFind)
+        {
+            CodeMemberMethod method_Get = new CodeMemberMethod()
+            {
+                Name = "GetRowByPrimaryKey",
+                Attributes = methodFind.Attributes,
+                ReturnType = methodFind.ReturnType,
+            };
+
+            foreach (CodeTypeParameter ctp in methodFind.TypeParameters)
+            {
+                method_Get.TypeParameters.Add(ctp);
+            }
+
+            foreach (CodeParameterDeclarationExpression param_decl in methodFind.Parameters)
+            {
+                method_Get.Parameters.Add(param_decl);
+            }
+
+            List<CodeExpression> invokeFindParameterValues = new List<CodeExpression>();
+            StringBuilder valuesDump = new StringBuilder("\"Row not found [\" + TableName + \"](");
+            for (var idx = 0; idx < methodFind.Parameters.Count; idx++)
+            {
+                var param_decl = methodFind.Parameters[idx];
+                invokeFindParameterValues.Add(new CodeArgumentReferenceExpression(param_decl.Name));
+
+                if (idx > 0)
+                {
+                    valuesDump.Append(", ");
+                }
+
+                valuesDump.Append("").Append(param_decl.Name).Append(":\" + ").Append(param_decl.Name).Append(" + \"");
+            }
+
+            valuesDump.Append(")\"");
+
+            var methodFindRef = new CodeMethodReferenceExpression(
+                new CodeThisReferenceExpression(),
+                methodFind.Name, Array.Empty<CodeTypeReference>());
+
+            var var_rowpk_decl = new CodeVariableDeclarationStatement(methodFind.ReturnType, "rowpk")
+            {
+                InitExpression = new CodeMethodInvokeExpression(methodFindRef, invokeFindParameterValues.ToArray())
+            };
+            method_Get.Statements.Add(var_rowpk_decl);
+            CodeVariableReferenceExpression var_rowpk_ref = new CodeVariableReferenceExpression(var_rowpk_decl.Name);
+
+            //throw new System.InvalidOperationException("Row not found [" + TableName + "](detailcfgid:" + detailcfgid + ", displayregion:" + displayregion + ", sortorder:" + sortorder + ")");
+            CodeStatement throwNotFound = new CodeThrowExceptionStatement(new CodeObjectCreateExpression(typeof(InvalidOperationException), new CodeSnippetExpression(valuesDump.ToString())));
+
+            var conditionExpr = new CodeBinaryOperatorExpression(var_rowpk_ref, CodeBinaryOperatorType.ValueEquality, new CodePrimitiveExpression(null));
+            CodeConditionStatement ifNullOrNotNull = new CodeConditionStatement(conditionExpr, trueStatements: new CodeStatement[] { throwNotFound }, falseStatements: new CodeStatement[] { new CodeMethodReturnStatement(var_rowpk_ref) });
+            method_Get.Statements.Add(ifNullOrNotNull);
+            return method_Get;
+        }
+
+        private static CodeMemberMethod AddTableMethod_GetRowByPrimaryKey(DataTable table, CodeTypeDeclaration type_decl)
+        {
+            CodeMemberMethod member_FindRowByPrimaryKey = TryGetMemberMethodByName(type_decl, "FindRowByPrimaryKey");
+            if (member_FindRowByPrimaryKey == null)
+            {
+                //throw new StoreLakeSdkException("Member not found 'FindRowByPrimaryKey' for type:" + type_decl.Name);
+                // no primary key
+                return null;
+            }
+            else
+            {
+                return GenerateMethodGetRowByPrimaryKey(table, member_FindRowByPrimaryKey);
+            }
+        }
         private static void AddTableMethod_DeleteRowByPrimaryKey(RegistrationResult rr, DacPacRegistration dacpac, DataTable table, CodeTypeDeclaration type_decl)
         {
             CodeMemberMethod member_FindRowByPrimaryKey = TryGetMemberMethodByName(type_decl, "FindRowByPrimaryKey");
