@@ -18,6 +18,7 @@ steps:
       custom: pack
       arguments: >
         --configuration ${{ parameters.configuration }}
-        --no-build
-        --no-restore
         --output $(Build.ArtifactStagingDirectory)/packages
+        --include-symbols
+        --no-restore
+#        --no-build
