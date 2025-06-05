@@ -20,5 +20,6 @@ steps:
         --configuration ${{ parameters.configuration }}
         --output $(Build.ArtifactStagingDirectory)/packages
         --include-symbols
-        --no-restore
+        --force
+#        --no-restore
 #        --no-build
