@@ -12,18 +12,6 @@
 	  <!--<PackageReadmeFile>..\..\readme.md</PackageReadmeFile>-->
   </PropertyGroup>
 
-  <!--<PropertyGroup>
-    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-  </PropertyGroup>-->
-
-  <!--<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-  </PropertyGroup>-->
-
   <Import Project="$(BuildDir)\GenerateAssemblyInfo.targets" Condition="Exists('$(BuildDir)\GenerateAssemblyInfo.targets')" />
 
   <ItemGroup>

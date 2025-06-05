@@ -5,7 +5,6 @@
 		<TargetFramework>net48</TargetFramework>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
-		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
 		<!--<PackageReadmeFile>..\..\README.md</PackageReadmeFile>-->
 	</PropertyGroup>
 
@@ -98,9 +97,9 @@
 
 		<!--<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.Cli.targets" TargetPath="build\StoreLake.Sdk.Cli.targets" />-->
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.dll" TargetPath="StoreLake.dll" />  
-		<BuildOutputInPackage Include="$(OutputPath)StoreLake.pdb" TargetPath="StoreLake.pdb" />  
+		<!--<BuildOutputInPackage Include="$(OutputPath)StoreLake.pdb" TargetPath="StoreLake.pdb" />-->  
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.dll" TargetPath="StoreLake.Sdk.dll" />  
-		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.pdb" TargetPath="StoreLake.Sdk.pdb" />
+		<!--<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.pdb" TargetPath="StoreLake.Sdk.pdb" />-->
 		<BuildOutputInPackage Include="$(ProjectDir)..\ThirdParty\Microsoft.SqlServer.TransactSql.ScriptDom.dll" TargetPath="Microsoft.SqlServer.TransactSql.ScriptDom.dll" />
         <!--<BuildOutputInPackage Include="..\..\README.md" TargetPath="README.md" />-->
 	</ItemGroup>

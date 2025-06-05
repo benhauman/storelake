@@ -13,20 +13,6 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
-  <!--<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <IsPublishable>False</IsPublishable>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <IsPublishable>False</IsPublishable>
-  </PropertyGroup>-->
-
-  <!--<PropertyGroup>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-  </PropertyGroup>-->
-
-  <!--<Import Project="$(BuildDir)\GenerateAssemblyInfo.targets" Condition="Exists('$(BuildDir)\GenerateAssemblyInfo.targets')" />-->
-
   <ItemGroup>
     <PackageReference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Design" />
