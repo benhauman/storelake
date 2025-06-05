@@ -118,12 +118,15 @@ stages:
       inputs:
         gitHubConnection: 'benhauman'
         repositoryName: $(Build.Repository.Name)
-        target: $(resources.pipeline.CI.sourceCommit)
+        #target: $(resources.pipeline.CI.sourceCommit)
+        target: $(Build.SourceVersion)
         tagSource: userSpecifiedTag
-        tag: v$(resources.pipeline.CI.runName)
-        title: v$(resources.pipeline.CI.runName)
-        isPreRelease: $(IsPreRelease)
-        isDraft: $(IsPreview)
+        #tag: v$(resources.pipeline.CI.runName)
+        tag: 'v$(Build.BuildNumber)'
+        #title: v$(resources.pipeline.CI.runName)
+        title: 'v$(Build.BuildNumber)'
+        #isPreRelease: $(IsPreRelease)
+        #isDraft: $(IsPreview)
         assets: |
           $(Pipeline.Workspace)/CI/NuGet packages/*.nupkg
           $(Pipeline.Workspace)/CI/Publish output*/*.zip
