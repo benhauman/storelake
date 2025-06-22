@@ -540,8 +540,10 @@
                                         }
                                         else
                                         {
-                                            Console.WriteLine("External dacpac not found. Try input directory");
-                                            dacpacFullFileName = System.IO.Path.Combine(inputdir, dacpacFileName);
+                                            string dacpacFileNameNoDir = System.IO.Path.GetFileName(dacpacFileName);
+                                            Console.WriteLine("External dacpac not found. Try input directory for dacpacFileName:" + dacpacFileNameNoDir);
+                                            dacpacFullFileName = System.IO.Path.Combine(inputdir, dacpacFileNameNoDir);
+                                            Console.WriteLine("Try dacpacFullFileName:" + dacpacFullFileName);
                                             if (File.Exists(dacpacFullFileName))
                                             {
                                                 Console.WriteLine("External dacpac in inputdir found.");
