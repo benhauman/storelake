@@ -13,6 +13,7 @@
     using StoreLake.Sdk.SqlDom;
 
     [DebuggerDisplay("{DacPacAssemblyAssemblyName} : {DacPacAssemblyLogicalName}")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1600:Elements should be documented", Justification = "ok")]
     internal sealed class DacPacRegistration
     {
         internal readonly string FilePath;
@@ -375,6 +376,7 @@
     }
 
     [DebuggerDisplay("{table.TableName}")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1600:Elements should be documented", Justification = "ok")]
     internal class SourceMetadataTable : IColumnSourceMetadata
     {
         private readonly DataTable table;
@@ -418,12 +420,14 @@
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1600:Elements should be documented", Justification = "ok")]
     internal sealed class TableTypeRow
     {
         internal CodeTypeDeclaration udt_row_type_decl;
         internal string ClrFullTypeName;
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1600:Elements should be documented", Justification = "ok")]
     public static class SchemaImportDacPac // 'Dedicated Administrator Connection (for Data Tier Application) Package'
     {
         public static RegistrationResult ImportDacPac(string inputdir, string dacpacFullFileName, bool forceReferencePackageRegeneration, bool generateMissingReferences)
@@ -444,7 +448,7 @@
             }
             dacpac = new DacPacRegistration(filePath, isReferencedPackage);
             ctx.procesed_files.Add(filePath, dacpac);
-            Console.WriteLine(outputprefix + filePath);
+            Console.WriteLine(outputprefix + "RegisterDacpac:" + filePath);
             using (ZipArchive archive = ZipFile.OpenRead(filePath))
             {
                 foreach (ZipArchiveEntry entry in archive.Entries)
@@ -527,7 +531,28 @@
                                     }
                                     else
                                     {
-                                        external_dacpac = RegisterDacpac(outputprefix + "   ", ctx, inputdir, dacpacFileName, true);
+                                        Console.WriteLine("External dacpac file:" + dacpacFileName);
+                                        string dacpacFullFileName;
+                                        if (File.Exists(dacpacFileName))
+                                        {
+                                            Console.WriteLine("External dacpac found.");
+                                            dacpacFullFileName = dacpacFileName;
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine("External dacpac not found. Try input directory");
+                                            dacpacFullFileName = System.IO.Path.Combine(inputdir, dacpacFileName);
+                                            if (File.Exists(dacpacFullFileName))
+                                            {
+                                                Console.WriteLine("External dacpac in inputdir found.");
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine("External dacpac in inputdir not found. Hmmmm.");
+                                            }
+                                        }
+
+                                        external_dacpac = RegisterDacpac(outputprefix + "   ", ctx, inputdir, dacpacFullFileName, true);
                                     }
 
                                     dacpac.referenced_dacpacs.Add(logicalname, external_dacpac);
@@ -1822,8 +1847,10 @@
     }
 
     [Serializable]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1600:Elements should be documented", Justification = "ok")]
     public sealed class StoreLakeSdkException : Exception
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1600:Elements should be documented", Justification = "ok")]
         public StoreLakeSdkException(string message) : base(message)
         {
         }
