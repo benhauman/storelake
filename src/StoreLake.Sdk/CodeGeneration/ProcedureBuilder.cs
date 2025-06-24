@@ -1047,10 +1047,20 @@
             //Array.fr
             var cast_prm = new CodeCastExpression(typeof(IEnumerable<IDataRecord>), cmd_Parameter_prm_Value);
 
-            //var invoke_ToArray = new CodeMethodInvokeExpression(new CodeMethodReferenceExpression(new CodeTypeReferenceExpression(typeof(System.Linq.Enumerable)), "ToArray"));
-            //invoke_ToArray.Parameters.Add(cast_prm);
-            //read_method_decl.Statements.Add(new CodeMethodReturnStatement(invoke_ToArray));
-            read_method_decl.Statements.Add(new CodeMethodReturnStatement(cast_prm));
+            var var_val_decl = new CodeVariableDeclarationStatement(cast_prm.TargetType, "val") { InitExpression = cast_prm };
+            read_method_decl.Statements.Add(var_val_decl);
+
+            var var_val_ref = new CodeVariableReferenceExpression(var_val_decl.Name);
+
+            var is_Null = new CodeBinaryOperatorExpression(var_val_ref, CodeBinaryOperatorType.ValueEquality, new CodePrimitiveExpression(null));
+
+            var if_is_Null = new CodeConditionStatement();
+            if_is_Null.Condition = is_Null;
+            if_is_Null.TrueStatements.Add(new CodeMethodReturnStatement(new CodeArrayCreateExpression(typeof(IDataRecord), new CodeExpression[] { }))); // empty array
+            if_is_Null.FalseStatements.Add(new CodeMethodReturnStatement(var_val_ref));
+
+            //read_method_decl.Statements.Add(new CodeMethodReturnStatement(cast_prm));
+            read_method_decl.Statements.Add(if_is_Null);
         }
 
         private static CodeMemberMethod AddReadParameterFunctions_XElement(CodeTypeDeclaration type_decl, bool allowNull, Type typeNotNull)
