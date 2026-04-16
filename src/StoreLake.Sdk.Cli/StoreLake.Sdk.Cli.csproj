@@ -61,20 +61,6 @@
 	  </None>
 	</ItemGroup>-->
 
-	<!--
-	<ItemGroup>
-		<Content Include="../ThirdParty/Dibix.*" copyToOutput="false">
-			<Pack>true</Pack>
-			<PackagePath>tools</PackagePath>
-			<IncludeInPackage>true</IncludeInPackage>
-			<CopyToOutput>true</CopyToOutput>
-			<BuildAction>Content</BuildAction>
-			<copyToOutput>true</copyToOutput>
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-			<CopyToPublishDirectory>Always</CopyToPublishDirectory>
-		</Content>
-	</ItemGroup>-->
-
   <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
     <!--<ItemGroup>
       --><!-- Filter out unnecessary files --><!--
@@ -100,7 +86,6 @@
 		<!--<BuildOutputInPackage Include="$(OutputPath)StoreLake.pdb" TargetPath="StoreLake.pdb" />-->  
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.dll" TargetPath="StoreLake.Sdk.dll" />  
 		<!--<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.pdb" TargetPath="StoreLake.Sdk.pdb" />-->
-		<BuildOutputInPackage Include="$(ProjectDir)..\ThirdParty\Microsoft.SqlServer.TransactSql.ScriptDom.dll" TargetPath="Microsoft.SqlServer.TransactSql.ScriptDom.dll" />
         <!--<BuildOutputInPackage Include="..\..\README.md" TargetPath="README.md" />-->
 	</ItemGroup>
   </Target>
