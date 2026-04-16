@@ -24,7 +24,7 @@
             return s_tracer;
         }
 
-        internal static void ExportTypedDataSetCode(AssemblyResolver assemblyResolver, RegistrationResult rr, string[] libdirs, string inputdir, string outputdir, string dacNameFilter, string storeSuffix, bool writeSchemaFile, string tempdir)
+        internal static void ExportTypedDataSetCode(AssemblyResolver assemblyResolver, RegistrationResult rr, string[] libdirs, string inputdacdir, string inputdlldir, string outputdir, string dacNameFilter, string storeSuffix, bool writeSchemaFile, string tempdir)
         {
             AssemblyName an_Dibix = new AssemblyName("Dibix"); // no version
             //AssemblyName an_Dibix = AssemblyName.GetAssemblyName(Path.Combine(libdir, "Dibix.dll"));
@@ -81,7 +81,7 @@
                                 //string schemaContent = File.ReadAllText(schemaFileName);
                             }
 
-                            ImportSchemasAsDataSets(dbx, assemblyResolver, rr, dacpac, schemaContent, inputdir, outputdir, filenameNoExtension, dacName, storeSuffix, tempdir, libdirs);
+                            ImportSchemasAsDataSets(dbx, assemblyResolver, rr, dacpac, schemaContent, inputdacdir, inputdlldir, outputdir, filenameNoExtension, dacName, storeSuffix, tempdir, libdirs);
                         }
                     }
                 }
@@ -93,7 +93,7 @@
             }
         }
 
-        private static void ImportSchemasAsDataSets(KnownDibixTypes dbx, AssemblyResolver assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir, string[] libdirs)
+        private static void ImportSchemasAsDataSets(KnownDibixTypes dbx, AssemblyResolver assemblyResolver, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string inputdacdir, string inputdlldir, string outputdir, string fileName, string namespaceName, string storeSuffix, string tempdir, string[] libdirs)
         {
             string fullFileName_dll = System.IO.Path.Combine(outputdir, fileName + ".dll");
             InitializeStoreNamespaceName(dacpac, storeSuffix);
@@ -174,7 +174,7 @@
             }
             //dacpac.TestStoreAssemblyNamespace
 
-            StoreAccessorCodeGenerator.GenerateAccessors(dbx, assemblyResolver, dacpac, doGenerate, comparam, ccu_accessors, inputdir);
+            StoreAccessorCodeGenerator.GenerateAccessors(dbx, assemblyResolver, dacpac, doGenerate, comparam, ccu_accessors, inputdacdir, inputdlldir);
 
             if (!doGenerate)
             {

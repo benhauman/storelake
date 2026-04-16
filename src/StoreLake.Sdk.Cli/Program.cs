@@ -26,7 +26,7 @@
                 if (targs == null)
                 {
                     s_tracer.TraceEvent(TraceEventType.Information, 0, "USAGE:");
-                    s_tracer.TraceEvent(TraceEventType.Information, 0, " StoreLake.Sdk.Cli.exe inputdir=... dacpac=sample.dacpac");
+                    s_tracer.TraceEvent(TraceEventType.Information, 0, " StoreLake.Sdk.Cli.exe inputdacdir=... dacpac=sample.dacpac");
                     return -2;
                 }
                 else

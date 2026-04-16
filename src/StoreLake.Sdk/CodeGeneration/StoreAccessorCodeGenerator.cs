@@ -11,10 +11,10 @@
 
     internal static class StoreAccessorCodeGenerator
     {
-        internal static void GenerateAccessors(KnownDibixTypes dbx, AssemblyResolver assemblyResolver, DacPacRegistration dacpac, bool doGenerate, CompilerParameters comparam, CodeCompileUnit ccu, string inputdir)
+        internal static void GenerateAccessors(KnownDibixTypes dbx, AssemblyResolver assemblyResolver, DacPacRegistration dacpac, bool doGenerate, CompilerParameters comparam, CodeCompileUnit ccu, string inputdacdir, string inputdlldir)
         {
             string dacpacDllFileName = Path.GetFileName(dacpac.DacPacAssemblyFileName);
-            string dacpacDllFullFileName = Path.Combine(inputdir, dacpacDllFileName);
+            string dacpacDllFullFileName = Path.Combine(inputdlldir, dacpacDllFileName);
             Console.WriteLine("Load '" + dacpacDllFullFileName + "'...");
             if (!File.Exists(dacpacDllFullFileName))
             {

@@ -9,7 +9,8 @@
 
     public sealed class ToolArguments
     {
-        public string InputDirectory { get; set; }
+        public string InputDacDirectory { get; set; }
+        public string InputDllDirectory { get; set; }
         public string OutputDirectory { get; set; }
         public string[] LibraryDirectories { get; set; }
         public string DacpacFileName { get; set; }
@@ -62,9 +63,13 @@
                     return null;
                 }
 
-                if (string.Equals(kv[0], "inputdir", StringComparison.Ordinal))
+                if (string.Equals(kv[0], "inputdacdir", StringComparison.Ordinal))
                 {
-                    targs.InputDirectory = kv[1];
+                    targs.InputDacDirectory = kv[1];
+                }
+                else if (string.Equals(kv[0], "inputdlldir", StringComparison.Ordinal))
+                {
+                    targs.InputDllDirectory = kv[1];
                 }
                 else
                 {
@@ -144,9 +149,13 @@
                 throw new StoreLakeSdkException("Null argument specified:" + nameof(targs));
             }
 
-            if (string.IsNullOrEmpty(targs.InputDirectory))
+            if (string.IsNullOrEmpty(targs.InputDacDirectory))
             {
-                throw new StoreLakeSdkException("'InputDirectory' is not specified");
+                throw new StoreLakeSdkException($"'{nameof(targs.InputDacDirectory)}' is not specified");
+            }
+            if (string.IsNullOrEmpty(targs.InputDllDirectory))
+            {
+                throw new StoreLakeSdkException($"'{nameof(targs.InputDllDirectory)}' is not specified");
             }
             if (string.IsNullOrEmpty(targs.OutputDirectory))
             {
@@ -173,12 +182,14 @@
             {
                 targs.TempDirectory = Path.Combine(targs.OutputDirectory, "TempFiles");
             }
-            targs.InputDirectory = ExpandPath(targs.InputDirectory);
+            targs.InputDacDirectory = ExpandPath(targs.InputDacDirectory);
+            targs.InputDllDirectory = ExpandPath(targs.InputDllDirectory);
             targs.OutputDirectory = ExpandPath(targs.OutputDirectory);
             targs.TempDirectory = ExpandPath(targs.TempDirectory);
             targs.LibraryDirectories = targs.LibraryDirectories.Select(x => ExpandPath(x)).ToArray();
 
-            s_tracer.TraceInformation("InputDirectory=" + targs.InputDirectory);
+            s_tracer.TraceInformation("InputDacDirectory=" + targs.InputDacDirectory);
+            s_tracer.TraceInformation("InputDllDirectory=" + targs.InputDllDirectory);
             s_tracer.TraceInformation("OutputDirectory=" + targs.OutputDirectory);
             s_tracer.TraceInformation("LibraryDirectories=" + string.Join(";", targs.LibraryDirectories));
             s_tracer.TraceInformation("DacpacFileName=" + targs.DacpacFileName);
@@ -193,13 +204,13 @@
             AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += assemblyResolver.OnReflectionOnlyAssemblyResolve;
             try
             {
-                string dacpacFullFileName = System.IO.Path.Combine(targs.InputDirectory, targs.DacpacFileName);
-                var rr = SchemaImportDacPac.ImportDacPac(targs.InputDirectory, dacpacFullFileName, targs.ForceReferencePackageRegeneration, targs.GenerateMissingReferences);
+                string dacpacFullFileName = System.IO.Path.Combine(targs.InputDacDirectory, targs.DacpacFileName);
+                var rr = SchemaImportDacPac.ImportDacPac(targs.InputDacDirectory, dacpacFullFileName, targs.ForceReferencePackageRegeneration, targs.GenerateMissingReferences);
 
                 string filter = null;
                 //filter = "HelplineData";
                 //filter = "SLM.Database.Data";
-                SchemaExportCode.ExportTypedDataSetCode(assemblyResolver, rr, targs.LibraryDirectories, targs.InputDirectory, targs.OutputDirectory, filter, targs.StoreNameAssemblySuffix, targs.GenerateSchema.Value, targs.TempDirectory);
+                SchemaExportCode.ExportTypedDataSetCode(assemblyResolver, rr, targs.LibraryDirectories, targs.InputDacDirectory, targs.InputDllDirectory, targs.OutputDirectory, filter, targs.StoreNameAssemblySuffix, targs.GenerateSchema.Value, targs.TempDirectory);
             }
             finally
             {
