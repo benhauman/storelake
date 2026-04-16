@@ -142,7 +142,6 @@
 
         public static void Run(ToolArguments targs)
         {
-            EnsureScriptDom();
             //Microsoft.SqlServer.Server.SqlUserDefinedTypeAttribute
             if (targs == null)
             {
@@ -204,6 +203,8 @@
             AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += assemblyResolver.OnReflectionOnlyAssemblyResolve;
             try
             {
+                EnsureScriptDom();
+
                 string dacpacFullFileName = System.IO.Path.Combine(targs.InputDacDirectory, targs.DacpacFileName);
                 var rr = SchemaImportDacPac.ImportDacPac(targs.InputDacDirectory, dacpacFullFileName, targs.ForceReferencePackageRegeneration, targs.GenerateMissingReferences);
 
