@@ -1,36 +1,36 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<OutputType>Exe</OutputType>
-		<TargetFramework>net48</TargetFramework>
-		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-		<TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
-		<!--<PackageReadmeFile>..\..\README.md</PackageReadmeFile>-->
-	</PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
+    <!--<PackageReadmeFile>..\..\README.md</PackageReadmeFile>-->
+  </PropertyGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\StoreLake\StoreLake.csproj">
-			<PrivateAssets>All</PrivateAssets>
-			<IncludeAssets>StoreLake.*</IncludeAssets>
-			<Private>true</Private>
-			<ReferenceOutputAssembly>true</ReferenceOutputAssembly>
-		</ProjectReference>
-		<ProjectReference Include="..\StoreLake.Sdk\StoreLake.Sdk.csproj">
-			<PrivateAssets>All</PrivateAssets>
-			<ReferenceOutputAssembly>true</ReferenceOutputAssembly>
-			<IncludeAssets>StoreLake.Sdk.*</IncludeAssets>
-			<Private>true</Private>
-		</ProjectReference>
-	</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\StoreLake\StoreLake.csproj">
+      <PrivateAssets>All</PrivateAssets>
+      <IncludeAssets>StoreLake.*</IncludeAssets>
+      <Private>true</Private>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\StoreLake.Sdk\StoreLake.Sdk.csproj">
+      <PrivateAssets>All</PrivateAssets>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+      <IncludeAssets>StoreLake.Sdk.*</IncludeAssets>
+      <Private>true</Private>
+    </ProjectReference>
+  </ItemGroup>
 
-	<ItemGroup>
-	  <None Update="App.config">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="build\StoreLake.Sdk.Cli.targets">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	</ItemGroup>
+  <ItemGroup>
+    <None Update="App.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="build\StoreLake.Sdk.Cli.targets">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <None Include="..\..\README.md">
@@ -40,7 +40,7 @@
   </ItemGroup>
 
   <!--Error NU5049: The `pack` command for SDK-style projects is not supported, use `dotnet pack` or `msbuild -t:pack` to pack this project instead. You can override this behavior by setting the 'NUGET_ENABLE_LEGACY_CSPROJ_PACK' environment variable to 'true'.-->
-	<!--<ItemGroup>
+  <!--<ItemGroup>
     <Content Include="build/**/*.*" copyToOutput="true">
       <Pack>false</Pack>
       
@@ -54,7 +54,7 @@
 		</Content>
 	</ItemGroup>-->
 
-	<!--<ItemGroup>
+  <!--<ItemGroup>
 	  <None Include="..\..\README.md">
 	    <Pack>True</Pack>
 	    <PackagePath>\</PackagePath>
@@ -63,30 +63,34 @@
 
   <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
     <!--<ItemGroup>
-      --><!-- Filter out unnecessary files --><!--
+      -->
+    <!-- Filter out unnecessary files -->
+    <!--
       <_ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
     </ItemGroup>
 
-    --><!-- Print batches for debug purposes -->
+    -->
+    <!-- Print batches for debug purposes -->
     <!--<Message Text="lubo : Batch for .nupkg: ReferenceCopyLocalPaths = @(_ReferenceCopyLocalPaths), ReferenceCopyLocalPaths.DestinationSubDirectory = %(_ReferenceCopyLocalPaths.DestinationSubDirectory) Filename = %(_ReferenceCopyLocalPaths.Filename) Extension = %(_ReferenceCopyLocalPaths.Extension)" Importance="High" Condition="'@(_ReferenceCopyLocalPaths)' != ''" />-->
 
-	  <Message Text="lubo : Batch for $(OutputPath)" />
+    <Message Text="lubo : Batch for $(OutputPath)" />
     <ItemGroup>
       <!-- Add file to package with consideration of sub folder. If empty, the root folder is chosen. -->
       <!--<BuildOutputInPackage Include="@(_ReferenceCopyLocalPaths)" TargetPath="%(_ReferenceCopyLocalPaths.DestinationSubDirectory)" />-->
-		
-		<!--<BuildOutputInPackage Include="$(OutputPath)App.config" TargetPath="StoreLake.Sdk.Cli.exe.config" />  	
+
+      <!--<BuildOutputInPackage Include="$(OutputPath)App.config" TargetPath="StoreLake.Sdk.Cli.exe.config" />  	
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.dll" TargetPath="bix\1.dll" />  
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.pdb" TargetPath="bix\1.pdb" />  
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.dll" TargetPath="bix\2.dll" />  
 		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.pdb" TargetPath="bix\2.pdb" />-->
 
-		<!--<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.Cli.targets" TargetPath="build\StoreLake.Sdk.Cli.targets" />-->
-		<BuildOutputInPackage Include="$(OutputPath)StoreLake.dll" TargetPath="StoreLake.dll" />  
-		<!--<BuildOutputInPackage Include="$(OutputPath)StoreLake.pdb" TargetPath="StoreLake.pdb" />-->  
-		<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.dll" TargetPath="StoreLake.Sdk.dll" />  
-		<!--<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.pdb" TargetPath="StoreLake.Sdk.pdb" />-->
-        <!--<BuildOutputInPackage Include="..\..\README.md" TargetPath="README.md" />-->
-	</ItemGroup>
+      <!--<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.Cli.targets" TargetPath="build\StoreLake.Sdk.Cli.targets" />-->
+      <BuildOutputInPackage Include="$(OutputPath)StoreLake.dll" TargetPath="StoreLake.dll" />
+      <!--<BuildOutputInPackage Include="$(OutputPath)StoreLake.pdb" TargetPath="StoreLake.pdb" />-->
+      <BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.dll" TargetPath="StoreLake.Sdk.dll" />
+      <BuildOutputInPackage Include="$(OutputPath)Microsoft.SqlServer.TransactSql.ScriptDom.dll" TargetPath="Microsoft.SqlServer.TransactSql.ScriptDom.dll" />
+      <!--<BuildOutputInPackage Include="$(OutputPath)StoreLake.Sdk.pdb" TargetPath="StoreLake.Sdk.pdb" />-->
+      <!--<BuildOutputInPackage Include="..\..\README.md" TargetPath="README.md" />-->
+    </ItemGroup>
   </Target>
 </Project>
