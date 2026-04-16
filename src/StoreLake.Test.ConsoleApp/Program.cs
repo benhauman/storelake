@@ -123,7 +123,7 @@
             Helpline.Data.HelplineData.AddToWatchList(databaseAccessorFactory, agent710.agentid, test10_udt, out bool test10);
             Console.WriteLine("test10: " + test10);
 
-            Helpline.Data.HelplineData.AdministrationRefreshRelationModels(databaseAccessorFactory);
+            //?!?Helpline.Data.HelplineData.AdministrationRefreshRelationModels(databaseAccessorFactory);
 
             var test8 = Helpline.Data.HelplineData.CanExecute(databaseAccessorFactory, agent710.agentid, 123);
             Console.WriteLine("test8: " + test8);
@@ -382,7 +382,7 @@
 
         public static IEnumerable<int> GetAllAgentIdentities(Dibix.IDatabaseAccessorFactory databaseAccessorFactory)
         {
-            using (Dibix.IDatabaseAccessor accessor = databaseAccessorFactory.Create())
+            using (Dibix.IDatabaseAccessor accessor = databaseAccessorFactory.Create(new Dibix.DatabaseAccessorOptions()))
             {
                 Dibix.ParametersVisitor @params = accessor.Parameters().SetFromTemplate(new
                 {

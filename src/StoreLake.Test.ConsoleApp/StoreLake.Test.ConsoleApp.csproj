@@ -6,25 +6,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Dibix" />
+    <PackageReference Include="Dibix.Dapper" />
     <ProjectReference Include="..\StoreLake\StoreLake.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Dapper.StrongName">
-      <HintPath>..\ThirdParty\Dapper.StrongName.1.50.5\lib\net451\Dapper.StrongName.dll</HintPath>
-      <Private>true</Private>
-      <SpecificVersion>false</SpecificVersion>
-    </Reference>
-    <Reference Include="Dibix">
-      <HintPath>..\ThirdParty\Dibix.dll</HintPath>
-      <Private>true</Private>
-      <SpecificVersion>false</SpecificVersion>
-    </Reference>
-    <Reference Include="Dibix.Dapper">
-      <HintPath>..\ThirdParty\Dibix.Dapper.dll</HintPath>
-      <Private>true</Private>
-      <SpecificVersion>false</SpecificVersion>
-    </Reference>
     <Reference Include="HelplineData">
       <HintPath>DemoStores\HelplineData.dll</HintPath>
       <Private>false</Private>

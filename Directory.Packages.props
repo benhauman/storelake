@@ -5,7 +5,11 @@
     <GlobalPackageReference Include="StyleCop.Analyzers" Version="1.1.118" />
 
     <PackageVersion Include="System.Data.DataSetExtensions" Version="4.5.0" />
-    <PackageVersion Include="Dibix.Sdk" Version="1.5.29" />
+    <PackageVersion Include="Dapper.StrongName" Version="2.1.72" />
+    <PackageVersion Include="Dibix" Version="1.7.45" />
+    <PackageVersion Include="Dibix.Sdk" Version="1.7.45" />
+    <PackageVersion Include="Dibix.Dapper" Version="1.7.45" />
+    <PackageVersion Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="170.128.0" />
 
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
     <PackageVersion Include="MSTest.TestAdapter" Version="3.9.0" />

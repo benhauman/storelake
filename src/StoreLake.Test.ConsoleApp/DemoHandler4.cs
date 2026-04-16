@@ -35,15 +35,15 @@
         //    //return output.AddRow(value: null);
         //    return output.AddRow(value: 1);
         //}
-        public override void AddToWatchList(DataSet db, int agentid, IEnumerable<hlsys_udt_intthreesetRow> ids, bool limitreached)
-        {
-            //
-        }
-
-        public override void AdministrationRefreshRelationModels(DataSet db)
-        {
-            // do nothing
-        }
+        //public override void AddToWatchList(DataSet db, int agentid, IEnumerable<hlsys_udt_intthreesetRow> ids, bool limitreached)
+        //{
+        //    //
+        //}
+        //
+        //public override void AdministrationRefreshRelationModels(DataSet db)
+        //{
+        //    // do nothing
+        //}
     }
 
     /*

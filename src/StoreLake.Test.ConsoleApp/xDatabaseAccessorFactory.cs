@@ -23,11 +23,11 @@
             this.connectionString = connectionString;
         }
 
-        public Dibix.IDatabaseAccessor Create()
+        public Dibix.IDatabaseAccessor Create(Dibix.DatabaseAccessorOptions options)
         {
             var connection = CreateConnection();
             DataSet db = dbServer.GetDatabaseForConnection(connection);
-            return new StoreLakeDabaseAccessor(db, accessorGate, new Dibix.Dapper.DapperDatabaseAccessor(connection));
+            return new StoreLakeDabaseAccessor(db, accessorGate, new Dibix.Dapper.DapperDatabaseAccessor(connection, options));
         }
 
         public DbConnection CreateConnection()
@@ -71,25 +71,25 @@
             GC.SuppressFinalize(this);
         }
 
-        int IDatabaseAccessor.Execute(string sql, CommandType commandType, ParametersVisitor parameters, int? commandTimeout)
+        int IDatabaseAccessor.Execute(string sql, CommandType commandType, ParametersVisitor parameters)//, int? commandTimeout)
         {
-            return accessor.Execute(sql, commandType, parameters, commandTimeout);
+            return accessor.Execute(sql, commandType, parameters); //, commandTimeout);
         }
 
-        int IDatabaseAccessor.Execute(string commandText, CommandType commandType, ParametersVisitor parameters)
-        {
-            throw new NotImplementedException();
-        }
+        //int IDatabaseAccessor.Execute(string commandText, CommandType commandType, ParametersVisitor parameters)
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         Task<int> IDatabaseAccessor.ExecuteAsync(string commandText, CommandType commandType, ParametersVisitor parameters, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
 
-        Task<int> IDatabaseAccessor.ExecuteAsync(string commandText, CommandType commandType, ParametersVisitor parameters, int? commandTimeout, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
+        //Task<int> IDatabaseAccessor.ExecuteAsync(string commandText, CommandType commandType, ParametersVisitor parameters, CancellationToken cancellationToken)//, int? commandTimeout
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         IParameterBuilder IDatabaseAccessor.Parameters()
         {
@@ -106,10 +106,10 @@
             return accessor.QueryMany<TReturn>(commandText, commandType, parameters, types, splitOn);
         }
 
-        Task<IEnumerable<T>> IDatabaseAccessor.QueryManyAsync<T>(string sql, CommandType commandType, ParametersVisitor parameters, bool buffered, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
+        //Task<IEnumerable<T>> IDatabaseAccessor.QueryManyAsync<T>(string sql, CommandType commandType, ParametersVisitor parameters, bool buffered, CancellationToken cancellationToken)
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         Task<IEnumerable<T>> IDatabaseAccessor.QueryManyAsync<T>(string commandText, CommandType commandType, ParametersVisitor parameters, CancellationToken cancellationToken)
         {
@@ -174,6 +174,15 @@
         }
 
         Task<TReturn> IDatabaseAccessor.QuerySingleOrDefaultAsync<TReturn>(string commandText, CommandType commandType, ParametersVisitor parameters, Type[] types, string splitOn, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+        FileEntity IDatabaseAccessor.QueryFile(string commandText, CommandType commandType, ParametersVisitor parameters)
+        {
+            throw new NotImplementedException();
+        }
+
+        Task<FileEntity> IDatabaseAccessor.QueryFileAsync(string commandText, CommandType commandType, ParametersVisitor parameters, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
