@@ -198,7 +198,7 @@
             s_tracer.TraceInformation("ForceReferencePackageRegeneration=" + targs.ForceReferencePackageRegeneration);
             s_tracer.TraceInformation("GenerateMissingReferences=" + targs.GenerateMissingReferences);
 
-            AssemblyResolver assemblyResolver = new AssemblyResolver(targs.LibraryDirectories, targs.OutputDirectory);
+            AssemblyResolver assemblyResolver = new AssemblyResolver(targs.InputDllDirectory, targs.LibraryDirectories, targs.OutputDirectory);
             AppDomain.CurrentDomain.AssemblyResolve += assemblyResolver.OnAssemblyResolve;
             AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += assemblyResolver.OnReflectionOnlyAssemblyResolve;
             try
@@ -206,7 +206,7 @@
                 EnsureScriptDom();
 
                 string dacpacFullFileName = System.IO.Path.Combine(targs.InputDacDirectory, targs.DacpacFileName);
-                var rr = SchemaImportDacPac.ImportDacPac(targs.InputDacDirectory, dacpacFullFileName, targs.ForceReferencePackageRegeneration, targs.GenerateMissingReferences);
+                var rr = SchemaImportDacPac.ImportDacPac(targs.InputDacDirectory, targs.InputDllDirectory, dacpacFullFileName, targs.ForceReferencePackageRegeneration, targs.GenerateMissingReferences);
 
                 string filter = null;
                 //filter = "HelplineData";

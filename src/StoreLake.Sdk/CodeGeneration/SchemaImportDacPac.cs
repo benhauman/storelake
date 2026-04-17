@@ -430,16 +430,16 @@
     [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1600:Elements should be documented", Justification = "ok")]
     public static class SchemaImportDacPac // 'Dedicated Administrator Connection (for Data Tier Application) Package'
     {
-        public static RegistrationResult ImportDacPac(string inputdir, string dacpacFullFileName, bool forceReferencePackageRegeneration, bool generateMissingReferences)
+        public static RegistrationResult ImportDacPac(string inputdacdir, string inputdlldir, string dacpacFullFileName, bool forceReferencePackageRegeneration, bool generateMissingReferences)
         {
             //string databaseName = "DemoTestData";
             DataSet ds = new DataSet() { Namespace = "dbo" }; // see 'https://www.codeproject.com/articles/30490/how-to-manually-create-a-typed-datatable'
             RegistrationResult ctx = new RegistrationResult(ds, forceReferencePackageRegeneration, generateMissingReferences);
-            RegisterDacpac(" ", ctx, inputdir, dacpacFullFileName, false);
+            RegisterDacpac(" ", ctx, inputdacdir, inputdlldir, dacpacFullFileName, false);
             return ctx;
         }
 
-        private static DacPacRegistration RegisterDacpac(string outputprefix, RegistrationResult ctx, string inputdir, string filePath, bool isReferencedPackage)
+        private static DacPacRegistration RegisterDacpac(string outputprefix, RegistrationResult ctx, string inputdacdir, string inputdlldir, string filePath, bool isReferencedPackage)
         {
             DacPacRegistration dacpac;
             if (ctx.procesed_files.TryGetValue(filePath, out dacpac))
@@ -480,7 +480,7 @@
                             dacpac.DacPacAssemblyFileName = xReference_Assembly_FileName.Attributes().Single(a => a.Name.LocalName == "Value").Value.Replace(@"\\", @"\");
 
                             string dacpacDllFileName = Path.GetFileName(dacpac.DacPacAssemblyFileName);
-                            string dacpacDllFullFileName = Path.Combine(inputdir, dacpacDllFileName);
+                            string dacpacDllFullFileName = Path.Combine(inputdlldir, dacpacDllFileName);
                             Console.WriteLine("Load '" + dacpacDllFullFileName + "'...");
                             if (!File.Exists(dacpacDllFullFileName))
                             {
@@ -542,7 +542,7 @@
                                         {
                                             string dacpacFileNameNoDir = System.IO.Path.GetFileName(dacpacFileName);
                                             Console.WriteLine("External dacpac not found. Try input directory for dacpacFileName:" + dacpacFileNameNoDir);
-                                            dacpacFullFileName = System.IO.Path.Combine(inputdir, dacpacFileNameNoDir);
+                                            dacpacFullFileName = System.IO.Path.Combine(inputdlldir, dacpacFileNameNoDir);
                                             Console.WriteLine("Try dacpacFullFileName:" + dacpacFullFileName);
                                             if (File.Exists(dacpacFullFileName))
                                             {
@@ -554,7 +554,7 @@
                                             }
                                         }
 
-                                        external_dacpac = RegisterDacpac(outputprefix + "   ", ctx, inputdir, dacpacFullFileName, true);
+                                        external_dacpac = RegisterDacpac(outputprefix + "   ", ctx, inputdacdir, inputdlldir, dacpacFullFileName, true);
                                     }
 
                                     dacpac.referenced_dacpacs.Add(logicalname, external_dacpac);

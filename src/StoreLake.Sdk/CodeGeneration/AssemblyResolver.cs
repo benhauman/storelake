@@ -4,16 +4,17 @@
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
+    using System.Linq;
     using System.Reflection;
 
     internal sealed class AssemblyResolver
     {
         private static readonly TraceSource s_tracer = SchemaExportCode.CreateTraceSource();
-        private readonly string[] _libdirs;
+        private readonly string[] _probingDirectories;
         private readonly string _outputdir;
-        public AssemblyResolver(string[] libdirs, string outputdir)
+        public AssemblyResolver(string inputdir, string[] libdirs, string outputdir)
         {
-            _libdirs = libdirs ?? new string[0];
+            _probingDirectories = (libdirs ?? new string[0]).Prepend(inputdir).ToArray();
             _outputdir = outputdir ?? string.Empty;
         }
         internal System.Reflection.Assembly OnAssemblyResolve(object sender, ResolveEventArgs args)
@@ -21,7 +22,7 @@
             s_tracer.TraceInformation("OnAssemblyResolve : " + args.Name);
 
             AssemblyName asmName = new AssemblyName(args.Name); // Dibix.Http.Server, Version=1.0.0.0, Culture=neutral, PublicKeyToken=5b039a7bf8dc383e
-            foreach (var libdir in _libdirs)
+            foreach (var libdir in _probingDirectories)
             {
                 string fileName = Path.Combine(libdir, asmName.Name + ".dll");
                 if (File.Exists(fileName))
@@ -41,7 +42,7 @@
             s_tracer.TraceInformation("OnReflectionOnlyAssemblyResolve : " + args_Name);
 
             AssemblyName asmName = new AssemblyName(args_Name); // Dibix.Http.Server, Version=1.0.0.0, Culture=neutral, PublicKeyToken=5b039a7bf8dc383e
-            foreach (var libdir in _libdirs)
+            foreach (var libdir in _probingDirectories)
             {
                 string fileName = Path.Combine(libdir, asmName.Name + ".dll");
                 if (File.Exists(fileName))
