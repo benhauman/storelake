@@ -788,7 +788,15 @@ namespace StoreLake.Sdk.SqlDom
             {
                 if (binLit.Value.StartsWith("0x") && binLit.Value.Length <= 10)
                 {
-                    uint value = Convert.ToUInt32(binLit.Value, 16);  //Using ToUInt32 not ToUInt64, as per OP comment
+                    uint value;
+                    if (binLit.Value == "0x")
+                    {
+                        value = 0; // SELECT [targetconversationhandle] = CAST(0x AS UNIQUEIDENTIFIER)
+                    }
+                    else
+                    {
+                        value = Convert.ToUInt32(binLit.Value, 16);  //Using ToUInt32 not ToUInt64, as per OP comment
+                    }
 
                     string outputColumnNameSafe = outputColumnName ?? sourceFactory.NewNameForColumnLiteral(mqe, binLit);
                     var source = sourceFactory.NewConstantSource(mqe, outputColumnNameSafe, DbType.UInt32, false);

@@ -683,8 +683,16 @@
         {
             if (node.Value.StartsWith("0x") && node.Value.Length <= 10)
             {
-                var value = Convert.ToUInt32(node.Value, 16);  //Using ToUInt32 not ToUInt64, as per OP comment
-                lastExpression = new cs.CodePrimitiveExpression(value);
+                if (node.Value == "0x") // CHECK([taskid] <> CAST(0x AS UNIQUEIDENTIFIER))
+                {
+                    uint value = 0;  //Using ToUInt32 not ToUInt64, as per OP comment
+                    lastExpression = new cs.CodePrimitiveExpression(value);
+                }
+                else
+                {
+                    uint value = Convert.ToUInt32(node.Value, 16);  //Using ToUInt32 not ToUInt64, as per OP comment
+                    lastExpression = new cs.CodePrimitiveExpression(value);
+                }
             }
             else
             {
