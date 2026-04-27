@@ -916,36 +916,37 @@
                         if (member_method.Name == "CreateInstance")
                         {
                             // protected override DataTable CreateInstance() : called by 'DataTable.Clone'
-                            membersToRemove.Add(member_method);
+                            //membersToRemove.Add(member_method);
+                            Adjust_Table_CreateInstance(rr, dacpac, type_decl_table, member_method);
                         }
-                        if (member_method.Name.StartsWith("New") && member_method.Name.EndsWith("Row") && member_method.ReturnType.BaseType != typeof(void).FullName && member_method.Attributes.IsPrivate() && member_method.Parameters.Count == 0)
+                        else if (member_method.Name.StartsWith("New") && member_method.Name.EndsWith("Row") && member_method.ReturnType.BaseType != typeof(void).FullName && member_method.Attributes.IsPrivate() && member_method.Parameters.Count == 0)
                         {
                             // public void AddhlbiattributeconfigRow(hlbiattributeconfigRow row)
                             membersToRemove.Add(member_method);
                         }
-
-                        if (member_method.Name.StartsWith("Add") && member_method.Name.EndsWith("Row") && member_method.ReturnType != null && member_method.ReturnType.BaseType == typeof(void).FullName)
+                        else if (member_method.Name.StartsWith("Add") && member_method.Name.EndsWith("Row") && member_method.ReturnType != null && member_method.ReturnType.BaseType == typeof(void).FullName)
                         {
                             // public void AddhlbiattributeconfigRow(hlbiattributeconfigRow row)
                             membersToRemove.Add(member_method);
                         }
-
-                        if (member_method.Name.StartsWith("Add") && member_method.Name.EndsWith("Row") && member_method.ReturnType != null && member_method.ReturnType.BaseType != typeof(void).FullName)
+                        else if (member_method.Name.StartsWith("Add") && member_method.Name.EndsWith("Row") && member_method.ReturnType != null && member_method.ReturnType.BaseType != typeof(void).FullName)
                         {
                             // public hlcmdatamodelassociationsearchRow AddhlcmdatamodelassociationsearchRow(int associationid, int searchid)
                             Adjust_Table_AddRowWithValues(rr, dacpac, type_decl_table, member_method);
                         }
-
-                        if (member_method.Name.StartsWith("FindBy") && member_method.ReturnType.BaseType.EndsWith("Row")) // rename 'FindByid', 'FindByimagedataid' etc => 
+                        else if (member_method.Name.StartsWith("FindBy") && member_method.ReturnType.BaseType.EndsWith("Row")) // rename 'FindByid', 'FindByimagedataid' etc => 
                         {
                             // private hlcmdatamodelassociationsearchRow FindByassociationid(int associationid) => FindRowByPrimaryKey
                             member_method.Name = "FindRowByPrimaryKey";
                             member_method.Attributes = MemberAttributes.Public | MemberAttributes.Final;
                         }
-
-                        if (member_method.Name == "InitClass")
+                        else if (member_method.Name == "InitClass")
                         {
                             Adjust_Table_InitClass(rr, dacpac, type_decl_table, member_method);
+                        }
+                        else
+                        {
+                            // accept it
                         }
                     }
 
@@ -1078,6 +1079,7 @@
                 type_decl.Members.Add(memberToInsert);
             }
         }
+
         private static void AddRowMethod_ValidateCheckConstraints(RegistrationResult rr, DacPacRegistration dacpac, DataTable type_decl_table, CodeTypeDeclaration row_type_decl)
         {
             CodeMemberMethod method_validate_row = new CodeMemberMethod()
@@ -1795,7 +1797,18 @@
         {
             member_method.Name = "InitTableClass";
         }
-
+        private static void Adjust_Table_CreateInstance(RegistrationResult rr, DacPacRegistration dacpac, DataTable table, CodeMemberMethod member_method)
+        {
+            /*
+            protected virtual DataTable CreateInstance()
+               {
+                return (DataTable)Activator.CreateInstance(GetType(), nonPublic: true);
+               }
+             */
+            member_method.Name = "CreateInstance";
+            member_method.Attributes = MemberAttributes.Override | MemberAttributes.Family;
+            //throw new NotImplementedException();
+        }
         private static void Adjust_DataSet_InitClass(RegistrationResult rr, DacPacRegistration dacpac, CodeMemberMethod member_method)
         {
             /*
