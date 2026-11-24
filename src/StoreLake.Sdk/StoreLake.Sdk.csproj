@@ -31,10 +31,6 @@
     <EmbeddedResource Include="CodeGeneration\GeneratedModel.snk" />
   </ItemGroup>
 
-  <ItemGroup>
-    <InternalsVisibleTo Include="StoreLake.Test" />
-  </ItemGroup>
-
 
   <ItemGroup>
     <None Include="..\..\README.md">

@@ -1,10 +1,8 @@
 namespace StoreLake.Test
 {
     using System;
-    using System.CodeDom;
     using System.CodeDom.Compiler;
     using System.Data;
-    using System.IO;
     using System.Linq;
     using System.Reflection;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -137,68 +135,36 @@ namespace StoreLake.Test
             return ds;
         }
 
+        private const string SampleTableDDL = @"
+CREATE TABLE [dbo].[sample]
+(
+    [id]          INT            NOT NULL CONSTRAINT [PK_sample] PRIMARY KEY,
+    [name]        NVARCHAR(255)  NOT NULL,
+    [description] NVARCHAR(MAX)  NULL,
+    [chgver]      ROWVERSION     NOT NULL
+)";
+
         private static Assembly GenerateAndCompileStore()
         {
-            DataSet ds = new DataSet() { Namespace = "dbo" };
-            RegistrationResult rr = new RegistrationResult(ds, false, false);
-            DacPacRegistration dacpac = new DacPacRegistration("Sample.dacpac", false)
-            {
-                DacPacAssemblyLogicalName = "Sample.dacpac",
-                TestStoreAssemblyNamespace = "Sample.TestStore",
-                TestStoreExtensionSetName = "Sample",
-            };
+            string code = TableGenerator.GenerateTablesCode("Sample.TestStore", SampleTableDDL);
 
-            StoreLakeTableRegistration treg = new StoreLakeTableRegistration() { TableSchema = "dbo", TableName = "sample" };
-            treg.Columns.Add(new StoreLakeColumnRegistration() { ColumnName = "id", ColumnDbType = SqlDbType.Int, IsNullable = false });
-            treg.Columns.Add(new StoreLakeColumnRegistration() { ColumnName = "name", ColumnDbType = SqlDbType.NVarChar, IsNullable = false });
-            treg.Columns.Add(new StoreLakeColumnRegistration() { ColumnName = "description", ColumnDbType = SqlDbType.NVarChar, IsNullable = true });
-            treg.Columns.Add(new StoreLakeColumnRegistration() { ColumnName = "chgver", ColumnDbType = SqlDbType.Timestamp, IsNullable = false });
-            rr.registered_tables.Add(treg.TableName, dacpac);
-            dacpac.registered_tables.Add(treg.TableName, true);
-            DatabaseRegistration.RegisterTable(ds, treg);
-
-            StoreLakeTableKeyRegistration pk = new StoreLakeTableKeyRegistration() { TableSchema = "dbo", TableName = "sample", KeyName = "PK_sample", KeySchema = "dbo" };
-            pk.Columns.Add(new StoreLakeKeyColumnRegistration() { ColumnName = "id" });
-            DatabaseRegistration.RegisterPrimaryKey(ds, pk);
-
-            string schemaContent;
-            using (StringWriter xsdWriter = new StringWriter())
-            {
-                ds.WriteXmlSchema(xsdWriter);
-                schemaContent = xsdWriter.ToString();
-            }
-
-            Microsoft.CSharp.CSharpCodeProvider codeProvider = new Microsoft.CSharp.CSharpCodeProvider();
             CompilerParameters comparam = new CompilerParameters() { GenerateInMemory = true, GenerateExecutable = false };
-
-            CodeCompileUnit ccu_tables = new CodeCompileUnit();
-            CodeCompileUnit ccu_tabletypes = new CodeCompileUnit();
-            CodeCompileUnit ccu_procedures = new CodeCompileUnit();
-            AssemblyResolver assemblyResolver = new AssemblyResolver(Path.GetTempPath(), new string[0], Path.GetTempPath());
-            SchemaExportCode.GenerateTablesCode(assemblyResolver, comparam, rr, dacpac, schemaContent, "Sample", "TestStore", codeProvider, ccu_tables, ccu_tabletypes, ccu_procedures);
-
             foreach (Assembly reference in new[] { typeof(System.ComponentModel.MarshalByValueComponent).Assembly, typeof(DataTable).Assembly, typeof(TypedTableBase<>).Assembly, typeof(System.Xml.Serialization.IXmlSerializable).Assembly, typeof(Enumerable).Assembly })
             {
-                string fileName = Path.GetFileName(reference.Location);
-                bool alreadyReferenced = comparam.ReferencedAssemblies.Cast<string>().Concat(ccu_tables.ReferencedAssemblies.Cast<string>())
-                    .Any(r => string.Equals(Path.GetFileName(r), fileName, StringComparison.OrdinalIgnoreCase));
-                if (!alreadyReferenced)
-                {
-                    comparam.ReferencedAssemblies.Add(reference.Location);
-                }
+                comparam.ReferencedAssemblies.Add(reference.Location);
             }
 
-            CompilerResults results = codeProvider.CompileAssemblyFromDom(comparam, ccu_tables, ccu_tabletypes);
-            if (results.Errors.HasErrors)
+            using (Microsoft.CSharp.CSharpCodeProvider codeProvider = new Microsoft.CSharp.CSharpCodeProvider())
             {
-                using (StringWriter code = new StringWriter())
+                CompilerResults results = codeProvider.CompileAssemblyFromSource(comparam, code);
+                if (results.Errors.HasErrors)
                 {
-                    codeProvider.GenerateCodeFromCompileUnit(ccu_tables, code, null);
                     string errors = string.Join(Environment.NewLine, results.Errors.Cast<CompilerError>().Where(e => !e.IsWarning).Select(e => e.Line + ": " + e.ErrorText));
                     Assert.Fail("Generated store does not compile:" + Environment.NewLine + errors + Environment.NewLine + code);
                 }
+                return results.CompiledAssembly;
             }
-            return results.CompiledAssembly;
         }
+
     }
 }
