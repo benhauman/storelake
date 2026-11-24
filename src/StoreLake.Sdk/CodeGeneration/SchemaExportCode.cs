@@ -630,6 +630,8 @@
             var ref_table_parent_Columns = new CodePropertyReferenceExpression(ref_table_parent, "Columns");
 
             var decl_table_child = new CodeVariableDeclarationStatement(new CodeTypeReference(fk.Table.TableName + "DataTable"), "table_child");
+            var ref_table_child = new CodeVariableReferenceExpression(decl_table_child.Name);
+            var ref_table_child_Columns = new CodePropertyReferenceExpression(ref_table_child, "Columns");
             decl_table_child.InitExpression = invoke_GetTable_defining;
             if_not_Exists_Add.TrueStatements.Add(decl_table_child);
 
@@ -640,8 +642,9 @@
                 var defining_column = fk.Columns[ix];
                 var foreign_column = fk.RelatedColumns[ix];
 
-                defining_columns.Add(new CodePropertyReferenceExpression(new CodeVariableReferenceExpression(decl_table_child.Name), defining_column.ColumnName + "Column"));
-                //foreign_columns.Add(new CodePropertyReferenceExpression(new CodeVariableReferenceExpression(decl_table_parent.Name), foreign_column.ColumnName + "Column"));
+                //defining_columns.Add(new CodePropertyReferenceExpression(new CodeVariableReferenceExpression(decl_table_child.Name), defining_column.ColumnName + "Column"));
+                var ref_table_child_Columns_col = new CodeIndexerExpression(ref_table_child_Columns, new CodeExpression[] { new CodePrimitiveExpression(defining_column.ColumnName) });
+                defining_columns.Add(ref_table_child_Columns_col);
 
                 var ref_table_parent_Columns_col = new CodeIndexerExpression(ref_table_parent_Columns, new CodeExpression[] { new CodePrimitiveExpression(foreign_column.ColumnName) });
 
@@ -652,14 +655,14 @@
                 foreign_columns.Add(ref_table_parent_Columns_col);
             }
 
-            CodeArrayCreateExpression definint_arr = new CodeArrayCreateExpression(typeof(DataColumn), defining_columns.ToArray());
+            CodeArrayCreateExpression defining_arr = new CodeArrayCreateExpression(typeof(DataColumn), defining_columns.ToArray());
             CodeArrayCreateExpression foreign_arr = new CodeArrayCreateExpression(typeof(DataColumn), foreign_columns.ToArray());
             var decl_fk = new CodeVariableDeclarationStatement(new CodeTypeReference(typeof(ForeignKeyConstraint)), "fk");
 
             decl_fk.InitExpression = new CodeObjectCreateExpression(decl_fk.Type, new CodeExpression[] {
                     new CodePrimitiveExpression(fk.ConstraintName),
                     foreign_arr,
-                    definint_arr
+                    defining_arr
             });
 
             if_not_Exists_Add.TrueStatements.Add(decl_fk);
@@ -972,6 +975,24 @@
                         // 24578
                         member_property.Attributes = MemberAttributes.Assembly | MemberAttributes.Final; // make the Table.Column properties internal(visible only for ...Row).
                         member_property.CustomAttributes.Clear();
+                    }
+                    if (member_property.Type != null && member_property.Type.BaseType == typeof(DataColumn).FullName && !member_property.Attributes.IsPrivate())
+                    {
+                        // property used by the row should not expose DataColumn but only the column's ordinal. After DataSet.Clone or DataSet.Copy the cached columns belongs to the old/source/wrong table.
+                        if (member_property.HasSet)
+                        {
+                            throw new InvalidOperationException($"Table property cannot be changed to 'ordinal'");
+                        }
+
+                        member_property.Type = new CodeTypeReference(typeof(int)); // make the Table.Column properties internal(visible only for ...Row).
+                        if (member_property.GetStatements.Count != 1)
+                        {
+                            throw new InvalidOperationException($"Table property cannot be changed to 'ordinal'. Get statements count is not 1");
+                        }
+
+                        CodeMethodReturnStatement retStmt = (CodeMethodReturnStatement)member_property.GetStatements[0];
+                        var fieldRef = (CodeFieldReferenceExpression)retStmt.Expression;
+                        retStmt.Expression = new CodePropertyReferenceExpression(fieldRef, nameof(DataColumn.Ordinal));
                     }
 
                     if (isTableClassDeclaration && member_property.HasGet && !member_property.HasSet && member_property.Name == "Item") // indexer

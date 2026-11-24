@@ -462,22 +462,32 @@
 
                             XElement xHeader = xDataSchemaModel.Element(XName.Get("Header", "http://schemas.microsoft.com/sqlserver/dac/Serialization/2012/02"));
 
-                            XElement xReference_Assembly = xHeader.Elements().Single(e => e.Name.LocalName == "CustomData"
+                            XElement xReference_Assembly = xHeader.Elements().SingleOrDefault(e => e.Name.LocalName == "CustomData"
                                 && e.Attributes().Any(a => a.Name.LocalName == "Category" && a.Value == "Reference")
                                 && e.Attributes().Any(a => a.Name.LocalName == "Type" && a.Value == "Assembly")
                                 );
-                            XElement xReference_Assembly_FileName = xReference_Assembly.Elements().Single(e => e.Name.LocalName == "Metadata"
-                                    && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "FileName")
-                                    && e.Attributes().Any(a => a.Name.LocalName == "Value")
-                                    );
+                            if (xReference_Assembly == null)
+                            {
+                                string fn = Path.GetFileNameWithoutExtension(filePath);
+                                dacpac.DacPacAssemblyAssemblyName = fn;
+                                dacpac.DacPacAssemblyFileName = fn + ".dll";
+                                // fn
+                            }
+                            else
+                            {
+                                XElement xReference_Assembly_FileName = xReference_Assembly.Elements().Single(e => e.Name.LocalName == "Metadata"
+                                        && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "FileName")
+                                        && e.Attributes().Any(a => a.Name.LocalName == "Value")
+                                        );
 
-                            XElement xReference_Assembly_AssemblyName = xReference_Assembly.Elements().Single(e => e.Name.LocalName == "Metadata"
-                                    && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "AssemblyName")
-                                    && e.Attributes().Any(a => a.Name.LocalName == "Value")
-                                    );
-                            dacpac.DacPacAssemblyAssemblyName = xReference_Assembly_AssemblyName.Attributes().Single(a => a.Name.LocalName == "Value").Value;
+                                XElement xReference_Assembly_AssemblyName = xReference_Assembly.Elements().Single(e => e.Name.LocalName == "Metadata"
+                                        && e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == "AssemblyName")
+                                        && e.Attributes().Any(a => a.Name.LocalName == "Value")
+                                        );
+                                dacpac.DacPacAssemblyAssemblyName = xReference_Assembly_AssemblyName.Attributes().Single(a => a.Name.LocalName == "Value").Value;
+                                dacpac.DacPacAssemblyFileName = xReference_Assembly_FileName.Attributes().Single(a => a.Name.LocalName == "Value").Value.Replace(@"\\", @"\");
+                            }
                             dacpac.UniqueKey = dacpac.DacPacAssemblyAssemblyName;
-                            dacpac.DacPacAssemblyFileName = xReference_Assembly_FileName.Attributes().Single(a => a.Name.LocalName == "Value").Value.Replace(@"\\", @"\");
 
                             string dacpacDllFileName = Path.GetFileName(dacpac.DacPacAssemblyFileName);
                             string dacpacDllFullFileName = Path.Combine(inputdlldir, dacpacDllFileName);
