@@ -66,10 +66,19 @@ stages:
         platform: '$(buildPlatform)'
         configuration: '$(buildConfiguration)'
     
-    - task: VSTest@2
+    # VSTest@2 fails on current windows images ("Visual Studio 2015 is not found"); use 'dotnet test' with Microsoft code coverage instead.
+    - task: DotNetCoreCLI@2
+      displayName: 'Test'
       inputs:
-        platform: '$(buildPlatform)'
-        configuration: '$(buildConfiguration)'
+        command: 'test'
+        projects: 'src/StoreLake.Test/StoreLake.Test.csproj'
+        arguments: '--configuration $(buildConfiguration) --collect "Code Coverage;Format=cobertura"'
+        publishTestResults: true
+
+    - task: PublishCodeCoverageResults@2
+      displayName: 'Publish code coverage'
+      inputs:
+        summaryFileLocation: '$(Agent.TempDirectory)/**/*.cobertura.xml'
     
     - task: NuGetCommand@2
       displayName: 'Nuget : do nothing (default restore)'
