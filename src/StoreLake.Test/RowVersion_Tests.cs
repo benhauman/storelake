@@ -90,6 +90,51 @@ namespace StoreLake.Test
             Assert.AreEqual(2, table.Rows.Count);
         }
 
+        [TestMethod]
+        public void GetRowVersionValue_ReturnsLastAssignedRowVersion()
+        {
+            DataTable table = CreateTable();
+            Assert.AreEqual(0UL, ToUInt64(GetRowVersionValue(table)), "No rowversion assigned yet.");
+
+            DataRow row1 = AddRow(table, 1, "a");
+            Assert.AreEqual(ReadRowVersion(row1), ToUInt64(GetRowVersionValue(table)));
+
+            DataRow row2 = AddRow(table, 2, "b");
+            Assert.AreEqual(ReadRowVersion(row2), ToUInt64(GetRowVersionValue(table)));
+
+            row1["name"] = "a2";
+            Assert.AreEqual(ReadRowVersion(row1), ToUInt64(GetRowVersionValue(table)), "Update assigns the new database rowversion.");
+        }
+
+        [TestMethod]
+        public void GetRowVersionValueAsStringHex_ReturnsBitConverterFormat()
+        {
+            DataTable table = CreateTable();
+            Assert.AreEqual("00-00-00-00-00-00-00-00", GetRowVersionValueAsStringHex(table));
+
+            AddRow(table, 1, "a");
+            AddRow(table, 2, "b");
+
+            Assert.AreEqual("00-00-00-00-00-00-00-02", GetRowVersionValueAsStringHex(table));
+            Assert.AreEqual(BitConverter.ToString(GetRowVersionValue(table)), GetRowVersionValueAsStringHex(table));
+        }
+
+        private static string GetRowVersionValueAsStringHex(DataTable table)
+        {
+            MethodInfo method = s_tableType.GetMethod("GetRowVersionValueAsStringHex", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            Assert.IsNotNull(method, "Table should offer public 'GetRowVersionValueAsStringHex()'.");
+            Assert.AreEqual(typeof(string), method.ReturnType);
+            return (string)method.Invoke(table, null);
+        }
+
+        private static byte[] GetRowVersionValue(DataTable table)
+        {
+            MethodInfo method = s_tableType.GetMethod("GetRowVersionValue", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            Assert.IsNotNull(method, "Table should offer public 'GetRowVersionValue()'.");
+            Assert.AreEqual(typeof(byte[]), method.ReturnType);
+            return (byte[])method.Invoke(table, null);
+        }
+
         private static MethodInfo GetAddRowWithValues()
         {
             return s_tableType.GetMethod("AddRowWithValues", BindingFlags.Public | BindingFlags.Instance);
@@ -111,7 +156,12 @@ namespace StoreLake.Test
         {
             object value = row["chgver"];
             Assert.IsInstanceOfType(value, typeof(byte[]), "Rowversion should be generated.");
-            byte[] bytes = (byte[])value;
+            return ToUInt64((byte[])value);
+        }
+
+        private static ulong ToUInt64(byte[] bytes)
+        {
+            Assert.IsNotNull(bytes);
             Assert.AreEqual(8, bytes.Length, "Rowversion should be 8 bytes.");
             ulong result = 0;
             foreach (byte b in bytes)

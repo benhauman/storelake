@@ -1846,12 +1846,35 @@
         private const string RowVersionCounterName = """ + DatabaseRegistration.RowVersionExtendedPropertyName + @""";
         private bool _rowVersionUpdating;
 
+        /// <summary>The current database rowversion: the last value assigned on insert or update (like @@DBTS). 8 zero bytes before the first one.</summary>
+        public byte[] GetRowVersionValue() {
+            return ToRowVersionBytes(this.ReadRowVersionCounter());
+        }
+
+        /// <summary>The current database rowversion as hex text, e.g. '00-00-00-00-00-00-07-D1' (see BitConverter.ToString).</summary>
+        public string GetRowVersionValueAsStringHex() {
+            return global::System.BitConverter.ToString(this.GetRowVersionValue());
+        }
+
+        private global::System.Data.PropertyCollection RowVersionCounterProperties {
+            get {
+                return (this.DataSet != null) ? this.DataSet.ExtendedProperties : this.ExtendedProperties;
+            }
+        }
+
+        private long ReadRowVersionCounter() {
+            object current = this.RowVersionCounterProperties[RowVersionCounterName];
+            return (current == null) ? 0L : global::System.Convert.ToInt64(current, global::System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         private byte[] NextRowVersion() {
-            global::System.Data.PropertyCollection properties = (this.DataSet != null) ? this.DataSet.ExtendedProperties : this.ExtendedProperties;
-            object current = properties[RowVersionCounterName];
-            long next = ((current == null) ? 0L : global::System.Convert.ToInt64(current, global::System.Globalization.CultureInfo.InvariantCulture)) + 1L;
-            properties[RowVersionCounterName] = next;
-            byte[] value = global::System.BitConverter.GetBytes(next);
+            long next = this.ReadRowVersionCounter() + 1L;
+            this.RowVersionCounterProperties[RowVersionCounterName] = next;
+            return ToRowVersionBytes(next);
+        }
+
+        private static byte[] ToRowVersionBytes(long counter) {
+            byte[] value = global::System.BitConverter.GetBytes(counter);
             if (global::System.BitConverter.IsLittleEndian) {
                 global::System.Array.Reverse(value); // big-endian like SQL Server
             }
