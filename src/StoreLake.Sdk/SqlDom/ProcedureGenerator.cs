@@ -73,7 +73,9 @@
                 {
                     return DbType.Guid;
                 }
-                if (string.Equals("VARBINARY", typeName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals("VARBINARY", typeName, StringComparison.OrdinalIgnoreCase)
+                 || string.Equals("ROWVERSION", typeName, StringComparison.OrdinalIgnoreCase)
+                 || string.Equals("TIMESTAMP", typeName, StringComparison.OrdinalIgnoreCase))
                 {
                     return DbType.Binary;
                 }
