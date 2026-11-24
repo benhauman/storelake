@@ -1070,6 +1070,7 @@
             if (isRowClassDeclaration)
             {
                 AddRowMethod_ValidateCheckConstraints(rr, dacpac, type_decl_table, type_decl);
+                AddRowMembers_RowVersion(type_decl_table, type_decl);
             }
 
             if (isTableClassDeclaration)
@@ -1437,6 +1438,13 @@
                     throw new NotImplementedException(column.DataType.Name);
                 }
             }// AllowDBNull
+
+            if (DatabaseRegistration.IsRowVersionColumn(column))
+            {
+                // [rowversion] is read only: generated on insert and update (see 'RowVersion_TableNewRow' and 'OnRowChanged')
+                member_property.SetStatements.Clear();
+                member_property.HasSet = false;
+            }
         }
 
         private static void Adjust_Row_Column_Accessor_Nullable_Set(string tableName, DataColumn column, CodeMemberProperty member_property)
@@ -1846,16 +1854,6 @@
         private const string RowVersionCounterName = """ + DatabaseRegistration.RowVersionExtendedPropertyName + @""";
         private bool _rowVersionUpdating;
 
-        /// <summary>The current database rowversion: the last value assigned on insert or update (like @@DBTS). 8 zero bytes before the first one.</summary>
-        public byte[] GetRowVersionValue() {
-            return ToRowVersionBytes(this.ReadRowVersionCounter());
-        }
-
-        /// <summary>The current database rowversion as number (like CONVERT(BIGINT, @@DBTS)). 0 before the first one.</summary>
-        public long GetRowVersionValueAsLong() {
-            return this.ReadRowVersionCounter();
-        }
-
         private global::System.Data.PropertyCollection RowVersionCounterProperties {
             get {
                 return (this.DataSet != null) ? this.DataSet.ExtendedProperties : this.ExtendedProperties;
@@ -1899,6 +1897,29 @@
         }
 ";
             table_type_decl.Members.Add(new CodeSnippetTypeMember(code));
+        }
+
+        private static void AddRowMembers_RowVersion(DataTable table, CodeTypeDeclaration row_type_decl)
+        {
+            DataColumn column = DatabaseRegistration.TryGetRowVersionColumn(table);
+            if (column == null)
+            {
+                return;
+            }
+
+            string columnName = column.ColumnName.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            string code = @"
+        /// <summary>The row's rowversion as number (like CONVERT(BIGINT, [" + columnName + @"])). Assigned on insert and on every update of the row.</summary>
+        public long GetRowVersionValueAsLong() {
+            byte[] value = ((byte[])(this[""" + columnName + @"""])); // 8 bytes, big-endian like SQL Server
+            long result = 0L;
+            for (int ix = 0; ix < value.Length; ix++) {
+                result = (result << 8) | value[ix];
+            }
+            return result;
+        }
+";
+            row_type_decl.Members.Add(new CodeSnippetTypeMember(code));
         }
         private static void Adjust_Table_CreateInstance(RegistrationResult rr, DacPacRegistration dacpac, DataTable table, CodeMemberMethod member_method)
         {

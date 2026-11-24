@@ -30,9 +30,34 @@ namespace StoreLake.Test
             AssertContains(code, "protected override void OnRowChanged(global::System.Data.DataRowChangeEventArgs e)");
             AssertContains(code, "(e.Action == global::System.Data.DataRowAction.Change)");
 
-            // the current database rowversion (like @@DBTS)
-            AssertContains(code, "public byte[] GetRowVersionValue()");
-            AssertContains(code, "public long GetRowVersionValueAsLong()");
+            // the row's rowversion: offered by the typed row class, not by the table class
+            string tableClassCode = GetClassCode(code, "rowversionsampleDataTable");
+            string rowClassCode = GetClassCode(code, "rowversionsampleRow");
+            AssertContains(rowClassCode, "public long GetRowVersionValueAsLong()");
+            AssertNotContains(rowClassCode, "GetRowVersionValue()");
+            AssertNotContains(tableClassCode, "GetRowVersionValue");
+
+            // the binary value: read only (get only) like in SQL Server
+            string propertyCode = GetPropertyCode(rowClassCode, "public byte[] chgver {");
+            AssertContains(propertyCode, "get {");
+            AssertNotContains(propertyCode, "set {");
+        }
+
+        private static string GetPropertyCode(string classCode, string declaration)
+        {
+            int start = classCode.IndexOf(declaration, System.StringComparison.Ordinal);
+            Assert.IsTrue(start >= 0, "Property not found: " + declaration);
+            int end = classCode.IndexOf("\n        }", start, System.StringComparison.Ordinal); // closing brace of the property
+            return classCode.Substring(start, end - start);
+        }
+
+        private static string GetClassCode(string code, string className)
+        {
+            string declaration = "public partial class " + className + " ";
+            int start = code.IndexOf(declaration, System.StringComparison.Ordinal);
+            Assert.IsTrue(start >= 0, "Class not found: " + className);
+            int end = code.IndexOf("public partial class ", start + declaration.Length, System.StringComparison.Ordinal);
+            return end < 0 ? code.Substring(start) : code.Substring(start, end - start);
         }
 
         [TestMethod]
