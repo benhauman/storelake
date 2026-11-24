@@ -147,21 +147,7 @@
 
                 AddAssemblyAttributes(ccu_main);
 
-                GenerateDataSetClasses(ccu_tables, schemaContent, namespaceName, codeProvider);
-
-                //=================================================================================
-                //string codeFileName = Path.Combine(tempDirInfo.FullName, fileName + ".RawMSCode.cs");
-                //using (TextWriter textWriter = new StreamWriter(codeFileName, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)))
-                //{
-                //    codeProvider.GenerateCodeFromCompileUnit(ccu, textWriter, null);
-                //}
-                //=================================================================================
-
-                CodeNamespace ns_tabletypes = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
-                ccu_tabletypes.Namespaces.Add(ns_tabletypes);
-                BuildUdts(rr, dacpac, ns_tabletypes);
-
-                ExtensionsClass exttype = Adjust_CCU(assemblyResolver, comparam, rr, dacpac, ccu_tables, ccu_tabletypes, ccu_procedures, storeSuffix);
+                ExtensionsClass exttype = GenerateTablesCode(assemblyResolver, comparam, rr, dacpac, schemaContent, namespaceName, storeSuffix, codeProvider, ccu_tables, ccu_tabletypes, ccu_procedures);
 
                 CodeNamespace ns_procedures = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
                 ccu_procedures.Namespaces.Add(ns_procedures);
@@ -240,6 +226,20 @@
             dacpac.TestStoreAssemblyFullFileName = fullFileName_dll;
 
             s_tracer.TraceEvent(TraceEventType.Information, 0, fullFileName_dll);
+        }
+
+        internal static ExtensionsClass GenerateTablesCode(AssemblyResolver assemblyResolver, CompilerParameters comparam, RegistrationResult rr, DacPacRegistration dacpac, string schemaContent, string namespaceName, string storeSuffix, CodeDomProvider codeProvider
+            , CodeCompileUnit ccu_tables
+            , CodeCompileUnit ccu_tabletypes
+            , CodeCompileUnit ccu_procedures)
+        {
+            GenerateDataSetClasses(ccu_tables, schemaContent, namespaceName, codeProvider);
+
+            CodeNamespace ns_tabletypes = new CodeNamespace() { Name = dacpac.TestStoreAssemblyNamespace };
+            ccu_tabletypes.Namespaces.Add(ns_tabletypes);
+            BuildUdts(rr, dacpac, ns_tabletypes);
+
+            return Adjust_CCU(assemblyResolver, comparam, rr, dacpac, ccu_tables, ccu_tabletypes, ccu_procedures, storeSuffix);
         }
 
         private static void GenerateCodeFile(DirectoryInfo tempDirInfo, CSharpCodeProvider codeProvider, List<string> codeFileNames, string fileName, CodeCompileUnit ccu, string area)
@@ -1070,12 +1070,14 @@
             if (isRowClassDeclaration)
             {
                 AddRowMethod_ValidateCheckConstraints(rr, dacpac, type_decl_table, type_decl);
+                AddRowMembers_RowVersion(type_decl_table, type_decl);
             }
 
             if (isTableClassDeclaration)
             {
                 AddTableMethod_DeleteRowByPrimaryKey(rr, dacpac, type_decl_table, type_decl);
                 AddTableMethod_ValidateCheckConstraints(rr, dacpac, type_decl_table, type_decl);
+                AddTableMembers_RowVersion(type_decl_table, type_decl);
                 var method_GetRowByPrimaryKey = AddTableMethod_GetRowByPrimaryKey(type_decl_table, type_decl);
                 if (method_GetRowByPrimaryKey != null)
                 {
@@ -1436,6 +1438,13 @@
                     throw new NotImplementedException(column.DataType.Name);
                 }
             }// AllowDBNull
+
+            if (DatabaseRegistration.IsRowVersionColumn(column))
+            {
+                // [rowversion] is read only: generated on insert and update (see 'RowVersion_TableNewRow' and 'OnRowChanged')
+                member_property.SetStatements.Clear();
+                member_property.HasSet = false;
+            }
         }
 
         private static void Adjust_Row_Column_Accessor_Nullable_Set(string tableName, DataColumn column, CodeMemberProperty member_property)
@@ -1631,6 +1640,14 @@
                     }
                 }
 
+                if (DatabaseRegistration.IsRowVersionColumn(column))
+                {
+                    // [rowversion] is generated on insert (see 'RowVersion_TableNewRow'): optional, whatever its nullability.
+                    prm_decl.Name = prm_decl.Name + " = null";
+                    parameters_dval.Add(prm_decl);
+                    continue;
+                }
+
                 bool defaultParameterValue_HasValue = false;
                 object defaultParameterValue = null; // null means dont specified anything for this parameter (DBNull.Value)
                 if (column.DefaultValue != null)
@@ -1817,6 +1834,92 @@
         private static void Adjust_Table_InitClass(RegistrationResult rr, DacPacRegistration dacpac, DataTable table, CodeMemberMethod member_method)
         {
             member_method.Name = "InitTableClass";
+            if (DatabaseRegistration.TryGetRowVersionColumn(table) != null)
+            {
+                member_method.Statements.Add(new CodeSnippetStatement("            this.TableNewRow += new global::System.Data.DataTableNewRowEventHandler(this.RowVersion_TableNewRow);"));
+            }
+        }
+
+        private static void AddTableMembers_RowVersion(DataTable table, CodeTypeDeclaration table_type_decl)
+        {
+            // [rowversion] like SQL Server: a database-wide, monotonically increasing 8-byte value assigned on every insert and update.
+            DataColumn column = DatabaseRegistration.TryGetRowVersionColumn(table);
+            if (column == null)
+            {
+                return;
+            }
+
+            string columnName = column.ColumnName.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            string code = @"
+        private const string RowVersionCounterName = """ + DatabaseRegistration.RowVersionExtendedPropertyName + @""";
+        private bool _rowVersionUpdating;
+
+        private global::System.Data.PropertyCollection RowVersionCounterProperties {
+            get {
+                return (this.DataSet != null) ? this.DataSet.ExtendedProperties : this.ExtendedProperties;
+            }
+        }
+
+        private long ReadRowVersionCounter() {
+            object current = this.RowVersionCounterProperties[RowVersionCounterName];
+            return (current == null) ? 0L : global::System.Convert.ToInt64(current, global::System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        private byte[] NextRowVersion() {
+            long next = this.ReadRowVersionCounter() + 1L;
+            this.RowVersionCounterProperties[RowVersionCounterName] = next;
+            return ToRowVersionBytes(next);
+        }
+
+        private static byte[] ToRowVersionBytes(long counter) {
+            byte[] value = global::System.BitConverter.GetBytes(counter);
+            if (global::System.BitConverter.IsLittleEndian) {
+                global::System.Array.Reverse(value); // big-endian like SQL Server
+            }
+            return value;
+        }
+
+        private void RowVersion_TableNewRow(object sender, global::System.Data.DataTableNewRowEventArgs e) {
+            e.Row[""" + columnName + @"""] = this.NextRowVersion();
+        }
+
+        protected override void OnRowChanged(global::System.Data.DataRowChangeEventArgs e) {
+            base.OnRowChanged(e);
+            if ((e.Action == global::System.Data.DataRowAction.Change) && !this._rowVersionUpdating) {
+                this._rowVersionUpdating = true;
+                try {
+                    e.Row[""" + columnName + @"""] = this.NextRowVersion();
+                }
+                finally {
+                    this._rowVersionUpdating = false;
+                }
+            }
+        }
+";
+            table_type_decl.Members.Add(new CodeSnippetTypeMember(code));
+        }
+
+        private static void AddRowMembers_RowVersion(DataTable table, CodeTypeDeclaration row_type_decl)
+        {
+            DataColumn column = DatabaseRegistration.TryGetRowVersionColumn(table);
+            if (column == null)
+            {
+                return;
+            }
+
+            string columnName = column.ColumnName.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            string code = @"
+        /// <summary>The row's rowversion as number (like CONVERT(BIGINT, [" + columnName + @"])). Assigned on insert and on every update of the row.</summary>
+        public long GetRowVersionValueAsLong() {
+            byte[] value = ((byte[])(this[""" + columnName + @"""])); // 8 bytes, big-endian like SQL Server
+            long result = 0L;
+            for (int ix = 0; ix < value.Length; ix++) {
+                result = (result << 8) | value[ix];
+            }
+            return result;
+        }
+";
+            row_type_decl.Members.Add(new CodeSnippetTypeMember(code));
         }
         private static void Adjust_Table_CreateInstance(RegistrationResult rr, DacPacRegistration dacpac, DataTable table, CodeMemberMethod member_method)
         {

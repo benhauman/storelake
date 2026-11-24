@@ -1772,7 +1772,7 @@
             }
             return dbtype;
         }
-        private static System.Data.SqlDbType ParseKnownDbTypeFullName(string itemName, string sonTypeFullName)
+        internal static System.Data.SqlDbType ParseKnownDbTypeFullName(string itemName, string sonTypeFullName)
         {
             string typeName = sonTypeFullName;
             if (string.Equals(typeName, "[int]", StringComparison.Ordinal))
