@@ -1851,9 +1851,9 @@
             return ToRowVersionBytes(this.ReadRowVersionCounter());
         }
 
-        /// <summary>The current database rowversion as hex text, e.g. '00-00-00-00-00-00-07-D1' (see BitConverter.ToString).</summary>
-        public string GetRowVersionValueAsStringHex() {
-            return global::System.BitConverter.ToString(this.GetRowVersionValue());
+        /// <summary>The current database rowversion as number (like CONVERT(BIGINT, @@DBTS)). 0 before the first one.</summary>
+        public long GetRowVersionValueAsLong() {
+            return this.ReadRowVersionCounter();
         }
 
         private global::System.Data.PropertyCollection RowVersionCounterProperties {

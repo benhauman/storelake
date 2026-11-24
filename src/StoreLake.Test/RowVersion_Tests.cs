@@ -107,24 +107,19 @@ namespace StoreLake.Test
         }
 
         [TestMethod]
-        public void GetRowVersionValueAsStringHex_ReturnsBitConverterFormat()
+        public void GetRowVersionValueAsLong_ReturnsCounter()
         {
             DataTable table = CreateTable();
-            Assert.AreEqual("00-00-00-00-00-00-00-00", GetRowVersionValueAsStringHex(table));
+            Assert.AreEqual(0L, GetRowVersionValueAsLong(table));
 
-            AddRow(table, 1, "a");
-            AddRow(table, 2, "b");
+            DataRow row1 = AddRow(table, 1, "a");
+            DataRow row2 = AddRow(table, 2, "b");
+            Assert.AreEqual(2L, GetRowVersionValueAsLong(table));
+            Assert.AreEqual((long)ReadRowVersion(row2), GetRowVersionValueAsLong(table));
 
-            Assert.AreEqual("00-00-00-00-00-00-00-02", GetRowVersionValueAsStringHex(table));
-            Assert.AreEqual(BitConverter.ToString(GetRowVersionValue(table)), GetRowVersionValueAsStringHex(table));
-        }
-
-        private static string GetRowVersionValueAsStringHex(DataTable table)
-        {
-            MethodInfo method = s_tableType.GetMethod("GetRowVersionValueAsStringHex", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
-            Assert.IsNotNull(method, "Table should offer public 'GetRowVersionValueAsStringHex()'.");
-            Assert.AreEqual(typeof(string), method.ReturnType);
-            return (string)method.Invoke(table, null);
+            row1["name"] = "a2";
+            Assert.AreEqual((long)ReadRowVersion(row1), GetRowVersionValueAsLong(table));
+            Assert.AreEqual((long)ToUInt64(GetRowVersionValue(table)), GetRowVersionValueAsLong(table));
         }
 
         private static byte[] GetRowVersionValue(DataTable table)
@@ -133,6 +128,14 @@ namespace StoreLake.Test
             Assert.IsNotNull(method, "Table should offer public 'GetRowVersionValue()'.");
             Assert.AreEqual(typeof(byte[]), method.ReturnType);
             return (byte[])method.Invoke(table, null);
+        }
+
+        private static long GetRowVersionValueAsLong(DataTable table)
+        {
+            MethodInfo method = s_tableType.GetMethod("GetRowVersionValueAsLong", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            Assert.IsNotNull(method, "Table should offer public 'GetRowVersionValueAsLong()'.");
+            Assert.AreEqual(typeof(long), method.ReturnType);
+            return (long)method.Invoke(table, null);
         }
 
         private static MethodInfo GetAddRowWithValues()
